@@ -7,8 +7,6 @@
 enum class TokenType
 {
     // 关键字
-    FALSE,
-    TRUE,
     ENUM,
     CLASS,
     DATA,
@@ -29,8 +27,8 @@ enum class TokenType
     IS,
     SELF,
     OPERATOR,
-    PRINT,
-    PRINTLN,
+    // PRINT,
+    // PRINTLN,
     VOID,
     INT_TYPE,
     FLOAT_TYPE,

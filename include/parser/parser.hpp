@@ -55,10 +55,11 @@ private:
     std::unique_ptr<Statement> whenStatement();
     std::unique_ptr<Statement> forStatement();
     std::unique_ptr<Statement> returnStatement();
+    std::unique_ptr<Statement> variableStatment();
+
 
     // 解析声明
     std::unique_ptr<Declaration> declaration();
-    std::unique_ptr<Declaration> variableDeclaration();
     std::unique_ptr<Declaration> functionDeclaration();
     std::unique_ptr<Declaration> enumDeclaration();
     std::unique_ptr<Declaration> classDeclaration();

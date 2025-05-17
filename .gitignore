@@ -6,3 +6,4 @@ grammar.cpp
 src/.antlr/
 build/
 bin/
+a.txt

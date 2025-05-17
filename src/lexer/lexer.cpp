@@ -22,8 +22,8 @@ const std::map<std::string, TokenType> Lexer::keywords = {{"enum", TokenType::EN
                                                           {"is", TokenType::IS},
                                                           {"self", TokenType::SELF},
                                                           {"operator", TokenType::OPERATOR},
-                                                          {"print", TokenType::PRINT},
-                                                          {"println", TokenType::PRINTLN},
+                                                          //   {"print", TokenType::PRINT},
+                                                          //   {"println", TokenType::PRINTLN},
                                                           {"void", TokenType::VOID},
                                                           {"int", TokenType::INT_TYPE},
                                                           {"float", TokenType::FLOAT_TYPE},
@@ -84,11 +84,32 @@ void Lexer::skipWhitespace()
 
 void Lexer::skipComment()
 {
-    // 跳过单行注释
+    // 处理单行注释
     if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '/') {
+        advance(); // 跳过第一个 '/'
+        advance(); // 跳过第二个 '/'
+        
         while (peek() != '\n' && peek() != '\0') {
             advance();
         }
+    }
+    // 处理多行注释
+    else if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '*') {
+        advance(); // 跳过 '/'
+        advance(); // 跳过 '*'
+        
+        while (!(peek() == '*' && position + 1 < source.length() && source[position + 1] == '/')) {
+            if (peek() == '\0') {
+                // 如果到达文件末尾但注释没有结束，可以选择报错或者直接返回
+                // 这里选择直接返回，让词法分析继续
+                return;
+            }
+            advance();
+        }
+        
+        // 跳过注释结束的 '*/'
+        advance(); // 跳过 '*'
+        advance(); // 跳过 '/'
     }
 }
 
@@ -158,12 +179,12 @@ Token Lexer::scanString()
 
             // 处理转义字符
             switch (peek()) {
-            case 'n': str += '\n'; break;
-            case 't': str += '\t'; break;
-            case 'r': str += '\r'; break;
-            case '\\': str += '\\'; break;
-            case '"': str += '"'; break;
-            default: str += peek(); break;
+                case 'n': str += '\n'; break;
+                case 't': str += '\t'; break;
+                case 'r': str += '\r'; break;
+                case '\\': str += '\\'; break;
+                case '"': str += '"'; break;
+                default: str += peek(); break;
             }
 
             advance();
@@ -185,8 +206,19 @@ Token Lexer::scanString()
 
 Token Lexer::nextToken()
 {
-    skipWhitespace();
-    skipComment();
+    // skipWhitespace();
+    // skipComment();
+    while (true) {
+        skipWhitespace();
+        
+        // 检查是否有注释
+        if ((peek() == '/' && position + 1 < source.length() && 
+             (source[position + 1] == '/' || source[position + 1] == '*'))) {
+            skipComment();
+        } else {
+            break; // 没有更多的空白字符或注释，退出循环
+        }
+    }
 
     int currentLine   = line;
     int currentColumn = column;
@@ -214,78 +246,78 @@ Token Lexer::nextToken()
 
     // 运算符和标点符号
     switch (c) {
-    case '=':
-        advance();
-        if (match('=')) {
-            return Token(TokenType::EQ, currentLine, currentColumn);
-        }
-        return Token(TokenType::ASSIGN, currentLine, currentColumn);
+        case '=':
+            advance();
+            if (match('=')) {
+                return Token(TokenType::EQ, currentLine, currentColumn);
+            }
+            return Token(TokenType::ASSIGN, currentLine, currentColumn);
 
-    case '!':
-        advance();
-        if (match('=')) {
-            return Token(TokenType::NEQ, currentLine, currentColumn);
-        }
-        return Token(TokenType::NOT, currentLine, currentColumn);
+        case '!':
+            advance();
+            if (match('=')) {
+                return Token(TokenType::NEQ, currentLine, currentColumn);
+            }
+            return Token(TokenType::NOT, currentLine, currentColumn);
 
-    case '<':
-        advance();
-        if (match('=')) {
-            return Token(TokenType::LE, currentLine, currentColumn);
-        }
-        return Token(TokenType::LT, currentLine, currentColumn);
+        case '<':
+            advance();
+            if (match('=')) {
+                return Token(TokenType::LE, currentLine, currentColumn);
+            }
+            return Token(TokenType::LT, currentLine, currentColumn);
 
-    case '>':
-        advance();
-        if (match('=')) {
-            return Token(TokenType::GE, currentLine, currentColumn);
-        }
-        return Token(TokenType::GT, currentLine, currentColumn);
+        case '>':
+            advance();
+            if (match('=')) {
+                return Token(TokenType::GE, currentLine, currentColumn);
+            }
+            return Token(TokenType::GT, currentLine, currentColumn);
 
-    case '+': advance(); return Token(TokenType::PLUS, currentLine, currentColumn);
-    case '-':
-        advance();
-        if (match('>')) {
-            return Token(TokenType::ARROW, currentLine, currentColumn);
-        }
-        return Token(TokenType::MINUS, currentLine, currentColumn);
+        case '+': advance(); return Token(TokenType::PLUS, currentLine, currentColumn);
+        case '-':
+            advance();
+            if (match('>')) {
+                return Token(TokenType::ARROW, currentLine, currentColumn);
+            }
+            return Token(TokenType::MINUS, currentLine, currentColumn);
 
-    case '*': advance(); return Token(TokenType::MULT, currentLine, currentColumn);
-    case '/': advance(); return Token(TokenType::DIV, currentLine, currentColumn);
-    case '%': advance(); return Token(TokenType::MOD, currentLine, currentColumn);
+        case '*': advance(); return Token(TokenType::MULT, currentLine, currentColumn);
+        case '/': advance(); return Token(TokenType::DIV, currentLine, currentColumn);
+        case '%': advance(); return Token(TokenType::MOD, currentLine, currentColumn);
 
-    case '&':
-        advance();
-        if (match('&')) {
-            return Token(TokenType::AND, currentLine, currentColumn);
-        }
-        return Token(TokenType::ERROR, "Unexpected character '&'", currentLine, currentColumn);
+        case '&':
+            advance();
+            if (match('&')) {
+                return Token(TokenType::AND, currentLine, currentColumn);
+            }
+            return Token(TokenType::ERROR, "Unexpected character '&'", currentLine, currentColumn);
 
-    case '|':
-        advance();
-        if (match('|')) {
-            return Token(TokenType::OR, currentLine, currentColumn);
-        }
-        return Token(TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn);
+        case '|':
+            advance();
+            if (match('|')) {
+                return Token(TokenType::OR, currentLine, currentColumn);
+            }
+            return Token(TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn);
 
-    case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn);
-    // case ';': advance(); return Token(TokenType::SEMICOLON, currentLine, currentColumn);
-    case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn);
-    case '.': advance(); return Token(TokenType::DOT, currentLine, currentColumn);
+        case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn);
+        // case ';': advance(); return Token(TokenType::SEMICOLON, currentLine, currentColumn);
+        case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn);
+        case '.': advance(); return Token(TokenType::DOT, currentLine, currentColumn);
 
-    case '(': advance(); return Token(TokenType::LPAREN, currentLine, currentColumn);
-    case ')': advance(); return Token(TokenType::RPAREN, currentLine, currentColumn);
-    case '{': advance(); return Token(TokenType::LBRACE, currentLine, currentColumn);
-    case '}': advance(); return Token(TokenType::RBRACE, currentLine, currentColumn);
-    case '[': advance(); return Token(TokenType::LBRACKET, currentLine, currentColumn);
-    case ']': advance(); return Token(TokenType::RBRACKET, currentLine, currentColumn);
+        case '(': advance(); return Token(TokenType::LPAREN, currentLine, currentColumn);
+        case ')': advance(); return Token(TokenType::RPAREN, currentLine, currentColumn);
+        case '{': advance(); return Token(TokenType::LBRACE, currentLine, currentColumn);
+        case '}': advance(); return Token(TokenType::RBRACE, currentLine, currentColumn);
+        case '[': advance(); return Token(TokenType::LBRACKET, currentLine, currentColumn);
+        case ']': advance(); return Token(TokenType::RBRACKET, currentLine, currentColumn);
 
-    default:
-        advance();
-        return Token(TokenType::ERROR,
-                     std::string("Unexpected character '") + c + "'",
-                     currentLine,
-                     currentColumn);
+        default:
+            advance();
+            return Token(TokenType::ERROR,
+                         std::string("Unexpected character '") + c + "'",
+                         currentLine,
+                         currentColumn);
     }
 }
 

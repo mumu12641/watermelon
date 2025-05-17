@@ -462,14 +462,7 @@ public:
         }
     }
 };
-
-class Declaration : public Statement
-{
-public:
-    virtual ~Declaration() = default;
-};
-
-class VariableDeclaration : public Declaration
+class VariableStatement : public Statement
 {
 public:
     enum class Kind
@@ -483,8 +476,8 @@ public:
     std::unique_ptr<Type>       type;
     std::unique_ptr<Expression> initializer;
 
-    VariableDeclaration(Kind kind, std::string name, std::unique_ptr<Type> type,
-                        std::unique_ptr<Expression> initializer)
+    VariableStatement(Kind kind, std::string name, std::unique_ptr<Type> type,
+                      std::unique_ptr<Expression> initializer)
         : kind(kind)
         , name(std::move(name))
         , type(std::move(type))
@@ -509,6 +502,13 @@ public:
         return result;
     }
 };
+
+class Declaration : public Statement
+{
+public:
+    virtual ~Declaration() = default;
+};
+
 
 class FunctionParameter
 {

@@ -109,11 +109,11 @@ BraceWrapping:
   # 缩进大括号(整个大括号框起来的部分都缩进)
   IndentBraces: false
   # 空函数的大括号是否可以在一行
-  SplitEmptyFunction: false
+  SplitEmptyFunction: true
   # 空记录体(struct/class/union)的大括号是否可以在一行
-  SplitEmptyRecord: false
+  SplitEmptyRecord: true
   # 空名字空间的大括号是否可以在一行
-  SplitEmptyNamespace: false
+  SplitEmptyNamespace: true
 
 # 在二元运算符前换行: None(在操作符后换行), NonAssignment(在非赋值的操作符前换行), All(在操作符前换行)
 BreakBeforeBinaryOperators: None
