@@ -136,7 +136,7 @@ Token Lexer::scanIdentifier()
 }
 
 Token Lexer::scanNumber()
-{
+{   
     int         startLine   = line;
     int         startColumn = column;
     std::string number;

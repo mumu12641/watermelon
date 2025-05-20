@@ -22,7 +22,7 @@ void testLexer(const std::string& source)
     std::cout << "Testing Lexer...\n";
     Lexer lexer(source);
     auto  tokens = lexer.tokenize();
-    printTokens(tokens);
+    // printTokens(tokens);
 }
 
 void testParser(const std::string& source)
@@ -37,7 +37,7 @@ void testParser(const std::string& source)
 
         if (program) {
             std::cout << "=== AST ===\n";
-            std::cout << program->toString() << std::endl;
+            std::cout << program->dump() << std::endl;
             std::cout << "===========\n";
         }
         else {

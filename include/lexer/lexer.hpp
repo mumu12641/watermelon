@@ -12,9 +12,10 @@ class Lexer
 {
 private:
     std::string source;
-    size_t      position = 0;
-    int         line     = 1;
-    int         column   = 1;
+    // std::string filepath;
+    size_t position = 0;
+    int    line     = 1;
+    int    column   = 1;
 
     static const std::map<std::string, TokenType> keywords;
 
@@ -31,7 +32,9 @@ private:
 public:
     explicit Lexer(const std::string& source)
         : source(source)
-    {}
+    // , filepath(filepath)
+    {
+    }
     explicit Lexer(std::ifstream& file);
 
     Token              nextToken();

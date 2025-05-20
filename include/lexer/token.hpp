@@ -90,35 +90,40 @@ struct Token
         , value(std::monostate{})
         , line(line)
         , column(column)
-    {}
+    {
+    }
 
     Token(TokenType type, int value, int line, int column)
         : type(type)
         , value(value)
         , line(line)
         , column(column)
-    {}
+    {
+    }
 
     Token(TokenType type, float value, int line, int column)
         : type(type)
         , value(value)
         , line(line)
         , column(column)
-    {}
+    {
+    }
 
     Token(TokenType type, bool value, int line, int column)
         : type(type)
         , value(value)
         , line(line)
         , column(column)
-    {}
+    {
+    }
 
     Token(TokenType type, std::string value, int line, int column)
         : type(type)
         , value(std::move(value))
         , line(line)
         , column(column)
-    {}
+    {
+    }
 
     std::string toString() const;
 };

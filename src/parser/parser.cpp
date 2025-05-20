@@ -432,7 +432,6 @@ std::unique_ptr<Statement> Parser::forStatement()
     auto iterable = expression();
 
     consume(TokenType::RPAREN, "Expect ')' after for loop condition.");
-    // std::cout << "for " << std::endl;
     auto body = statement();
 
     return std::make_unique<ForStatement>(
@@ -443,12 +442,7 @@ std::unique_ptr<Statement> Parser::returnStatement()
 {
     std::unique_ptr<Expression> value = nullptr;
 
-    // if (!check(TokenType::SEMICOLON)) {
     value = expression();
-    // }
-
-    // consume(TokenType::SEMICOLON, "Expect ';' after return value.");
-
     return std::make_unique<ReturnStatement>(std::move(value));
 }
 std::unique_ptr<Statement> Parser::variableStatment()
@@ -474,7 +468,6 @@ std::unique_ptr<Statement> Parser::variableStatment()
         initializer = expression();
     }
 
-    // consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
 
     return std::make_unique<VariableStatement>(
         kind, std::get<std::string>(name), std::move(varType), std::move(initializer));
@@ -483,9 +476,6 @@ std::unique_ptr<Statement> Parser::variableStatment()
 std::unique_ptr<Declaration> Parser::declaration()
 {
     try {
-        // if (match(TokenType::VAR) || match(TokenType::VAL) || match(TokenType::LET)) {
-        //     return variableDeclaration();
-        // }
         if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
             return functionDeclaration();
         }
@@ -495,12 +485,12 @@ std::unique_ptr<Declaration> Parser::declaration()
         if (match({TokenType::CLASS, TokenType::DATA, TokenType::BASE})) {
             return classDeclaration();
         }
-        // return nullptr;
     }
     catch (const ParseError& error) {
         synchronize();
         return nullptr;
     }
+    return nullptr;
 }
 
 // std::unique_ptr<Declaration> Parser::variableDeclaration()
@@ -704,7 +694,6 @@ std::unique_ptr<Declaration> Parser::classDeclaration()
 
         consume(TokenType::RPAREN, "Expect ')' after base constructor arguments.");
     }
-    std::cout << "inheirt done" << std::endl;
 
 
     // 解析类体
@@ -717,12 +706,9 @@ std::unique_ptr<Declaration> Parser::classDeclaration()
             members.push_back(std::move(member));
         }
     }
-    // std::cout << "class member done" << std::endl;
 
 
     consume(TokenType::RBRACE, "Expect '}' after class body.");
-    // std::cout << "all done" << std::endl;
-    // std::cout << std::endl;
 
 
     return std::make_unique<ClassDeclaration>(kind,
@@ -740,7 +726,6 @@ std::unique_ptr<ClassMember> Parser::classMember()
 {
     try {
         if (match({TokenType::VAR, TokenType::VAL})) {
-            // std::cout << "property " << std::endl;
 
             // 属性成员
             auto name = consume(TokenType::IDENTIFIER, "Expect property name.").value;
@@ -755,16 +740,12 @@ std::unique_ptr<ClassMember> Parser::classMember()
                 initializer = expression();
             }
 
-            // consume(TokenType::SEMICOLON, "Expect ';' after property declaration.");
-            // std::cout << "property done" << std::endl;
 
 
             return std::make_unique<PropertyMember>(
                 std::get<std::string>(name), std::move(propType), std::move(initializer));
         }
         else if (match(TokenType::INIT)) {
-            // 初始化块
-            // std::cout << "init " << std::endl;
 
             consume(TokenType::LBRACE, "Expect '{' after 'init'.");
 
@@ -774,7 +755,6 @@ std::unique_ptr<ClassMember> Parser::classMember()
             }
 
             consume(TokenType::RBRACE, "Expect '}' after init block.");
-            // std::cout << "init done " << std::endl;
 
 
             return std::make_unique<InitBlockMember>(
@@ -845,14 +825,12 @@ std::unique_ptr<Type> Parser::type()
     throw error(peek(), "Expect type.");
 }
 
-// 实现parse方法
 std::unique_ptr<Program> Parser::parse()
 {
     std::vector<std::unique_ptr<Declaration>> declarations;
 
     while (!isAtEnd()) {
         auto decl = declaration();
-        std::cout << "decl done " << std::endl;
         if (decl) {
             declarations.push_back(std::move(decl));
         }
