@@ -50,20 +50,27 @@ void printTokens(const std::vector<Token>& tokens)
 void processSourceFile(const std::string& source, const std::string& filename = "")
 {
 
-    Lexer                                                    lexer(source);
-    std::pair<std::vector<Token>, std::optional<LexerError>> tokenize_res = lexer.tokenize();
-    if (tokenize_res.second) {
-        auto err = tokenize_res.second;
-        std::cerr << filename << ":" << err->line << ":" << err->column
-                  << ": \033[31merror:\033[0m " << err->message << std::endl;
-        printContext(filename, err->line, err->column);
+    Lexer lexer(source, filename);
+    auto [tokens, lexerError] = lexer.tokenize();
+    if (lexerError) {
+        std::cerr << (lexerError->filename.empty() ? "" : lexerError->filename + ":")
+                  << lexerError->line << ":" << lexerError->column
+                  << ": \033[31merror: " << lexerError->message << "\033[0m" << std::endl;
+        printContext(filename, lexerError->line, lexerError->column);
         return;
     }
 
-    try {
-        Parser parser(tokenize_res.first);
-        auto   program = parser.parse();
+    Parser parser(tokens);
+    auto   result = parser.parse();
 
+    if (std::holds_alternative<ParseError>(result)) {
+        auto error = std::get<ParseError>(result);
+        std::cerr << (error.filename.empty() ? "" : error.filename + ":") << error.line << ":"
+                  << error.column << ": \033[31merror: " << error.message << "\033[0m" << std::endl;
+        printContext(filename, error.line, error.column);
+    }
+    else {
+        auto program = std::move(std::get<std::unique_ptr<Program>>(result));
         if (program) {
             std::cout << "=== AST ===\n";
             std::cout << program->dump() << std::endl;
@@ -72,12 +79,6 @@ void processSourceFile(const std::string& source, const std::string& filename = 
         else {
             std::cout << "Failed to parse program.\n";
         }
-    }
-    catch (const ParseError& e) {
-        std::cerr << "Parse error: " << e.what() << std::endl;
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
     }
 }
 

@@ -8,12 +8,20 @@
 #include <stdexcept>
 #include <vector>
 
-class ParseError : public std::runtime_error
+struct ParseError
 {
-public:
-    explicit ParseError(const std::string& message)
-        : std::runtime_error(message)
-    {}
+    std::string message;
+    int         line;
+    int         column;
+    std::string filename;
+
+    ParseError(const std::string& msg, int l, int c, const std::string& fname = "")
+        : message(msg)
+        , line(l)
+        , column(c)
+        , filename(fname)
+    {
+    }
 };
 
 class Parser
@@ -22,16 +30,19 @@ private:
     std::vector<Token> tokens;
     size_t             current = 0;
 
-    Token      peek() const;
-    Token      previous() const;
-    bool       isAtEnd() const;
-    Token      advance();
-    bool       check(TokenType type) const;
-    bool       match(TokenType type);
-    bool       match(std::initializer_list<TokenType> types);
-    Token      consume(TokenType type, const std::string& message);
-    ParseError error(const Token& token, const std::string& message);
-    void       synchronize();
+    Token peek() const;
+    Token previous() const;
+    bool  isAtEnd() const;
+    Token advance();
+    bool  check(TokenType type) const;
+    bool  match(TokenType type);
+    bool  match(std::initializer_list<TokenType> types);
+    Token consume(TokenType type, const std::string& message);
+
+    ParseError createError(const Token& token, const std::string& message);
+    bool       hasError     = false;
+    ParseError currentError = ParseError("", 0, 0);
+
 
     // 解析表达式
     std::unique_ptr<Expression> expression();
@@ -73,9 +84,10 @@ private:
 public:
     explicit Parser(const std::vector<Token>& tokens)
         : tokens(tokens)
-    {}
+    {
+    }
 
-    std::unique_ptr<Program> parse();
+    std::variant<std::unique_ptr<Program>, ParseError> parse();
 };
 
 #endif   // PARSER_HPP

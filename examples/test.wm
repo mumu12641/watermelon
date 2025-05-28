@@ -38,7 +38,7 @@ class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
 }
 fn func(a:int,b:int){
     var flag:bool = true
-    val max = a
+    val max = a,
     when (self.getColor()) {
         Color.RED -> println("red")
         Color.GREEN -> println("green") 

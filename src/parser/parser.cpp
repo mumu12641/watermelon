@@ -58,66 +58,41 @@ Token Parser::consume(TokenType type, const std::string& message)
     if (check(type)) {
         return advance();
     }
-
-    throw error(peek(), message);
+    hasError     = true;
+    currentError = createError(peek(), message);
+    return peek();
 }
 
-ParseError Parser::error(const Token& token, const std::string& message)
+ParseError Parser::createError(const Token& token, const std::string& message)
 {
-    std::cerr << "Error at ";
-    if (token.type == TokenType::END_OF_FILE) {
-        std::cerr << "end";
-    }
-    else {
-        std::cerr << "'" << token.toString() << "'";
-    }
-    std::cerr << ": " << message << std::endl;
-
-    return ParseError(message);
+    return ParseError(message, token.line, token.column, token.filename);
 }
 
-void Parser::synchronize()
-{
-    advance();
-
-    while (!isAtEnd()) {
-        // if (previous().type == TokenType::SEMICOLON) {
-        //     return;
-        // }
-
-        switch (peek().type) {
-            case TokenType::CLASS:
-            case TokenType::FN:
-            case TokenType::VAR:
-            case TokenType::FOR:
-            case TokenType::IF:
-            case TokenType::WHEN:
-            case TokenType::RETURN: return;
-            default: break;
-        }
-
-        advance();
-    }
-}
 
 std::unique_ptr<Expression> Parser::expression()
 {
-    return assignment();
+    auto expr = assignment();
+    if (hasError) return nullptr;
+    return expr;
 }
 
 std::unique_ptr<Expression> Parser::assignment()
 {
     auto expr = logicalOr();
+    if (hasError) return nullptr;
 
     if (match(TokenType::ASSIGN)) {
         auto value = assignment();
+        if (hasError) return nullptr;
 
         if (auto* identExpr = dynamic_cast<IdentifierExpression*>(expr.get())) {
             return std::make_unique<BinaryExpression>(
                 BinaryExpression::Operator::ASSIGN, std::move(expr), std::move(value));
         }
 
-        error(previous(), "Invalid assignment target.");
+        hasError     = true;
+        currentError = createError(previous(), "Invalid assignment target.");
+        return nullptr;
     }
 
     return expr;
@@ -126,11 +101,14 @@ std::unique_ptr<Expression> Parser::assignment()
 std::unique_ptr<Expression> Parser::logicalOr()
 {
     auto expr = logicalAnd();
+    if (hasError) return nullptr;
 
     while (match(TokenType::OR)) {
         auto op    = BinaryExpression::Operator::OR;
         auto right = logicalAnd();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -139,11 +117,14 @@ std::unique_ptr<Expression> Parser::logicalOr()
 std::unique_ptr<Expression> Parser::logicalAnd()
 {
     auto expr = equality();
+    if (hasError) return nullptr;
 
     while (match(TokenType::AND)) {
         auto op    = BinaryExpression::Operator::AND;
         auto right = equality();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -152,12 +133,15 @@ std::unique_ptr<Expression> Parser::logicalAnd()
 std::unique_ptr<Expression> Parser::equality()
 {
     auto expr = comparison();
+    if (hasError) return nullptr;
 
     while (match({TokenType::EQ, TokenType::NEQ})) {
         auto op    = previous().type == TokenType::EQ ? BinaryExpression::Operator::EQ
                                                       : BinaryExpression::Operator::NEQ;
         auto right = comparison();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -166,6 +150,7 @@ std::unique_ptr<Expression> Parser::equality()
 std::unique_ptr<Expression> Parser::comparison()
 {
     auto expr = addition();
+    if (hasError) return nullptr;
 
     while (match({TokenType::LT, TokenType::LE, TokenType::GT, TokenType::GE})) {
         BinaryExpression::Operator op;
@@ -175,11 +160,12 @@ std::unique_ptr<Expression> Parser::comparison()
             case TokenType::LE: op = BinaryExpression::Operator::LE; break;
             case TokenType::GT: op = BinaryExpression::Operator::GT; break;
             case TokenType::GE: op = BinaryExpression::Operator::GE; break;
-            default: throw std::runtime_error("Unexpected operator");
         }
 
         auto right = addition();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -188,12 +174,15 @@ std::unique_ptr<Expression> Parser::comparison()
 std::unique_ptr<Expression> Parser::addition()
 {
     auto expr = multiplication();
+    if (hasError) return nullptr;
 
     while (match({TokenType::PLUS, TokenType::MINUS})) {
         auto op    = previous().type == TokenType::PLUS ? BinaryExpression::Operator::ADD
                                                         : BinaryExpression::Operator::SUB;
         auto right = multiplication();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -202,6 +191,7 @@ std::unique_ptr<Expression> Parser::addition()
 std::unique_ptr<Expression> Parser::multiplication()
 {
     auto expr = unary();
+    if (hasError) return nullptr;
 
     while (match({TokenType::MULT, TokenType::DIV, TokenType::MOD})) {
         BinaryExpression::Operator op;
@@ -210,11 +200,12 @@ std::unique_ptr<Expression> Parser::multiplication()
             case TokenType::MULT: op = BinaryExpression::Operator::MUL; break;
             case TokenType::DIV: op = BinaryExpression::Operator::DIV; break;
             case TokenType::MOD: op = BinaryExpression::Operator::MOD; break;
-            default: throw std::runtime_error("Unexpected operator");
         }
 
         auto right = unary();
-        expr       = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
+        if (hasError) return nullptr;
+
+        expr = std::make_unique<BinaryExpression>(op, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -226,6 +217,8 @@ std::unique_ptr<Expression> Parser::unary()
         auto op    = previous().type == TokenType::MINUS ? UnaryExpression::Operator::NEG
                                                          : UnaryExpression::Operator::NOT;
         auto right = unary();
+        if (hasError) return nullptr;
+
         return std::make_unique<UnaryExpression>(op, std::move(right));
     }
 
@@ -235,14 +228,18 @@ std::unique_ptr<Expression> Parser::unary()
 std::unique_ptr<Expression> Parser::call()
 {
     auto expr = primary();
+    if (hasError) return nullptr;
 
     while (true) {
         if (match(TokenType::LPAREN)) {
             expr = finishCall(std::move(expr));
+            if (hasError) return nullptr;
         }
         else if (match(TokenType::DOT)) {
             auto name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
-            expr      = std::make_unique<MemberExpression>(std::move(expr),
+            if (hasError) return nullptr;
+
+            expr = std::make_unique<MemberExpression>(std::move(expr),
                                                       std::get<std::string>(name.value));
         }
         else {
@@ -260,10 +257,12 @@ std::unique_ptr<Expression> Parser::finishCall(std::unique_ptr<Expression> calle
     if (!check(TokenType::RPAREN)) {
         do {
             arguments.push_back(expression());
+            if (hasError) return nullptr;
         } while (match(TokenType::COMMA));
     }
 
     consume(TokenType::RPAREN, "Expect ')' after arguments.");
+    if (hasError) return nullptr;
 
     return std::make_unique<CallExpression>(std::move(callee), std::move(arguments));
 }
@@ -274,9 +273,6 @@ std::unique_ptr<Expression> Parser::primary()
         return std::make_unique<LiteralExpression>(LiteralExpression::Kind::BOOL,
                                                    std::get<bool>(previous().value));
     }
-    // if (match(TokenType::TRUE)) {
-    //     return std::make_unique<LiteralExpression>(LiteralExpression::Kind::BOOL, true);
-    // }
 
     if (match(TokenType::INT_LITERAL)) {
         return std::make_unique<LiteralExpression>(LiteralExpression::Kind::INT,
@@ -301,7 +297,11 @@ std::unique_ptr<Expression> Parser::primary()
 
     if (match(TokenType::LPAREN)) {
         auto expr = expression();
+        if (hasError) return nullptr;
+
         consume(TokenType::RPAREN, "Expect ')' after expression.");
+        if (hasError) return nullptr;
+
         return expr;
     }
 
@@ -311,25 +311,30 @@ std::unique_ptr<Expression> Parser::primary()
         if (!check(TokenType::RBRACKET)) {
             do {
                 elements.push_back(expression());
+                if (hasError) return nullptr;
             } while (match(TokenType::COMMA));
         }
 
         consume(TokenType::RBRACKET, "Expect ']' after array elements.");
+        if (hasError) return nullptr;
 
         return std::make_unique<ArrayExpression>(std::move(elements));
     }
 
     if (match(TokenType::LBRACE)) {
-        // Lambda表达式
-        // 这里简化了实现，实际上需要处理参数列表和箭头
         auto body = expression();
+        if (hasError) return nullptr;
+
         consume(TokenType::RBRACE, "Expect '}' after lambda body.");
+        if (hasError) return nullptr;
 
         return std::make_unique<LambdaExpression>(std::vector<LambdaExpression::Parameter>(),
                                                   std::move(body));
     }
 
-    throw error(peek(), "Expect expression.");
+    hasError     = true;
+    currentError = createError(peek(), "Expect expression.");
+    return nullptr;
 }
 
 std::unique_ptr<Statement> Parser::statement()
@@ -359,7 +364,8 @@ std::unique_ptr<Statement> Parser::statement()
 std::unique_ptr<Statement> Parser::expressionStatement()
 {
     auto expr = expression();
-    // consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+    if (hasError) return nullptr;
+
     return std::make_unique<ExpressionStatement>(std::move(expr));
 }
 
@@ -369,9 +375,11 @@ std::unique_ptr<Statement> Parser::blockStatement()
 
     while (!check(TokenType::RBRACE) && !isAtEnd()) {
         statements.push_back(statement());
+        if (hasError) return nullptr;
     }
 
     consume(TokenType::RBRACE, "Expect '}' after block.");
+    if (hasError) return nullptr;
 
     return std::make_unique<BlockStatement>(std::move(statements));
 }
@@ -379,14 +387,22 @@ std::unique_ptr<Statement> Parser::blockStatement()
 std::unique_ptr<Statement> Parser::ifStatement()
 {
     consume(TokenType::LPAREN, "Expect '(' after 'if'.");
-    auto condition = expression();
-    consume(TokenType::RPAREN, "Expect ')' after if condition.");
+    if (hasError) return nullptr;
 
-    auto                       thenBranch = statement();
+    auto condition = expression();
+    if (hasError) return nullptr;
+
+    consume(TokenType::RPAREN, "Expect ')' after if condition.");
+    if (hasError) return nullptr;
+
+    auto thenBranch = statement();
+    if (hasError) return nullptr;
+
     std::unique_ptr<Statement> elseBranch = nullptr;
 
     if (match(TokenType::ELSE)) {
         elseBranch = statement();
+        if (hasError) return nullptr;
     }
 
     return std::make_unique<IfStatement>(
@@ -396,22 +412,34 @@ std::unique_ptr<Statement> Parser::ifStatement()
 std::unique_ptr<Statement> Parser::whenStatement()
 {
     consume(TokenType::LPAREN, "Expect '(' after 'when'.");
+    if (hasError) return nullptr;
+
     auto subject = expression();
+    if (hasError) return nullptr;
+
     consume(TokenType::RPAREN, "Expect ')' after when subject.");
+    if (hasError) return nullptr;
 
     consume(TokenType::LBRACE, "Expect '{' before when cases.");
+    if (hasError) return nullptr;
 
     std::vector<WhenStatement::Case> cases;
 
     while (!check(TokenType::RBRACE) && !isAtEnd()) {
         auto value = expression();
+        if (hasError) return nullptr;
+
         consume(TokenType::ARROW, "Expect '->' after case value.");
+        if (hasError) return nullptr;
+
         auto body = statement();
+        if (hasError) return nullptr;
 
         cases.push_back({std::move(value), std::move(body)});
     }
 
     consume(TokenType::RBRACE, "Expect '}' after when cases.");
+    if (hasError) return nullptr;
 
     return std::make_unique<WhenStatement>(std::move(subject), std::move(cases));
 }
@@ -419,20 +447,29 @@ std::unique_ptr<Statement> Parser::whenStatement()
 std::unique_ptr<Statement> Parser::forStatement()
 {
     consume(TokenType::LPAREN, "Expect '(' after 'for'.");
+    if (hasError) return nullptr;
 
     std::string variable;
     if (match(TokenType::IDENTIFIER)) {
         variable = std::get<std::string>(previous().value);
     }
     else {
-        throw error(peek(), "Expect variable name in for loop.");
+        hasError     = true;
+        currentError = createError(peek(), "Expect variable name in for loop.");
+        return nullptr;
     }
 
     consume(TokenType::IN, "Expect 'in' after for loop variable.");
+    if (hasError) return nullptr;
+
     auto iterable = expression();
+    if (hasError) return nullptr;
 
     consume(TokenType::RPAREN, "Expect ')' after for loop condition.");
+    if (hasError) return nullptr;
+
     auto body = statement();
+    if (hasError) return nullptr;
 
     return std::make_unique<ForStatement>(
         std::move(variable), std::move(iterable), std::move(body));
@@ -440,11 +477,12 @@ std::unique_ptr<Statement> Parser::forStatement()
 
 std::unique_ptr<Statement> Parser::returnStatement()
 {
-    std::unique_ptr<Expression> value = nullptr;
+    auto value = expression();
+    if (hasError) return nullptr;
 
-    value = expression();
     return std::make_unique<ReturnStatement>(std::move(value));
 }
+
 std::unique_ptr<Statement> Parser::variableStatment()
 {
     VariableStatement::Kind kind;
@@ -457,17 +495,19 @@ std::unique_ptr<Statement> Parser::variableStatment()
     }
 
     auto name = consume(TokenType::IDENTIFIER, "Expect variable name.").value;
+    if (hasError) return nullptr;
 
     std::unique_ptr<Type> varType = nullptr;
     if (match(TokenType::COLON)) {
         varType = type();
+        if (hasError) return nullptr;
     }
 
     std::unique_ptr<Expression> initializer = nullptr;
     if (match(TokenType::ASSIGN)) {
         initializer = expression();
+        if (hasError) return nullptr;
     }
-
 
     return std::make_unique<VariableStatement>(
         kind, std::get<std::string>(name), std::move(varType), std::move(initializer));
@@ -475,74 +515,47 @@ std::unique_ptr<Statement> Parser::variableStatment()
 
 std::unique_ptr<Declaration> Parser::declaration()
 {
-    try {
-        if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
-            return functionDeclaration();
-        }
-        if (match(TokenType::ENUM) && match(TokenType::CLASS)) {
-            return enumDeclaration();
-        }
-        if (match({TokenType::CLASS, TokenType::DATA, TokenType::BASE})) {
-            return classDeclaration();
-        }
+    if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
+        return functionDeclaration();
     }
-    catch (const ParseError& error) {
-        synchronize();
-        return nullptr;
+    if (match(TokenType::ENUM) && match(TokenType::CLASS)) {
+        return enumDeclaration();
     }
+    if (match({TokenType::CLASS, TokenType::DATA, TokenType::BASE})) {
+        return classDeclaration();
+    }
+
+    hasError     = true;
+    currentError = createError(peek(), "Expect declaration.");
     return nullptr;
 }
-
-// std::unique_ptr<Declaration> Parser::variableDeclaration()
-// {
-//     VariableDeclaration::Kind kind;
-
-//     if (previous().type == TokenType::VAR) {
-//         kind = VariableDeclaration::Kind::VAR;
-//     }
-//     else if (previous().type == TokenType::VAL) {
-//         kind = VariableDeclaration::Kind::VAL;
-//     }
-
-//     auto name = consume(TokenType::IDENTIFIER, "Expect variable name.").value;
-
-//     std::unique_ptr<Type> varType = nullptr;
-//     if (match(TokenType::COLON)) {
-//         varType = type();
-//     }
-
-//     std::unique_ptr<Expression> initializer = nullptr;
-//     if (match(TokenType::ASSIGN)) {
-//         initializer = expression();
-//     }
-
-//     // consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
-
-//     return std::make_unique<VariableDeclaration>(
-//         kind, std::get<std::string>(name), std::move(varType), std::move(initializer));
-// }
 
 std::unique_ptr<Declaration> Parser::functionDeclaration()
 {
     bool isOperator = previous().type == TokenType::OPERATOR;
 
     auto name = consume(TokenType::IDENTIFIER, "Expect function name.").value;
+    if (hasError) return nullptr;
 
     consume(TokenType::LPAREN, "Expect '(' after function name.");
+    if (hasError) return nullptr;
 
     std::vector<FunctionParameter> parameters;
     if (!check(TokenType::RPAREN)) {
         do {
             auto paramName = consume(TokenType::IDENTIFIER, "Expect parameter name.").value;
+            if (hasError) return nullptr;
 
             std::unique_ptr<Type> paramType = nullptr;
             if (match(TokenType::COLON)) {
                 paramType = type();
+                if (hasError) return nullptr;
             }
 
             std::unique_ptr<Expression> defaultValue = nullptr;
             if (match(TokenType::ASSIGN)) {
                 defaultValue = expression();
+                if (hasError) return nullptr;
             }
 
             parameters.push_back(FunctionParameter(
@@ -551,30 +564,34 @@ std::unique_ptr<Declaration> Parser::functionDeclaration()
     }
 
     consume(TokenType::RPAREN, "Expect ')' after parameters.");
+    if (hasError) return nullptr;
 
     std::unique_ptr<Type> returnType = nullptr;
     if (match(TokenType::ARROW)) {
         returnType = type();
+        if (hasError) return nullptr;
     }
 
     std::unique_ptr<Statement> body = nullptr;
     if (match(TokenType::ASSIGN)) {
-        // 单表达式函数体
-        auto expr       = expression();
+        auto expr = expression();
+        if (hasError) return nullptr;
+
         auto returnStmt = std::make_unique<ReturnStatement>(std::move(expr));
         std::vector<std::unique_ptr<Statement>> statements;
         statements.push_back(std::move(returnStmt));
         body = std::make_unique<BlockStatement>(std::move(statements));
     }
     else if (match(TokenType::LBRACE)) {
-
         std::vector<std::unique_ptr<Statement>> statements;
 
         while (!check(TokenType::RBRACE) && !isAtEnd()) {
             statements.push_back(statement());
+            if (hasError) return nullptr;
         }
 
         consume(TokenType::RBRACE, "Expect '}' after block.");
+        if (hasError) return nullptr;
 
         body = std::make_unique<BlockStatement>(std::move(statements));
     }
@@ -586,76 +603,84 @@ std::unique_ptr<Declaration> Parser::functionDeclaration()
                                                  isOperator);
 }
 
-// 完成enumDeclaration方法
 std::unique_ptr<Declaration> Parser::enumDeclaration()
 {
     auto name = consume(TokenType::IDENTIFIER, "Expect enum name.").value;
+    if (hasError) return nullptr;
 
     consume(TokenType::LBRACE, "Expect '{' before enum values.");
+    if (hasError) return nullptr;
 
     std::vector<std::string> values;
 
     if (!check(TokenType::RBRACE)) {
         do {
             auto value = consume(TokenType::IDENTIFIER, "Expect enum value name.").value;
+            if (hasError) return nullptr;
+
             values.push_back(std::get<std::string>(value));
         } while (match(TokenType::COMMA));
     }
 
     consume(TokenType::RBRACE, "Expect '}' after enum values.");
+    if (hasError) return nullptr;
 
     return std::make_unique<EnumDeclaration>(std::get<std::string>(name), std::move(values));
 }
 
-// 实现classDeclaration方法
 std::unique_ptr<Declaration> Parser::classDeclaration()
 {
     ClassDeclaration::Kind kind;
 
-    // 确定类的类型
     if (previous().type == TokenType::DATA) {
         kind = ClassDeclaration::Kind::DATA;
         consume(TokenType::CLASS, "Expect class");
+        if (hasError) return nullptr;
     }
     else if (previous().type == TokenType::BASE) {
         kind = ClassDeclaration::Kind::BASE;
         consume(TokenType::CLASS, "Expect class");
+        if (hasError) return nullptr;
     }
     else {
         kind = ClassDeclaration::Kind::NORMAL;
     }
 
     auto name = consume(TokenType::IDENTIFIER, "Expect class name.").value;
+    if (hasError) return nullptr;
 
-
-    // 解析类型参数
     std::vector<std::string> typeParameters;
-    // 泛型
     if (match(TokenType::LT)) {
         do {
             auto param = consume(TokenType::IDENTIFIER, "Expect type parameter name.").value;
+            if (hasError) return nullptr;
+
             typeParameters.push_back(std::get<std::string>(param));
         } while (match(TokenType::COMMA));
 
         consume(TokenType::GT, "Expect '>' after type parameters.");
+        if (hasError) return nullptr;
     }
 
-    // 解析构造函数参数
     consume(TokenType::LPAREN, "Expect '(' after class name.");
+    if (hasError) return nullptr;
 
     std::vector<FunctionParameter> constructorParameters;
     if (!check(TokenType::RPAREN)) {
         do {
             auto paramName = consume(TokenType::IDENTIFIER, "Expect parameter name.").value;
+            if (hasError) return nullptr;
 
             std::unique_ptr<Type> paramType = nullptr;
             if (match(TokenType::COLON)) {
                 paramType = type();
+                if (hasError) return nullptr;
             }
 
             std::unique_ptr<Expression> defaultValue = nullptr;
             if (match(TokenType::ASSIGN)) {
                 defaultValue = expression();
+                if (hasError) return nullptr;
             }
 
             constructorParameters.push_back(FunctionParameter(
@@ -664,52 +689,57 @@ std::unique_ptr<Declaration> Parser::classDeclaration()
     }
 
     consume(TokenType::RPAREN, "Expect ')' after constructor parameters.");
+    if (hasError) return nullptr;
 
-    // 解析继承
     std::string                              baseClass;
     std::vector<std::unique_ptr<Type>>       baseTypeArguments;
     std::vector<std::unique_ptr<Expression>> baseConstructorArgs;
 
     if (match(TokenType::INHERITS)) {
         auto baseClassName = consume(TokenType::IDENTIFIER, "Expect base class name.").value;
-        baseClass          = std::get<std::string>(baseClassName);
+        if (hasError) return nullptr;
 
-        // 解析基类的类型参数
+        baseClass = std::get<std::string>(baseClassName);
+
         if (match(TokenType::LT)) {
             do {
                 baseTypeArguments.push_back(type());
+                if (hasError) return nullptr;
             } while (match(TokenType::COMMA));
 
             consume(TokenType::GT, "Expect '>' after base class type arguments.");
+            if (hasError) return nullptr;
         }
 
-        // 解析基类构造函数参数
         consume(TokenType::LPAREN, "Expect '(' after base class name.");
+        if (hasError) return nullptr;
 
         if (!check(TokenType::RPAREN)) {
             do {
                 baseConstructorArgs.push_back(expression());
+                if (hasError) return nullptr;
             } while (match(TokenType::COMMA));
         }
 
         consume(TokenType::RPAREN, "Expect ')' after base constructor arguments.");
+        if (hasError) return nullptr;
     }
 
-
-    // 解析类体
     consume(TokenType::LBRACE, "Expect '{' before class body.");
+    if (hasError) return nullptr;
 
     std::vector<std::unique_ptr<ClassMember>> members;
     while (!check(TokenType::RBRACE) && !isAtEnd()) {
         auto member = classMember();
+        if (hasError) return nullptr;
+
         if (member) {
             members.push_back(std::move(member));
         }
     }
 
-
     consume(TokenType::RBRACE, "Expect '}' after class body.");
-
+    if (hasError) return nullptr;
 
     return std::make_unique<ClassDeclaration>(kind,
                                               std::get<std::string>(name),
@@ -721,61 +751,56 @@ std::unique_ptr<Declaration> Parser::classDeclaration()
                                               std::move(members));
 }
 
-// 实现classMember方法
 std::unique_ptr<ClassMember> Parser::classMember()
 {
-    try {
-        if (match({TokenType::VAR, TokenType::VAL})) {
+    if (match({TokenType::VAR, TokenType::VAL})) {
+        auto name = consume(TokenType::IDENTIFIER, "Expect property name.").value;
+        if (hasError) return nullptr;
 
-            // 属性成员
-            auto name = consume(TokenType::IDENTIFIER, "Expect property name.").value;
-
-            std::unique_ptr<Type> propType = nullptr;
-            if (match(TokenType::COLON)) {
-                propType = type();
-            }
-
-            std::unique_ptr<Expression> initializer = nullptr;
-            if (match(TokenType::ASSIGN)) {
-                initializer = expression();
-            }
-
-
-
-            return std::make_unique<PropertyMember>(
-                std::get<std::string>(name), std::move(propType), std::move(initializer));
-        }
-        else if (match(TokenType::INIT)) {
-
-            consume(TokenType::LBRACE, "Expect '{' after 'init'.");
-
-            std::vector<std::unique_ptr<Statement>> statements;
-            while (!check(TokenType::RBRACE) && !isAtEnd()) {
-                statements.push_back(statement());
-            }
-
-            consume(TokenType::RBRACE, "Expect '}' after init block.");
-
-
-            return std::make_unique<InitBlockMember>(
-                std::make_unique<BlockStatement>(std::move(statements)));
-        }
-        else if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
-
-            auto functionDecl = functionDeclaration();
-            return std::make_unique<MethodMember>(std::unique_ptr<FunctionDeclaration>(
-                static_cast<FunctionDeclaration*>(functionDecl.release())));
+        std::unique_ptr<Type> propType = nullptr;
+        if (match(TokenType::COLON)) {
+            propType = type();
+            if (hasError) return nullptr;
         }
 
-        throw error(peek(), "Expect class member.");
+        std::unique_ptr<Expression> initializer = nullptr;
+        if (match(TokenType::ASSIGN)) {
+            initializer = expression();
+            if (hasError) return nullptr;
+        }
+
+        return std::make_unique<PropertyMember>(
+            std::get<std::string>(name), std::move(propType), std::move(initializer));
     }
-    catch (const ParseError& error) {
-        synchronize();
-        return nullptr;
+    else if (match(TokenType::INIT)) {
+        consume(TokenType::LBRACE, "Expect '{' after 'init'.");
+        if (hasError) return nullptr;
+
+        std::vector<std::unique_ptr<Statement>> statements;
+        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+            statements.push_back(statement());
+            if (hasError) return nullptr;
+        }
+
+        consume(TokenType::RBRACE, "Expect '}' after init block.");
+        if (hasError) return nullptr;
+
+        return std::make_unique<InitBlockMember>(
+            std::make_unique<BlockStatement>(std::move(statements)));
     }
+    else if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
+        auto functionDecl = functionDeclaration();
+        if (hasError) return nullptr;
+
+        return std::make_unique<MethodMember>(std::unique_ptr<FunctionDeclaration>(
+            static_cast<FunctionDeclaration*>(functionDecl.release())));
+    }
+
+    hasError     = true;
+    currentError = createError(peek(), "Expect class member.");
+    return nullptr;
 }
 
-// 实现type方法
 std::unique_ptr<Type> Parser::type()
 {
     if (match(TokenType::VOID)) {
@@ -793,47 +818,56 @@ std::unique_ptr<Type> Parser::type()
     else if (match(TokenType::STRING_TYPE)) {
         return std::make_unique<PrimitiveType>(PrimitiveType::Kind::STRING);
     }
-    // else if (match(TokenType::ARRAY_TYPE)) {
-    //     // 数组类型
-    //     consume(TokenType::LT, "Expect '<' after 'Array'.");
-    //     auto elementType = type();
-    //     consume(TokenType::GT, "Expect '>' after element type.");
-
-    //     return std::make_unique<ArrayType>(std::move(elementType));
-    // }
     else if (match(TokenType::IDENTIFIER)) {
-        // 命名类型或泛型类型
         std::string typeName = std::get<std::string>(previous().value);
 
         if (match(TokenType::LT)) {
-            // 泛型类型
             std::vector<std::unique_ptr<Type>> typeArguments;
 
             do {
                 typeArguments.push_back(type());
+                if (hasError) return nullptr;
             } while (match(TokenType::COMMA));
 
             consume(TokenType::GT, "Expect '>' after type arguments.");
+            if (hasError) return nullptr;
 
             return std::make_unique<GenericType>(std::move(typeName), std::move(typeArguments));
         }
 
-        // 命名类型
         return std::make_unique<NamedType>(std::move(typeName));
     }
 
-    throw error(peek(), "Expect type.");
+    hasError     = true;
+    currentError = createError(peek(), "Expect type.");
+    return nullptr;
 }
 
-std::unique_ptr<Program> Parser::parse()
+std::variant<std::unique_ptr<Program>, ParseError> Parser::parse()
 {
+    hasError = false;
+    current  = 0;
+
     std::vector<std::unique_ptr<Declaration>> declarations;
 
     while (!isAtEnd()) {
         auto decl = declaration();
+
+        if (hasError) {
+            return currentError;
+        }
+
         if (decl) {
             declarations.push_back(std::move(decl));
         }
+        else {
+            if (isAtEnd()) break;
+
+            hasError     = true;
+            currentError = createError(peek(), "Expect declaration.");
+            return currentError;
+        }
     }
+
     return std::make_unique<Program>(std::move(declarations));
 }

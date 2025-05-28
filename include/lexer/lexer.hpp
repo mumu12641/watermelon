@@ -14,11 +14,13 @@ struct LexerError
     std::string message;
     int         line;
     int         column;
+    std::string filename;
 
-    LexerError(const std::string& msg, int l, int c)
+    LexerError(const std::string& msg, int l, int c, const std::string& fname = "")
         : message(msg)
         , line(l)
         , column(c)
+        , filename(fname)
     {
     }
 };
@@ -27,10 +29,10 @@ class Lexer
 {
 private:
     std::string source;
-    // std::string filepath;
-    size_t position = 0;
-    int    line     = 1;
-    int    column   = 1;
+    std::string filename;
+    size_t      position = 0;
+    int         line     = 1;
+    int         column   = 1;
 
     static const std::map<std::string, TokenType> keywords;
 
@@ -45,12 +47,12 @@ private:
     Token scanString();
 
 public:
-    explicit Lexer(const std::string& source)
+    explicit Lexer(const std::string& source, const std::string& filename = "")
         : source(source)
-    // , filepath(filepath)
+        , filename(filename)
     {
     }
-    explicit Lexer(std::ifstream& file);
+    explicit Lexer(std::ifstream& file, const std::string& filename = "");
 
     Token                                                    nextToken();
     std::pair<std::vector<Token>, std::optional<LexerError>> tokenize();

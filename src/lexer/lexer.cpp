@@ -36,7 +36,8 @@ const std::map<std::string, TokenType> Lexer::keywords = {{"enum", TokenType::EN
                                                           {"true", TokenType::BOOL_LITERAL},
                                                           {"false", TokenType::BOOL_LITERAL}};
 
-Lexer::Lexer(std::ifstream& file)
+Lexer::Lexer(std::ifstream& file, const std::string& filename)
+    : filename(filename)
 {
     std::stringstream buffer;
     buffer << file.rdbuf();
@@ -86,32 +87,26 @@ void Lexer::skipWhitespace()
 
 void Lexer::skipComment()
 {
-    // 处理单行注释
     if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '/') {
-        advance();   // 跳过第一个 '/'
-        advance();   // 跳过第二个 '/'
+        advance();
+        advance();
 
         while (peek() != '\n' && peek() != '\0') {
             advance();
         }
     }
-    // 处理多行注释
     else if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '*') {
-        advance();   // 跳过 '/'
-        advance();   // 跳过 '*'
+        advance();
+        advance();
 
         while (!(peek() == '*' && position + 1 < source.length() && source[position + 1] == '/')) {
             if (peek() == '\0') {
-                // 如果到达文件末尾但注释没有结束，可以选择报错或者直接返回
-                // 这里选择直接返回，让词法分析继续
                 return;
             }
             advance();
         }
-
-        // 跳过注释结束的 '*/'
-        advance();   // 跳过 '*'
-        advance();   // 跳过 '/'
+        advance();
+        advance();
     }
 }
 
@@ -129,12 +124,12 @@ Token Lexer::scanIdentifier()
     auto it = keywords.find(identifier);
     if (it != keywords.end()) {
         if (it->second == TokenType::BOOL_LITERAL) {
-            return Token(it->second, identifier == "true", startLine, startColumn);
+            return Token(it->second, identifier == "true", startLine, startColumn, filename);
         }
-        return Token(it->second, startLine, startColumn);
+        return Token(it->second, startLine, startColumn, filename);
     }
 
-    return Token(TokenType::IDENTIFIER, identifier, startLine, startColumn);
+    return Token(TokenType::IDENTIFIER, identifier, startLine, startColumn, filename);
 }
 
 Token Lexer::scanNumber()
@@ -148,10 +143,9 @@ Token Lexer::scanNumber()
         number += advance();
     }
 
-    // 检查是否是浮点数
     if (peek() == '.' && isdigit(source[position + 1])) {
         isFloat = true;
-        number += advance();   // 添加小数点
+        number += advance();
 
         while (isdigit(peek())) {
             number += advance();
@@ -159,10 +153,10 @@ Token Lexer::scanNumber()
     }
 
     if (isFloat) {
-        return Token(TokenType::FLOAT_LITERAL, std::stof(number), startLine, startColumn);
+        return Token(TokenType::FLOAT_LITERAL, std::stof(number), startLine, startColumn, filename);
     }
     else {
-        return Token(TokenType::INT_LITERAL, std::stoi(number), startLine, startColumn);
+        return Token(TokenType::INT_LITERAL, std::stoi(number), startLine, startColumn, filename);
     }
 }
 
@@ -197,13 +191,12 @@ Token Lexer::scanString()
     }
 
     if (peek() == '\0') {
-        return Token(TokenType::ERROR, "Unterminated string", startLine, startColumn);
+        return Token(TokenType::ERROR, "Unterminated string", startLine, startColumn, filename);
     }
 
-    // 跳过结束的引号
     advance();
 
-    return Token(TokenType::STRING_LITERAL, str, startLine, startColumn);
+    return Token(TokenType::STRING_LITERAL, str, startLine, startColumn, filename);
 }
 
 Token Lexer::nextToken()
@@ -224,7 +217,7 @@ Token Lexer::nextToken()
     int currentColumn = column;
 
     if (position >= source.length()) {
-        return Token(TokenType::END_OF_FILE, currentLine, currentColumn);
+        return Token(TokenType::END_OF_FILE, currentLine, currentColumn, filename);
     }
 
     char c = peek();
@@ -245,74 +238,81 @@ Token Lexer::nextToken()
         case '=':
             advance();
             if (match('=')) {
-                return Token(TokenType::EQ, currentLine, currentColumn);
+                return Token(TokenType::EQ, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::ASSIGN, currentLine, currentColumn);
+            return Token(TokenType::ASSIGN, currentLine, currentColumn, filename);
 
         case '!':
             advance();
             if (match('=')) {
-                return Token(TokenType::NEQ, currentLine, currentColumn);
+                return Token(TokenType::NEQ, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::NOT, currentLine, currentColumn);
+            return Token(TokenType::NOT, currentLine, currentColumn, filename);
 
         case '<':
             advance();
             if (match('=')) {
-                return Token(TokenType::LE, currentLine, currentColumn);
+                return Token(TokenType::LE, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::LT, currentLine, currentColumn);
+            return Token(TokenType::LT, currentLine, currentColumn, filename);
 
         case '>':
             advance();
             if (match('=')) {
-                return Token(TokenType::GE, currentLine, currentColumn);
+                return Token(TokenType::GE, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::GT, currentLine, currentColumn);
+            return Token(TokenType::GT, currentLine, currentColumn, filename);
 
-        case '+': advance(); return Token(TokenType::PLUS, currentLine, currentColumn);
+        case '+': advance(); return Token(TokenType::PLUS, currentLine, currentColumn, filename);
         case '-':
             advance();
             if (match('>')) {
-                return Token(TokenType::ARROW, currentLine, currentColumn);
+                return Token(TokenType::ARROW, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::MINUS, currentLine, currentColumn);
+            return Token(TokenType::MINUS, currentLine, currentColumn, filename);
 
-        case '*': advance(); return Token(TokenType::MULT, currentLine, currentColumn);
-        case '/': advance(); return Token(TokenType::DIV, currentLine, currentColumn);
-        case '%': advance(); return Token(TokenType::MOD, currentLine, currentColumn);
+        case '*': advance(); return Token(TokenType::MULT, currentLine, currentColumn, filename);
+        case '/': advance(); return Token(TokenType::DIV, currentLine, currentColumn, filename);
+        case '%': advance(); return Token(TokenType::MOD, currentLine, currentColumn, filename);
 
         case '&':
             advance();
             if (match('&')) {
-                return Token(TokenType::AND, currentLine, currentColumn);
+                return Token(TokenType::AND, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::ERROR, "Unexpected character '&'", currentLine, currentColumn);
+            return Token(
+                TokenType::ERROR, "Unexpected character '&'", currentLine, currentColumn, filename);
 
         case '|':
             advance();
             if (match('|')) {
-                return Token(TokenType::OR, currentLine, currentColumn);
+                return Token(TokenType::OR, currentLine, currentColumn, filename);
             }
-            return Token(TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn);
+            return Token(
+                TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn, filename);
 
-        case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn);
-        case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn);
-        case '.': advance(); return Token(TokenType::DOT, currentLine, currentColumn);
+        case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn, filename);
+        case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn, filename);
+        case '.': advance(); return Token(TokenType::DOT, currentLine, currentColumn, filename);
 
-        case '(': advance(); return Token(TokenType::LPAREN, currentLine, currentColumn);
-        case ')': advance(); return Token(TokenType::RPAREN, currentLine, currentColumn);
-        case '{': advance(); return Token(TokenType::LBRACE, currentLine, currentColumn);
-        case '}': advance(); return Token(TokenType::RBRACE, currentLine, currentColumn);
-        case '[': advance(); return Token(TokenType::LBRACKET, currentLine, currentColumn);
-        case ']': advance(); return Token(TokenType::RBRACKET, currentLine, currentColumn);
+        case '(': advance(); return Token(TokenType::LPAREN, currentLine, currentColumn, filename);
+        case ')': advance(); return Token(TokenType::RPAREN, currentLine, currentColumn, filename);
+        case '{': advance(); return Token(TokenType::LBRACE, currentLine, currentColumn, filename);
+        case '}': advance(); return Token(TokenType::RBRACE, currentLine, currentColumn, filename);
+        case '[':
+            advance();
+            return Token(TokenType::LBRACKET, currentLine, currentColumn, filename);
+        case ']':
+            advance();
+            return Token(TokenType::RBRACKET, currentLine, currentColumn, filename);
 
         default:
             advance();
             return Token(TokenType::ERROR,
                          std::string("Unexpected character '") + c + "'",
                          currentLine,
-                         currentColumn);
+                         currentColumn,
+                         filename);
     }
 }
 
@@ -328,7 +328,8 @@ std::pair<std::vector<Token>, std::optional<LexerError>> Lexer::tokenize()
             break;
         }
         if (token.type == TokenType::ERROR) {
-            LexerError error(std::get<std::string>(token.value), token.line, token.column);
+            LexerError error(
+                std::get<std::string>(token.value), token.line, token.column, token.filename);
             return {tokens, error};
         }
     }
