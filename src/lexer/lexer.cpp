@@ -1,6 +1,8 @@
 #include "../../include/lexer/lexer.hpp"
 
 #include <cctype>
+#include <iostream>
+#include <optional>
 #include <sstream>
 
 const std::map<std::string, TokenType> Lexer::keywords = {{"enum", TokenType::ENUM},
@@ -86,18 +88,18 @@ void Lexer::skipComment()
 {
     // 处理单行注释
     if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '/') {
-        advance(); // 跳过第一个 '/'
-        advance(); // 跳过第二个 '/'
-        
+        advance();   // 跳过第一个 '/'
+        advance();   // 跳过第二个 '/'
+
         while (peek() != '\n' && peek() != '\0') {
             advance();
         }
     }
     // 处理多行注释
     else if (peek() == '/' && position + 1 < source.length() && source[position + 1] == '*') {
-        advance(); // 跳过 '/'
-        advance(); // 跳过 '*'
-        
+        advance();   // 跳过 '/'
+        advance();   // 跳过 '*'
+
         while (!(peek() == '*' && position + 1 < source.length() && source[position + 1] == '/')) {
             if (peek() == '\0') {
                 // 如果到达文件末尾但注释没有结束，可以选择报错或者直接返回
@@ -106,10 +108,10 @@ void Lexer::skipComment()
             }
             advance();
         }
-        
+
         // 跳过注释结束的 '*/'
-        advance(); // 跳过 '*'
-        advance(); // 跳过 '/'
+        advance();   // 跳过 '*'
+        advance();   // 跳过 '/'
     }
 }
 
@@ -136,7 +138,7 @@ Token Lexer::scanIdentifier()
 }
 
 Token Lexer::scanNumber()
-{   
+{
     int         startLine   = line;
     int         startColumn = column;
     std::string number;
@@ -206,17 +208,15 @@ Token Lexer::scanString()
 
 Token Lexer::nextToken()
 {
-    // skipWhitespace();
-    // skipComment();
     while (true) {
         skipWhitespace();
-        
-        // 检查是否有注释
-        if ((peek() == '/' && position + 1 < source.length() && 
+
+        if ((peek() == '/' && position + 1 < source.length() &&
              (source[position + 1] == '/' || source[position + 1] == '*'))) {
             skipComment();
-        } else {
-            break; // 没有更多的空白字符或注释，退出循环
+        }
+        else {
+            break;
         }
     }
 
@@ -229,22 +229,18 @@ Token Lexer::nextToken()
 
     char c = peek();
 
-    // 标识符或关键字
     if (isalpha(c) || c == '_') {
         return scanIdentifier();
     }
 
-    // 数字
     if (isdigit(c)) {
         return scanNumber();
     }
 
-    // 字符串
     if (c == '"') {
         return scanString();
     }
 
-    // 运算符和标点符号
     switch (c) {
         case '=':
             advance();
@@ -301,7 +297,6 @@ Token Lexer::nextToken()
             return Token(TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn);
 
         case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn);
-        // case ';': advance(); return Token(TokenType::SEMICOLON, currentLine, currentColumn);
         case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn);
         case '.': advance(); return Token(TokenType::DOT, currentLine, currentColumn);
 
@@ -321,7 +316,7 @@ Token Lexer::nextToken()
     }
 }
 
-std::vector<Token> Lexer::tokenize()
+std::pair<std::vector<Token>, std::optional<LexerError>> Lexer::tokenize()
 {
     std::vector<Token> tokens;
 
@@ -329,10 +324,14 @@ std::vector<Token> Lexer::tokenize()
         Token token = nextToken();
         tokens.push_back(token);
 
-        if (token.type == TokenType::END_OF_FILE || token.type == TokenType::ERROR) {
+        if (token.type == TokenType::END_OF_FILE) {
             break;
+        }
+        if (token.type == TokenType::ERROR) {
+            LexerError error(std::get<std::string>(token.value), token.line, token.column);
+            return {tokens, error};
         }
     }
 
-    return tokens;
+    return {tokens, std::nullopt};
 }

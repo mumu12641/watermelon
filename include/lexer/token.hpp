@@ -84,44 +84,50 @@ struct Token
     std::variant<std::monostate, int, float, bool, std::string> value;
     int                                                         line;
     int                                                         column;
+    std::string                                                 filename;
 
-    Token(TokenType type, int line, int column)
+    Token(TokenType type, int line, int column, const std::string& filename = "")
         : type(type)
         , value(std::monostate{})
         , line(line)
         , column(column)
+        , filename(filename)
     {
     }
 
-    Token(TokenType type, int value, int line, int column)
+    Token(TokenType type, int value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
         , line(line)
         , column(column)
+        , filename(filename)
     {
     }
 
-    Token(TokenType type, float value, int line, int column)
+    Token(TokenType type, float value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
         , line(line)
         , column(column)
+        , filename(filename)
     {
     }
 
-    Token(TokenType type, bool value, int line, int column)
+    Token(TokenType type, bool value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
         , line(line)
         , column(column)
+        , filename(filename)
     {
     }
 
-    Token(TokenType type, std::string value, int line, int column)
+    Token(TokenType type, std::string value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(std::move(value))
         , line(line)
         , column(column)
+        , filename(filename)
     {
     }
 

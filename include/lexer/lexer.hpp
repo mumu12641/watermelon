@@ -5,8 +5,23 @@
 
 #include <fstream>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
+
+struct LexerError
+{
+    std::string message;
+    int         line;
+    int         column;
+
+    LexerError(const std::string& msg, int l, int c)
+        : message(msg)
+        , line(l)
+        , column(c)
+    {
+    }
+};
 
 class Lexer
 {
@@ -37,8 +52,9 @@ public:
     }
     explicit Lexer(std::ifstream& file);
 
-    Token              nextToken();
-    std::vector<Token> tokenize();
+    Token                                                    nextToken();
+    std::pair<std::vector<Token>, std::optional<LexerError>> tokenize();
 };
+
 
 #endif   // LEXER_HPP

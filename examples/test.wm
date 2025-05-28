@@ -1,0 +1,67 @@
+enum class Color{
+    RED, GREEN, BLUE
+}
+
+data class C (name:String){
+
+}
+
+base class Animal(name:String){
+    fn eat() -> void
+    fn sleep(){
+        print("sleep...")
+        return 0
+    }
+}
+class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
+    var age:int = 0
+    var weight:float
+    var isMale:bool
+    init{
+        age = 0
+        weight=0.0
+        isMale=false
+    }
+    fn get_age() -> int = self.age
+    /* fn eat() -> void{
+    //     print(self.name+"eat...")
+    //     return 0
+    // }
+    // fn getColor() -> Color{
+    //     return self.color
+    // }
+    // operator fun add(other:Dog) -> Dog{
+    //     return Dog(self.name,self.color)
+    // }
+    */
+    
+}
+fn func(a:int,b:int){
+    var flag:bool = true
+    val max = a
+    when (self.getColor()) {
+        Color.RED -> println("red")
+        Color.GREEN -> println("green") 
+        Color.BLUE -> println("blue")
+    }
+    // val a:Array<int> = [1,2,3,4]
+    for(i in a){
+        print(i)
+    }
+    if( a> 0 ){
+
+    }else{
+        
+    }
+    return 0
+}
+fn main() -> int{
+    func()
+    val dog = Dog("aaa",color=Color.Green)
+    val dog2 = Dog("bbb",color=Color.Green)
+    val dog3 = dog + dog2
+    dog.eat()
+    // val a = {b:u32 -> b}
+	// print(a(2))
+    return 0
+}

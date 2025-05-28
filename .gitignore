@@ -7,3 +7,4 @@ src/.antlr/
 build/
 bin/
 a.txt
+a.cpp
