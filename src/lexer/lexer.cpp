@@ -1,5 +1,6 @@
 #include "../../include/lexer/lexer.hpp"
 
+
 #include <cctype>
 #include <iostream>
 #include <optional>
@@ -316,7 +317,7 @@ Token Lexer::nextToken()
     }
 }
 
-std::pair<std::vector<Token>, std::optional<LexerError>> Lexer::tokenize()
+std::pair<std::vector<Token>, std::optional<Error>> Lexer::tokenize()
 {
     std::vector<Token> tokens;
 
@@ -328,7 +329,7 @@ std::pair<std::vector<Token>, std::optional<LexerError>> Lexer::tokenize()
             break;
         }
         if (token.type == TokenType::ERROR) {
-            LexerError error(
+            Error error(
                 std::get<std::string>(token.value), token.line, token.column, token.filename);
             return {tokens, error};
         }

@@ -2,28 +2,13 @@
 #define LEXER_HPP
 
 #include "token.hpp"
+#include "../utils/error.hpp"
 
 #include <fstream>
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
-
-struct LexerError
-{
-    std::string message;
-    int         line;
-    int         column;
-    std::string filename;
-
-    LexerError(const std::string& msg, int l, int c, const std::string& fname = "")
-        : message(msg)
-        , line(l)
-        , column(c)
-        , filename(fname)
-    {
-    }
-};
 
 class Lexer
 {
@@ -55,7 +40,7 @@ public:
     explicit Lexer(std::ifstream& file, const std::string& filename = "");
 
     Token                                                    nextToken();
-    std::pair<std::vector<Token>, std::optional<LexerError>> tokenize();
+    std::pair<std::vector<Token>, std::optional<Error>> tokenize();
 };
 
 

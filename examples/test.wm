@@ -38,7 +38,7 @@ class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
 }
 fn func(a:int,b:int){
     var flag:bool = true
-    val max = a,
+    val max = a
     when (self.getColor()) {
         Color.RED -> println("red")
         Color.GREEN -> println("green") 
@@ -56,11 +56,10 @@ fn func(a:int,b:int){
     return 0
 }
 fn main() -> int{
-    func()
-    val dog = Dog("aaa",color=Color.Green)
-    val dog2 = Dog("bbb",color=Color.Green)
-    val dog3 = dog + dog2
-    dog.eat()
+    // func()
+    // val dog = Dog("aaa",color=Color.Green)
+    // val dog2 = Dog("bbb",color=Color.Green)
+    val dog3 = dog + dog2 + dog.eat()
     // val a = {b:u32 -> b}
 	// print(a(2))
     return 0

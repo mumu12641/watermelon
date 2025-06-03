@@ -61,24 +61,18 @@ void processSourceFile(const std::string& source, const std::string& filename = 
     }
 
     Parser parser(tokens);
-    auto   result = parser.parse();
+    auto [program, parserError] = parser.parse();
 
-    if (std::holds_alternative<ParseError>(result)) {
-        auto error = std::get<ParseError>(result);
-        std::cerr << (error.filename.empty() ? "" : error.filename + ":") << error.line << ":"
-                  << error.column << ": \033[31merror: " << error.message << "\033[0m" << std::endl;
-        printContext(filename, error.line, error.column);
+    if (parserError) {
+        std::cerr << (parserError->filename.empty() ? "" : parserError->filename + ":")
+                  << parserError->line << ":" << parserError->column
+                  << ": \033[31merror: " << parserError->message << "\033[0m" << std::endl;
+        printContext(filename, parserError->line, parserError->column);
     }
     else {
-        auto program = std::move(std::get<std::unique_ptr<Program>>(result));
-        if (program) {
-            std::cout << "=== AST ===\n";
-            std::cout << program->dump() << std::endl;
-            std::cout << "===========\n";
-        }
-        else {
-            std::cout << "Failed to parse program.\n";
-        }
+        std::cout << "=== AST ===\n";
+        std::cout << program->dump() << std::endl;
+        std::cout << "===========\n";
     }
 }
 
