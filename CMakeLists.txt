@@ -15,11 +15,4 @@ add_executable(watermelon ${SRC_LIST})
 target_include_directories(watermelon PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 
-# find_library(ANTLR4_RUNTIME_LIB antlr4-runtime)
-# if (ANTLR4_RUNTIME_LIB)
-#     target_link_libraries(watermelon ${ANTLR4_RUNTIME_LIB})
-# else()
-#     message(FATAL_ERROR "antlr4-runtime library not found.")
-# endif()
-
 

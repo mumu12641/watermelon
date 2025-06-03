@@ -1,6 +1,7 @@
 #include "../../include/lexer/lexer.hpp"
 #include "../../include/lexer/token.hpp"
 #include "../../include/parser/parser.hpp"
+#include "../../include/semantic/semantic.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -9,35 +10,6 @@
 #include <string>
 #include <vector>
 
-void printContext(const std::string& filename, int line, int column)
-{
-    std::ifstream file(filename);
-
-    std::string currentLine;
-    int         currentLineNumber = 0;
-
-    while (std::getline(file, currentLine)) {
-        currentLineNumber++;
-
-        if (currentLineNumber == line - 1) {
-            std::cout << (line - 1) << " | " << currentLine << std::endl;
-        }
-
-        if (currentLineNumber == line) {
-            std::cout << line << " | " << currentLine << std::endl;
-
-            std::cout << std::string(column + std::to_string(line).length() + 3, ' ')
-                      << "\033[31m^\033[0m " << std::endl;
-        }
-
-        if (currentLineNumber == line + 1) {
-            std::cout << (line + 1) << " | " << currentLine << std::endl;
-            break;
-        }
-    }
-
-    file.close();
-}
 void printTokens(const std::vector<Token>& tokens)
 {
     std::cout << "=== Tokens ===\n";
@@ -53,10 +25,8 @@ void processSourceFile(const std::string& source, const std::string& filename = 
     Lexer lexer(source, filename);
     auto [tokens, lexerError] = lexer.tokenize();
     if (lexerError) {
-        std::cerr << (lexerError->filename.empty() ? "" : lexerError->filename + ":")
-                  << lexerError->line << ":" << lexerError->column
-                  << ": \033[31merror: " << lexerError->message << "\033[0m" << std::endl;
-        printContext(filename, lexerError->line, lexerError->column);
+        lexerError->print();
+        lexerError->printContext();
         return;
     }
 
@@ -64,15 +34,16 @@ void processSourceFile(const std::string& source, const std::string& filename = 
     auto [program, parserError] = parser.parse();
 
     if (parserError) {
-        std::cerr << (parserError->filename.empty() ? "" : parserError->filename + ":")
-                  << parserError->line << ":" << parserError->column
-                  << ": \033[31merror: " << parserError->message << "\033[0m" << std::endl;
-        printContext(filename, parserError->line, parserError->column);
+        parserError->print();
+        parserError->printContext();
+        return;
     }
-    else {
-        std::cout << "=== AST ===\n";
-        std::cout << program->dump() << std::endl;
-        std::cout << "===========\n";
+    SemanticAnalyzer semanticAnalyzer(std::move(program));
+    auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
+    if (semanticError) {
+        semanticError->print();
+        semanticError->printContext();
+        return;
     }
 }
 

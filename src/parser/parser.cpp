@@ -53,8 +53,7 @@ bool Parser::match(std::initializer_list<TokenType> types)
     return false;
 }
 
-std::pair<Token, std::optional<Error>> Parser::consume(TokenType          type,
-                                                            const std::string& message)
+std::pair<Token, std::optional<Error>> Parser::consume(TokenType type, const std::string& message)
 {
     if (check(type)) {
         return {advance(), std::nullopt};
@@ -667,18 +666,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
     auto [name, nameErr] = consume(TokenType::IDENTIFIER, "Expect class name.");
     if (nameErr) return {nullptr, nameErr};
 
-    std::vector<std::string> typeParameters;
-    if (match(TokenType::LT)) {
-        do {
-            auto [param, paramErr] = consume(TokenType::IDENTIFIER, "Expect type parameter name.");
-            if (paramErr) return {nullptr, paramErr};
-
-            typeParameters.push_back(std::get<std::string>(param.value));
-        } while (match(TokenType::COMMA));
-
-        auto [_, gtErr] = consume(TokenType::GT, "Expect '>' after type parameters.");
-        if (gtErr) return {nullptr, gtErr};
-    }
 
     auto [__, lparenErr] = consume(TokenType::LPAREN, "Expect '(' after class name.");
     if (lparenErr) return {nullptr, lparenErr};
@@ -714,7 +701,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
     if (rparenErr) return {nullptr, rparenErr};
 
     std::string                              baseClass;
-    std::vector<std::unique_ptr<Type>>       baseTypeArguments;
     std::vector<std::unique_ptr<Expression>> baseConstructorArgs;
 
     if (match(TokenType::INHERITS)) {
@@ -723,18 +709,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
         if (baseClassErr) return {nullptr, baseClassErr};
 
         baseClass = std::get<std::string>(baseClassName.value);
-
-        if (match(TokenType::LT)) {
-            do {
-                auto [typeVal, typeErr] = type();
-                if (typeErr) return {nullptr, typeErr};
-                baseTypeArguments.push_back(std::move(typeVal));
-            } while (match(TokenType::COMMA));
-
-            auto [____, gtErr] =
-                consume(TokenType::GT, "Expect '>' after base class type arguments.");
-            if (gtErr) return {nullptr, gtErr};
-        }
 
         auto [_____, lparenErr] = consume(TokenType::LPAREN, "Expect '(' after base class name.");
         if (lparenErr) return {nullptr, lparenErr};
@@ -770,10 +744,8 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
 
     return {std::make_unique<ClassDeclaration>(kind,
                                                std::get<std::string>(name.value),
-                                               std::move(typeParameters),
                                                std::move(constructorParameters),
                                                std::move(baseClass),
-                                               std::move(baseTypeArguments),
                                                std::move(baseConstructorArgs),
                                                std::move(members)),
             std::nullopt};
@@ -854,23 +826,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> Parser::type()
     else if (match(TokenType::IDENTIFIER)) {
         std::string typeName = std::get<std::string>(previous().value);
 
-        if (match(TokenType::LT)) {
-            std::vector<std::unique_ptr<Type>> typeArguments;
-
-            do {
-                auto [typeVal, typeErr] = type();
-                if (typeErr) return {nullptr, typeErr};
-                typeArguments.push_back(std::move(typeVal));
-            } while (match(TokenType::COMMA));
-
-            auto [_, gtErr] = consume(TokenType::GT, "Expect '>' after type arguments.");
-            if (gtErr) return {nullptr, gtErr};
-
-            return {std::make_unique<GenericType>(std::move(typeName), std::move(typeArguments)),
-                    std::nullopt};
-        }
-
-        return {std::make_unique<NamedType>(std::move(typeName)), std::nullopt};
+        return {std::make_unique<CustomType>(std::move(typeName)), std::nullopt};
     }
 
     return {nullptr, createError(peek(), "Expect type.")};

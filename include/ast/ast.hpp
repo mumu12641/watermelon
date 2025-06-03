@@ -22,6 +22,7 @@ class Type
 public:
     virtual ~Type()                               = default;
     virtual std::string dump(int level = 0) const = 0;
+    virtual std::string get_name() const          = 0;
 };
 
 class PrimitiveType : public Type
@@ -43,8 +44,7 @@ public:
     {
     }
 
-
-    std::string dump(int level = 0) const override
+    std::string get_name() const override
     {
         std::string s;
         switch (kind) {
@@ -55,44 +55,49 @@ public:
             case Kind::STRING: s = "String"; break;
             default: s = "unknown"; break;
         }
-        return indent(level) + "PrimitiveType: " + s;
-    }
-};
-
-class NamedType : public Type
-{
-public:
-    std::string name;
-
-    explicit NamedType(std::string name)
-        : name(std::move(name))
-    {
-    }
-
-
-    std::string dump(int level = 0) const override { return indent(level) + "NamedType: " + name; }
-};
-
-class GenericType : public NamedType
-{
-public:
-    std::vector<std::unique_ptr<Type>> typeArguments;
-
-    GenericType(std::string name, std::vector<std::unique_ptr<Type>> typeArguments)
-        : NamedType(name)
-        , typeArguments(std::move(typeArguments))
-    {
+        return s;
     }
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "GenericType: " + name + "\n";
-        for (const auto& arg : typeArguments) {
-            result += arg->dump(level + 1) + "\n";
-        }
-        return result;
+        return indent(level) + "PrimitiveType: " + get_name();
     }
 };
+
+class CustomType : public Type
+{
+public:
+    std::string name;
+
+    explicit CustomType(std::string name)
+        : name(std::move(name))
+    {
+    }
+
+    std::string get_name() const override { return name; }
+    std::string dump(int level = 0) const override { return indent(level) + "NamedType: " + name; }
+};
+
+// class GenericType : public NamedType
+// {
+// public:
+//     std::vector<std::unique_ptr<Type>> typeArguments;
+
+//     GenericType(std::string name, std::vector<std::unique_ptr<Type>> typeArguments)
+//         : NamedType(name)
+//         , typeArguments(std::move(typeArguments))
+//     {
+//     }
+
+//     std::string dump(int level = 0) const override
+//     {
+//         std::string result = indent(level) + "GenericType: " + name + "\n";
+//         for (const auto& arg : typeArguments) {
+//             result += arg->dump(level + 1) + "\n";
+//         }
+//         return result;
+//     }
+// };
 
 class Expression
 {
@@ -597,7 +602,14 @@ public:
 
 class Declaration : public Statement
 {
+private:
+    Location location;
+
 public:
+    Declaration(Location l)
+        : location(l)
+    {
+    }
     virtual ~Declaration() = default;
 };
 
@@ -643,12 +655,13 @@ public:
 
     FunctionDeclaration(std::string name, std::vector<FunctionParameter> parameters,
                         std::unique_ptr<Type> returnType, std::unique_ptr<Statement> body,
-                        bool isOperator = false)
+                        Location location, bool isOperator = false)
         : name(std::move(name))
         , parameters(std::move(parameters))
         , returnType(std::move(returnType))
         , body(std::move(body))
         , isOperator(isOperator)
+        , Declaration(location)
     {
     }
 
@@ -688,9 +701,11 @@ public:
     std::string              name;
     std::vector<std::string> values;
 
-    EnumDeclaration(std::string name, std::vector<std::string> values)
+    EnumDeclaration(std::string name, std::vector<std::string> values, Location location)
         : name(std::move(name))
         , values(std::move(values))
+        , Declaration(location)
+
     {
     }
 
@@ -792,26 +807,22 @@ public:
 
     Kind                                      kind;
     std::string                               name;
-    std::vector<std::string>                  typeParameters;
     std::vector<FunctionParameter>            constructorParameters;
     std::string                               baseClass;
-    std::vector<std::unique_ptr<Type>>        baseTypeArguments;
     std::vector<std::unique_ptr<Expression>>  baseConstructorArgs;
     std::vector<std::unique_ptr<ClassMember>> members;
 
-    ClassDeclaration(Kind kind, std::string name, std::vector<std::string> typeParameters,
+    ClassDeclaration(Kind kind, std::string name,
                      std::vector<FunctionParameter> constructorParameters, std::string baseClass,
-                     std::vector<std::unique_ptr<Type>>        baseTypeArguments,
                      std::vector<std::unique_ptr<Expression>>  baseConstructorArgs,
-                     std::vector<std::unique_ptr<ClassMember>> members)
+                     std::vector<std::unique_ptr<ClassMember>> members, Location location)
         : kind(kind)
         , name(std::move(name))
-        , typeParameters(std::move(typeParameters))
         , constructorParameters(std::move(constructorParameters))
         , baseClass(std::move(baseClass))
-        , baseTypeArguments(std::move(baseTypeArguments))
         , baseConstructorArgs(std::move(baseConstructorArgs))
         , members(std::move(members))
+        , Declaration(location)
     {
     }
 
@@ -828,12 +839,6 @@ public:
 
         std::string result = indent(level) + "ClassDeclaration (" + kindStr + "): " + name + "\n";
 
-        if (!typeParameters.empty()) {
-            result += indent(level + 1) + "TypeParameters:\n";
-            for (const auto& param : typeParameters) {
-                result += indent(level + 2) + param + "\n";
-            }
-        }
 
         if (!constructorParameters.empty()) {
             result += indent(level + 1) + "ConstructorParameters:\n";
@@ -844,13 +849,6 @@ public:
 
         if (!baseClass.empty()) {
             result += indent(level + 1) + "BaseClass: " + baseClass + "\n";
-
-            if (!baseTypeArguments.empty()) {
-                result += indent(level + 1) + "BaseTypeArguments:\n";
-                for (const auto& arg : baseTypeArguments) {
-                    result += arg->dump(level + 2) + "\n";
-                }
-            }
 
             if (!baseConstructorArgs.empty()) {
                 result += indent(level + 1) + "BaseConstructorArgs:\n";
