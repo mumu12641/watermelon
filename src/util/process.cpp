@@ -10,15 +10,6 @@
 #include <string>
 #include <vector>
 
-void printTokens(const std::vector<Token>& tokens)
-{
-    std::cout << "=== Tokens ===\n";
-    for (const auto& token : tokens) {
-        std::cout << token.toString() << std::endl;
-    }
-    std::cout << "==============\n\n";
-}
-
 void processSourceFile(const std::string& source, const std::string& filename = "")
 {
 
@@ -33,18 +24,19 @@ void processSourceFile(const std::string& source, const std::string& filename = 
     Parser parser(tokens);
     auto [program, parserError] = parser.parse();
 
-    // if (parserError) {
-    //     parserError->print();
-    //     parserError->printContext();
-    //     return;
-    // }
-    // SemanticAnalyzer semanticAnalyzer(std::move(program));
-    // auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
-    // if (semanticError) {
-    //     semanticError->print();
-    //     semanticError->printContext();
-    //     return;
-    // }
+    if (parserError) {
+        parserError->print();
+        parserError->printContext();
+        return;
+    }
+
+    SemanticAnalyzer semanticAnalyzer(std::move(program));
+    auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
+    if (semanticError) {
+        semanticError->print();
+        semanticError->printContext();
+        return;
+    }
 }
 
 

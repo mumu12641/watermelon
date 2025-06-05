@@ -82,7 +82,7 @@ struct Error
                 if (currentLineNumber == line) {
                     std::cerr << line << " | " << currentLine << std::endl;
 
-                    std::cerr << std::string(column + std::to_string(line).length() + 3, ' ')
+                    std::cerr << std::string(column + std::to_string(line).length() + 2, ' ')
                               << "\033[31m^\033[0m " << std::endl;
                 }
 

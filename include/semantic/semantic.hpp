@@ -42,12 +42,13 @@ public:
 class ClassTable
 {
 private:
-    std::vector<std::string>                                  classes;
+    std::vector<std::pair<std::string, const ClassDeclaration*>>          classes;
     std::unordered_map<std::string, std::vector<std::string>> inheritMap;
 
 public:
-    void add(const std::string& className);
-    const std::string* find(const std::string & className);
+    void               add(const std::string& className, const ClassDeclaration*);
+    const ClassDeclaration* find(const std::string& className);
+    void               addInheritMap(const std::string& className,std::vector<std::string>&& parents);
 };
 
 class SemanticAnalyzer
