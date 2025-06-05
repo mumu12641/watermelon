@@ -71,17 +71,17 @@ std::string Token::toString() const
         {TokenType::ERROR, "ERROR"}};
 
     std::stringstream ss;
-    if (!filename.empty()) {
-        ss << filename << ":";
+    if (!location.filename.empty()) {
+        ss << location.filename << ":";
     }
-    ss << line << ":" << column << " " << tokenNames.at(type);
+    ss << location.line << ":" << location.column << " " << tokenNames.at(type);
 
 
     if (type == TokenType::IDENTIFIER || type == TokenType::STRING_LITERAL) {
         ss << " '" << std::get<std::string>(value) << "'";
     }
     else if (type == TokenType::INT_LITERAL) {
-        ss << " " << std::get< int>(value);
+        ss << " " << std::get<int>(value);
     }
     else if (type == TokenType::FLOAT_LITERAL) {
         ss << " " << std::get<float>(value);

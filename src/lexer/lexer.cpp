@@ -330,7 +330,7 @@ std::pair<std::vector<Token>, std::optional<Error>> Lexer::tokenize()
         }
         if (token.type == TokenType::ERROR) {
             Error error(
-                std::get<std::string>(token.value), token.line, token.column, token.filename);
+                std::get<std::string>(token.value), token.location);
             return {tokens, error};
         }
     }

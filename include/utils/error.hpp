@@ -1,18 +1,20 @@
 #ifndef ERROR_HPP
 #define ERROR_HPP
 
+#include "./format.hpp"
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
-#include <optional>
 
 struct Location
 {
-    int         line;
-    int         column;
-    std::string filename;
+    int         line     = 0;
+    int         column   = 0;
+    std::string filename = "";
 
     Location(int l, int c, const std::string& fname = "")
         : line(l)
@@ -20,6 +22,14 @@ struct Location
         , filename(fname)
     {
     }
+    Location()
+        : line(0)
+        , column(0)
+        , filename("")
+    {
+    }
+
+    std::string to_string() { return Format("{0}:{1}:{2}", filename, line, column); }
 };
 
 struct Error
@@ -30,6 +40,11 @@ struct Error
     Error(const std::string& msg, int l, int c, const std::string& fname = "")
         : message(msg)
         , location(Location(l, c, fname))
+    {
+    }
+    Error(const std::string& msg, const Location& l)
+        : message(msg)
+        , location(l)
     {
     }
 

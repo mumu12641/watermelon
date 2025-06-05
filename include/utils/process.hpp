@@ -1,3 +1,6 @@
+#ifndef PROCESS_HPP
+#define PROCESS_HPP
+
 #include "../lexer/token.hpp"
 
 #include <string>
@@ -14,3 +17,4 @@ void processFile(const std::string& filepath);
 void processDirectory(const std::string& dirPath, const std::string& extension = ".wm");
 
 void printUsage(const char* programName);
+#endif

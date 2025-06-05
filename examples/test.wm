@@ -13,32 +13,21 @@ base class Animal(name:String){
         return 0
     }
 }
+
 class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
     var age:int = 0
     var weight:float
     var isMale:bool
+    
     init{
         age = 0
         weight=0.0
         isMale=false
     }
-    init{
-        
-    }
     fn get_age() -> int = self.age
-    /* fn eat() -> void{
-    //     print(self.name+"eat...")
-    //     return 0
-    // }
-    // fn getColor() -> Color{
-    //     return self.color
-    // }
-    // operator fun add(other:Dog) -> Dog{
-    //     return Dog(self.name,self.color)
-    // }
-    */
     
 }
+
 fn func(a:int,b:int){
     var flag:bool = true
     val max = a

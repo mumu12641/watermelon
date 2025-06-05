@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef FORMAT_HPP
+#define FORMAT_HPP
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -120,3 +120,4 @@ template<typename... Args> std::string Format(const std::string& format, Args&&.
 
     return ss.str();
 }
+#endif

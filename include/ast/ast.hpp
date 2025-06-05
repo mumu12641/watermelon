@@ -1,6 +1,8 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include "../utils/error.hpp"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -101,7 +103,15 @@ public:
 
 class Expression
 {
+private:
+    Location location;
+
 public:
+    Expression(Location l)
+        : location(l)
+    {
+    }
+    Location get_location() const { return location; }
     virtual ~Expression()                         = default;
     virtual std::string dump(int level = 0) const = 0;
 };
@@ -120,9 +130,11 @@ public:
     Kind                                        kind;
     std::variant<int, float, bool, std::string> value;
 
-    LiteralExpression(Kind kind, std::variant<int, float, bool, std::string> value)
+    LiteralExpression(Location location, Kind kind,
+                      std::variant<int, float, bool, std::string> value)
         : kind(kind)
         , value(std::move(value))
+        , Expression(location)
     {
     }
 
@@ -160,8 +172,9 @@ class IdentifierExpression : public Expression
 public:
     std::string name;
 
-    explicit IdentifierExpression(std::string name)
+    explicit IdentifierExpression(Location location, std::string name)
         : name(std::move(name))
+        , Expression(location)
     {
     }
 
@@ -197,11 +210,12 @@ public:
     std::unique_ptr<Expression> left;
     std::unique_ptr<Expression> right;
 
-    BinaryExpression(Operator op, std::unique_ptr<Expression> left,
+    BinaryExpression(Location location, Operator op, std::unique_ptr<Expression> left,
                      std::unique_ptr<Expression> right)
         : op(op)
         , left(std::move(left))
         , right(std::move(right))
+        , Expression(location)
     {
     }
 
@@ -244,9 +258,10 @@ public:
     Operator                    op;
     std::unique_ptr<Expression> operand;
 
-    UnaryExpression(Operator op, std::unique_ptr<Expression> operand)
+    UnaryExpression(Location location, Operator op, std::unique_ptr<Expression> operand)
         : op(op)
         , operand(std::move(operand))
+        , Expression(location)
     {
     }
 
@@ -266,10 +281,11 @@ public:
     std::unique_ptr<Expression>              callee;
     std::vector<std::unique_ptr<Expression>> arguments;
 
-    CallExpression(std::unique_ptr<Expression>              callee,
+    CallExpression(Location location, std::unique_ptr<Expression> callee,
                    std::vector<std::unique_ptr<Expression>> arguments)
         : callee(std::move(callee))
         , arguments(std::move(arguments))
+        , Expression(location)
     {
     }
 
@@ -295,9 +311,10 @@ public:
     std::unique_ptr<Expression> object;
     std::string                 property;
 
-    MemberExpression(std::unique_ptr<Expression> object, std::string property)
+    MemberExpression(Location location, std::unique_ptr<Expression> object, std::string property)
         : object(std::move(object))
         , property(std::move(property))
+        , Expression(location)
     {
     }
 
@@ -316,8 +333,9 @@ class ArrayExpression : public Expression
 public:
     std::vector<std::unique_ptr<Expression>> elements;
 
-    explicit ArrayExpression(std::vector<std::unique_ptr<Expression>> elements)
+    explicit ArrayExpression(Location location, std::vector<std::unique_ptr<Expression>> elements)
         : elements(std::move(elements))
+        , Expression(location)
     {
     }
 
@@ -343,9 +361,11 @@ public:
     std::vector<Parameter>      parameters;
     std::unique_ptr<Expression> body;
 
-    LambdaExpression(std::vector<Parameter> parameters, std::unique_ptr<Expression> body)
+    LambdaExpression(Location location, std::vector<Parameter> parameters,
+                     std::unique_ptr<Expression> body)
         : parameters(std::move(parameters))
         , body(std::move(body))
+        , Expression(location)
     {
     }
 
@@ -375,9 +395,11 @@ public:
     std::unique_ptr<Expression> expression;
     std::unique_ptr<Type>       type;
 
-    TypeCheckExpression(std::unique_ptr<Expression> expression, std::unique_ptr<Type> type)
+    TypeCheckExpression(Location location, std::unique_ptr<Expression> expression,
+                        std::unique_ptr<Type> type)
         : expression(std::move(expression))
         , type(std::move(type))
+        , Expression(location)
     {
     }
 
@@ -394,7 +416,16 @@ public:
 
 class Statement
 {
+
+private:
+    Location location;
+
 public:
+    Statement(Location l)
+        : location(l)
+    {
+    }
+    Location get_location() const { return location; }
     virtual ~Statement()                          = default;
     virtual std::string dump(int level = 0) const = 0;
 };
@@ -404,8 +435,9 @@ class ExpressionStatement : public Statement
 public:
     std::unique_ptr<Expression> expression;
 
-    explicit ExpressionStatement(std::unique_ptr<Expression> expression)
+    explicit ExpressionStatement(Location location, std::unique_ptr<Expression> expression)
         : expression(std::move(expression))
+        , Statement(location)
     {
     }
 
@@ -423,8 +455,9 @@ class BlockStatement : public Statement
 public:
     std::vector<std::unique_ptr<Statement>> statements;
 
-    explicit BlockStatement(std::vector<std::unique_ptr<Statement>> statements)
+    explicit BlockStatement(Location location, std::vector<std::unique_ptr<Statement>> statements)
         : statements(std::move(statements))
+        , Statement(location)
     {
     }
 
@@ -446,11 +479,13 @@ public:
     std::unique_ptr<Statement>  thenBranch;
     std::unique_ptr<Statement>  elseBranch;
 
-    IfStatement(std::unique_ptr<Expression> condition, std::unique_ptr<Statement> thenBranch,
+    IfStatement(Location location, std::unique_ptr<Expression> condition,
+                std::unique_ptr<Statement> thenBranch,
                 std::unique_ptr<Statement> elseBranch = nullptr)
         : condition(std::move(condition))
         , thenBranch(std::move(thenBranch))
         , elseBranch(std::move(elseBranch))
+        , Statement(location)
     {
     }
 
@@ -482,9 +517,10 @@ public:
     std::unique_ptr<Expression> subject;
     std::vector<Case>           cases;
 
-    WhenStatement(std::unique_ptr<Expression> subject, std::vector<Case> cases)
+    WhenStatement(Location location, std::unique_ptr<Expression> subject, std::vector<Case> cases)
         : subject(std::move(subject))
         , cases(std::move(cases))
+        , Statement(location)
     {
     }
 
@@ -513,11 +549,12 @@ public:
     std::unique_ptr<Expression> iterable;
     std::unique_ptr<Statement>  body;
 
-    ForStatement(std::string variable, std::unique_ptr<Expression> iterable,
+    ForStatement(Location location, std::string variable, std::unique_ptr<Expression> iterable,
                  std::unique_ptr<Statement> body)
         : variable(std::move(variable))
         , iterable(std::move(iterable))
         , body(std::move(body))
+        , Statement(location)
     {
     }
 
@@ -539,8 +576,9 @@ class ReturnStatement : public Statement
 public:
     std::unique_ptr<Expression> value;
 
-    explicit ReturnStatement(std::unique_ptr<Expression> value = nullptr)
+    explicit ReturnStatement(Location location, std::unique_ptr<Expression> value = nullptr)
         : value(std::move(value))
+        , Statement(location)
     {
     }
 
@@ -569,12 +607,13 @@ public:
     std::unique_ptr<Type>       type;
     std::unique_ptr<Expression> initializer;
 
-    VariableStatement(Kind kind, std::string name, std::unique_ptr<Type> type,
+    VariableStatement(Location location, Kind kind, std::string name, std::unique_ptr<Type> type,
                       std::unique_ptr<Expression> initializer)
         : kind(kind)
         , name(std::move(name))
         , type(std::move(type))
         , initializer(std::move(initializer))
+        , Statement(location)
     {
     }
 
@@ -602,12 +641,10 @@ public:
 
 class Declaration : public Statement
 {
-private:
-    Location location;
 
 public:
     Declaration(Location l)
-        : location(l)
+        : Statement(l)
     {
     }
     virtual ~Declaration() = default;
@@ -653,15 +690,16 @@ public:
     std::unique_ptr<Statement>     body;
     bool                           isOperator;
 
-    FunctionDeclaration(std::string name, std::vector<FunctionParameter> parameters,
-                        std::unique_ptr<Type> returnType, std::unique_ptr<Statement> body,
-                        Location location, bool isOperator = false)
-        : name(std::move(name))
+    FunctionDeclaration(Location location, std::string name,
+                        std::vector<FunctionParameter> parameters, std::unique_ptr<Type> returnType,
+                        std::unique_ptr<Statement> body, bool isOperator = false)
+        : Declaration(location)
+        , name(std::move(name))
         , parameters(std::move(parameters))
         , returnType(std::move(returnType))
         , body(std::move(body))
         , isOperator(isOperator)
-        , Declaration(location)
+
     {
     }
 
@@ -701,7 +739,7 @@ public:
     std::string              name;
     std::vector<std::string> values;
 
-    EnumDeclaration(std::string name, std::vector<std::string> values, Location location)
+    EnumDeclaration(Location location, std::string name, std::vector<std::string> values)
         : name(std::move(name))
         , values(std::move(values))
         , Declaration(location)
@@ -812,10 +850,10 @@ public:
     std::vector<std::unique_ptr<Expression>>  baseConstructorArgs;
     std::vector<std::unique_ptr<ClassMember>> members;
 
-    ClassDeclaration(Kind kind, std::string name,
+    ClassDeclaration(Location location, Kind kind, std::string name,
                      std::vector<FunctionParameter> constructorParameters, std::string baseClass,
                      std::vector<std::unique_ptr<Expression>>  baseConstructorArgs,
-                     std::vector<std::unique_ptr<ClassMember>> members, Location location)
+                     std::vector<std::unique_ptr<ClassMember>> members)
         : kind(kind)
         , name(std::move(name))
         , constructorParameters(std::move(constructorParameters))

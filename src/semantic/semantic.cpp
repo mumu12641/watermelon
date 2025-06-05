@@ -71,7 +71,9 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         }
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             if (classTable.find(classDecl->name)) {
-                return {nullptr, Error(Format("Class {0} has been defined!", classDecl->name))};
+                return {nullptr,
+                        Error(Format("Class {0} has been defined!", classDecl->name),
+                              classDecl->get_location())};
             }
             classTable.add(classDecl->name);
         }

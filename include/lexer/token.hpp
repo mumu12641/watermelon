@@ -3,6 +3,7 @@
 
 #include <string>
 #include <variant>
+#include "../utils/error.hpp"
 
 enum class TokenType
 {
@@ -82,52 +83,43 @@ struct Token
 {
     TokenType                                                   type;
     std::variant<std::monostate, int, float, bool, std::string> value;
-    int                                                         line;
-    int                                                         column;
-    std::string                                                 filename;
+    // int                                                         line;
+    // int                                                         column;
+    // std::string                                                 filename;
+    Location location;
 
     Token(TokenType type, int line, int column, const std::string& filename = "")
         : type(type)
         , value(std::monostate{})
-        , line(line)
-        , column(column)
-        , filename(filename)
+        , location(line, column, filename)
     {
     }
 
     Token(TokenType type, int value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
-        , line(line)
-        , column(column)
-        , filename(filename)
+        , location(line, column, filename)
     {
     }
 
     Token(TokenType type, float value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
-        , line(line)
-        , column(column)
-        , filename(filename)
+        , location(line, column, filename)
     {
     }
 
     Token(TokenType type, bool value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(value)
-        , line(line)
-        , column(column)
-        , filename(filename)
+        , location(line, column, filename)
     {
     }
 
     Token(TokenType type, std::string value, int line, int column, const std::string& filename = "")
         : type(type)
         , value(std::move(value))
-        , line(line)
-        , column(column)
-        , filename(filename)
+        , location(line, column, filename)
     {
     }
 
