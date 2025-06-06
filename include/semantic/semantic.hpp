@@ -42,13 +42,15 @@ public:
 class ClassTable
 {
 private:
-    std::vector<std::pair<std::string, const ClassDeclaration*>>          classes;
-    std::unordered_map<std::string, std::vector<std::string>> inheritMap;
+    std::unordered_map<std::string, const ClassDeclaration*> classes;
+    // std::vector<std::pair<std::string, const ClassDeclaration*>> classes;
+    std::unordered_map<std::string, std::vector<const ClassDeclaration*>> inheritMap;
 
 public:
-    void               add(const std::string& className, const ClassDeclaration*);
+    void                    add(const std::string& className, const ClassDeclaration*);
     const ClassDeclaration* find(const std::string& className);
-    void               addInheritMap(const std::string& className,std::vector<std::string>&& parents);
+    void addInheritMap(const std::string& className, std::vector<const ClassDeclaration*> parents);
+    const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className);
 };
 
 class SemanticAnalyzer
@@ -65,7 +67,16 @@ public:
         , classTable(ClassTable())
     {
     }
-
+    std::optional<Error> validateMethodOverride(
+        const MethodMember* method,
+        const ClassMember* parentMember,
+        const ClassDeclaration* classDecl,
+        const ClassDeclaration* parentClass);
+        std::optional<Error> validatePropertyOverride(
+            const PropertyMember* property,
+            const ClassMember* parentMember,
+            const ClassDeclaration* classDecl,
+            const ClassDeclaration* parentClass);
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
     // void analyzeDeclaration(const Declaration& decl);

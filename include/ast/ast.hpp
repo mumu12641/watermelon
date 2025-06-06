@@ -111,7 +111,7 @@ public:
         : location(l)
     {
     }
-    Location get_location() const { return location; }
+    Location getLocation() const { return location; }
     virtual ~Expression()                         = default;
     virtual std::string dump(int level = 0) const = 0;
 };
@@ -425,7 +425,7 @@ public:
         : location(l)
     {
     }
-    Location get_location() const { return location; }
+    Location getLocation() const { return location; }
     virtual ~Statement()                          = default;
     virtual std::string dump(int level = 0) const = 0;
 };
@@ -703,6 +703,29 @@ public:
     {
     }
 
+    bool checkParam(const FunctionDeclaration* func) const
+    {
+        if (parameters.size() != func->parameters.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < parameters.size(); ++i) {
+            const FunctionParameter& param1 = parameters[i];
+            const FunctionParameter& param2 = func->parameters[i];
+            if (param1.name != param2.name) {
+                return false;
+            }
+            if (!param1.type || !param2.type ||
+                param1.type->get_name() != param2.type->get_name()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool checkReturnType(const FunctionDeclaration* func) const
+    {
+        return returnType.get()->get_name() == func->returnType.get()->get_name();
+    }
 
     std::string dump(int level = 0) const override
     {
@@ -761,9 +784,19 @@ public:
 
 class ClassMember
 {
+private:
+    Location location;
+
 public:
+    ClassMember(Location l)
+        : location(l)
+    {
+    }
+    Location getLocation() const { return location; }
+
     virtual ~ClassMember()                        = default;
     virtual std::string dump(int level = 0) const = 0;
+    virtual std::string getName() const           = 0;
 };
 
 class PropertyMember : public ClassMember
@@ -773,14 +806,16 @@ public:
     std::unique_ptr<Type>       type;
     std::unique_ptr<Expression> initializer;
 
-    PropertyMember(std::string name, std::unique_ptr<Type> type,
+    PropertyMember(Location location, std::string name, std::unique_ptr<Type> type,
                    std::unique_ptr<Expression> initializer = nullptr)
         : name(std::move(name))
         , type(std::move(type))
+        , ClassMember(location)
         , initializer(std::move(initializer))
     {
     }
 
+    std::string getName() const override { return name; }
 
     std::string dump(int level = 0) const override
     {
@@ -800,11 +835,14 @@ class MethodMember : public ClassMember
 public:
     std::unique_ptr<FunctionDeclaration> function;
 
-    explicit MethodMember(std::unique_ptr<FunctionDeclaration> function)
+    explicit MethodMember(Location location, std::unique_ptr<FunctionDeclaration> function)
         : function(std::move(function))
+
+        , ClassMember(location)
     {
     }
 
+    std::string getName() const override { return function.get()->name; }
 
     std::string dump(int level = 0) const override
     {
@@ -819,11 +857,13 @@ class InitBlockMember : public ClassMember
 public:
     std::unique_ptr<BlockStatement> block;
 
-    explicit InitBlockMember(std::unique_ptr<BlockStatement> block)
+    explicit InitBlockMember(Location location, std::unique_ptr<BlockStatement> block)
         : block(std::move(block))
+        , ClassMember(location)
     {
     }
 
+    std::string getName() const override { return ""; }
 
     std::string dump(int level = 0) const override
     {
@@ -864,7 +904,15 @@ public:
     {
     }
 
-
+    const ClassMember* containMember(const ClassMember* member) const
+    {
+        for (const auto& m : this->members) {
+            if (m->getName() == member->getName()) {
+                return m.get();
+            }
+        }
+        return nullptr;
+    }
 
     std::string dump(int level = 0) const override
     {

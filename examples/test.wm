@@ -27,11 +27,12 @@ class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
     fn get_age() -> int = self.age
     
 }
-/*
-class Cat() inherits Human(){
 
+class Cat() inherits Dog(){
+    var age:int = 0
+    fn get_age() -> bool = self.age
 }
-*/
+
 
 fn func(a:int,b:int){
     var flag:bool = true

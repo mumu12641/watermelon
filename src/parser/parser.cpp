@@ -75,7 +75,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::expression(
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::assignment()
 {
     auto [expr, exprErr] = logicalOr();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -98,7 +98,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::assignment(
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::logicalOr()
 {
     auto [expr, exprErr] = logicalAnd();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -116,7 +116,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::logicalOr()
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::logicalAnd()
 {
     auto [expr, exprErr] = equality();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -134,7 +134,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::logicalAnd(
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::equality()
 {
     auto [expr, exprErr] = comparison();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -153,7 +153,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::equality()
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::comparison()
 {
     auto [expr, exprErr] = addition();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
     if (exprErr) return {nullptr, exprErr};
 
     while (match({TokenType::LT, TokenType::LE, TokenType::GT, TokenType::GE})) {
@@ -178,7 +178,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::comparison(
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::addition()
 {
     auto [expr, exprErr] = multiplication();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -198,7 +198,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::addition()
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::multiplication()
 {
     auto [expr, exprErr] = unary();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -239,7 +239,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::unary()
 std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::call()
 {
     auto [expr, exprErr] = primary();
-    Location l           = expr->get_location();
+    Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
 
@@ -272,7 +272,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::finishCall(
     if (!check(TokenType::RPAREN)) {
         do {
             auto [expr, exprErr] = expression();
-            l                    = expr->get_location();
+            l                    = expr->getLocation();
             if (exprErr) return {nullptr, exprErr};
             arguments.push_back(std::move(expr));
         } while (match(TokenType::COMMA));
@@ -391,7 +391,7 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::expressionSt
     auto [expr, exprErr] = expression();
     if (exprErr) return {nullptr, exprErr};
 
-    return {std::make_unique<ExpressionStatement>(expr->get_location(), std::move(expr)),
+    return {std::make_unique<ExpressionStatement>(expr->getLocation(), std::move(expr)),
             std::nullopt};
 }
 
@@ -402,7 +402,7 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::blockStateme
 
     while (!check(TokenType::RBRACE) && !isAtEnd()) {
         auto [stmt, stmtErr] = statement();
-        l                    = stmt->get_location();
+        l                    = stmt->getLocation();
         if (stmtErr) return {nullptr, stmtErr};
         statements.push_back(std::move(stmt));
     }
@@ -513,7 +513,7 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::returnStatem
     auto [value, valueErr] = expression();
     if (valueErr) return {nullptr, valueErr};
 
-    return {std::make_unique<ReturnStatement>(value->get_location(), std::move(value)),
+    return {std::make_unique<ReturnStatement>(value->getLocation(), std::move(value)),
             std::nullopt};
 }
 
@@ -615,7 +615,7 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
     std::unique_ptr<Statement> body = nullptr;
     if (match(TokenType::ASSIGN)) {
         auto [expr, exprErr] = expression();
-        Location l           = expr->get_location();
+        Location l           = expr->getLocation();
         if (exprErr) return {nullptr, exprErr};
         auto returnStmt = std::make_unique<ReturnStatement>(l, std::move(expr));
         std::vector<std::unique_ptr<Statement>> statements;
@@ -799,12 +799,14 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
             initializer = std::move(initExpr);
         }
 
-        return {std::make_unique<PropertyMember>(
-                    std::get<std::string>(name.value), std::move(propType), std::move(initializer)),
+        return {std::make_unique<PropertyMember>(name.location,
+                                                 std::get<std::string>(name.value),
+                                                 std::move(propType),
+                                                 std::move(initializer)),
                 std::nullopt};
     }
     else if (match(TokenType::INIT)) {
-        auto [_, lbraceErr] = consume(TokenType::LBRACE, "Expect '{' after 'init'.");
+        auto [initToken, lbraceErr] = consume(TokenType::LBRACE, "Expect '{' after 'init'.");
         if (lbraceErr) return {nullptr, lbraceErr};
 
         std::vector<std::unique_ptr<Statement>> statements;
@@ -819,15 +821,19 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
         if (rbraceErr) return {nullptr, rbraceErr};
 
         return {std::make_unique<InitBlockMember>(
+                    initToken.location,
                     std::make_unique<BlockStatement>(Location(), std::move(statements))),
                 std::nullopt};
     }
     else if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
         auto [functionDecl, funcErr] = functionDeclaration();
+        Location l                   = functionDecl->getLocation();
         if (funcErr) return {nullptr, funcErr};
 
-        return {std::make_unique<MethodMember>(std::unique_ptr<FunctionDeclaration>(
-                    static_cast<FunctionDeclaration*>(functionDecl.release()))),
+        return {std::make_unique<MethodMember>(
+                    l,
+                    std::unique_ptr<FunctionDeclaration>(
+                        static_cast<FunctionDeclaration*>(functionDecl.release()))),
                 std::nullopt};
     }
 
