@@ -24,7 +24,9 @@ class Type
 public:
     virtual ~Type()                               = default;
     virtual std::string dump(int level = 0) const = 0;
-    virtual std::string get_name() const          = 0;
+    virtual std::string getName() const           = 0;
+    virtual bool        isBool() const            = 0;
+    virtual bool        isVoid() const            = 0;
 };
 
 class PrimitiveType : public Type
@@ -46,7 +48,10 @@ public:
     {
     }
 
-    std::string get_name() const override
+    bool isBool() const override { return getName() == "bool" || getName() == "int"; }
+    bool isVoid() const override { return getName() == "void"; }
+
+    std::string getName() const override
     {
         std::string s;
         switch (kind) {
@@ -62,7 +67,7 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        return indent(level) + "PrimitiveType: " + get_name();
+        return indent(level) + "PrimitiveType: " + getName();
     }
 };
 
@@ -76,7 +81,9 @@ public:
     {
     }
 
-    std::string get_name() const override { return name; }
+    bool isBool() const override { return false; }
+    bool isVoid() const override { return false; }
+    std::string getName() const override { return name; }
     std::string dump(int level = 0) const override { return indent(level) + "NamedType: " + name; }
 };
 
@@ -714,8 +721,7 @@ public:
             if (param1.name != param2.name) {
                 return false;
             }
-            if (!param1.type || !param2.type ||
-                param1.type->get_name() != param2.type->get_name()) {
+            if (!param1.type || !param2.type || param1.type->getName() != param2.type->getName()) {
                 return false;
             }
         }
@@ -724,7 +730,7 @@ public:
 
     bool checkReturnType(const FunctionDeclaration* func) const
     {
-        return returnType.get()->get_name() == func->returnType.get()->get_name();
+        return returnType.get()->getName() == func->returnType.get()->getName();
     }
 
     std::string dump(int level = 0) const override

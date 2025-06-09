@@ -6,6 +6,7 @@
 #include "../lexer/token.hpp"
 #include "../utils/error.hpp"
 
+#include <stack>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -13,18 +14,35 @@
 class SymbolType
 {
 private:
-    std::string name;
+    std::string type;
     // maybe some namespace or file name ...
+public:
+    SymbolType()
+        : type("")
+    {
+    }
+    SymbolType(const std::string& s)
+        : type(s)
+    {
+    }
+    const std::string& getType() const { return type; }
 };
 
 class Scope
 {
 private:
+    std::string                                 name;
     std::unordered_map<std::string, SymbolType> map;
 
 public:
-    void              add(const std::string& key, SymbolType type);
-    const SymbolType* find(const std::string& key);
+    Scope(const std::string s)
+        : name(s)
+    {
+    }
+    void                                               add(const std::string& key, SymbolType type);
+    const SymbolType*                                  find(const std::string& key);
+    const std::unordered_map<std::string, SymbolType>& getMap() const { return map; }
+    const std::string&                                 getName() const { return name; }
 };
 
 class SymbolTable
@@ -33,10 +51,11 @@ private:
     std::vector<Scope> scopes;
 
 public:
-    void              enter_scope();
-    void              exit_scope();
+    void              enterScope(const std::string& name);
+    void              exitScope();
     const SymbolType* find(const std::string& key);
-    void              add(const std::string& key, SymbolType type);
+    void              add(const std::string& key, const std::string& type);
+    void              debug() const;
 };
 
 class ClassTable
@@ -51,6 +70,7 @@ public:
     const ClassDeclaration* find(const std::string& className);
     void addInheritMap(const std::string& className, std::vector<const ClassDeclaration*> parents);
     const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className);
+    const bool checkInherit(const std::string& child, const std::string& parent);
 };
 
 class SemanticAnalyzer
@@ -60,6 +80,9 @@ private:
     ClassTable               classTable;
     std::unique_ptr<Program> program;
 
+    std::stack<std::pair<Type*, Location>> currentFunctionReturnTypes;
+
+
 public:
     SemanticAnalyzer(std::unique_ptr<Program> p)
         : program(std::move(p))
@@ -67,16 +90,14 @@ public:
         , classTable(ClassTable())
     {
     }
-    std::optional<Error> validateMethodOverride(
-        const MethodMember* method,
-        const ClassMember* parentMember,
-        const ClassDeclaration* classDecl,
-        const ClassDeclaration* parentClass);
-        std::optional<Error> validatePropertyOverride(
-            const PropertyMember* property,
-            const ClassMember* parentMember,
-            const ClassDeclaration* classDecl,
-            const ClassDeclaration* parentClass);
+    std::optional<Error> validateMethodOverride(const MethodMember*     method,
+                                                const ClassMember*      parentMember,
+                                                const ClassDeclaration* classDecl,
+                                                const ClassDeclaration* parentClass);
+    std::optional<Error> validatePropertyOverride(const PropertyMember*   property,
+                                                  const ClassMember*      parentMember,
+                                                  const ClassDeclaration* classDecl,
+                                                  const ClassDeclaration* parentClass);
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
     // void analyzeDeclaration(const Declaration& decl);
@@ -84,25 +105,35 @@ public:
     // void analyzeEnumDeclaration(const EnumDeclaration& decl);
     // void analyzeFunctionDeclaration(const FunctionDeclaration& decl);
 
-    // void analyzeStatement(const Statement& stmt);
-    // void analyzeBlockStatement(const BlockStatement& stmt);
-    // void analyzeExpressionStatement(const ExpressionStatement& stmt);
-    // void analyzeForStatement(const ForStatement& stmt);
-    // void analyzeIfStatement(const IfStatement& stmt);
-    // void analyzeReturnStatement(const ReturnStatement& stmt);
-    // void analyzeVariableStatement(const VariableStatement& stmt);
-    // void analyzeWhenStatement(const WhenStatement& stmt);
+    std::optional<Error> analyzeStatement(const Statement& stmt);
+    std::optional<Error> analyzeBlockStatement(const BlockStatement& stmt);
+    std::optional<Error> analyzeExpressionStatement(const ExpressionStatement& stmt);
+    std::optional<Error> analyzeForStatement(const ForStatement& stmt);
+    std::optional<Error> analyzeIfStatement(const IfStatement& stmt);
+    std::optional<Error> analyzeReturnStatement(const ReturnStatement& stmt);
+    std::optional<Error> analyzeVariableStatement(const VariableStatement& stmt);
+    std::optional<Error> analyzeWhenStatement(const WhenStatement& stmt);
 
-    // std::unique_ptr<Type> analyzeExpression(const Expression& expr);
-    // std::unique_ptr<Type> analyzeArrayExpression(const ArrayExpression& expr);
-    // std::unique_ptr<Type> analyzeBinaryExpression(const BinaryExpression& expr);
-    // std::unique_ptr<Type> analyzeCallExpression(const CallExpression& expr);
-    // std::unique_ptr<Type> analyzeIdentifierExpression(const IdentifierExpression& expr);
-    // std::unique_ptr<Type> analyzeLambdaExpression(const LambdaExpression& expr);
-    // std::unique_ptr<Type> analyzeLiteralExpression(const LiteralExpression& expr);
-    // std::unique_ptr<Type> analyzeMemberExpression(const MemberExpression& expr);
-    // std::unique_ptr<Type> analyzeTypeCheckExpression(const TypeCheckExpression& expr);
-    // std::unique_ptr<Type> analyzeUnaryExpression(const UnaryExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeExpression(
+        const Expression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeArrayExpression(
+        const ArrayExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeBinaryExpression(
+        const BinaryExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeCallExpression(
+        const CallExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeIdentifierExpression(
+        const IdentifierExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLambdaExpression(
+        const LambdaExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLiteralExpression(
+        const LiteralExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeMemberExpression(
+        const MemberExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeTypeCheckExpression(
+        const TypeCheckExpression& expr);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeUnaryExpression(
+        const UnaryExpression& expr);
 };
 
 #endif
