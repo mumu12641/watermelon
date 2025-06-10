@@ -119,7 +119,7 @@ private:
     FunctionTable            functionTable;
     std::unique_ptr<Program> program;
 
-    std::stack<std::pair<SymbolType*, Location>> currentFunctionReturnTypes;
+    std::stack<std::pair<SymbolType, Location>> currentFunctionReturnTypes;
 
 
 public:

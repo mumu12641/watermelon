@@ -172,8 +172,7 @@ std::optional<Error> SemanticAnalyzer::analyzeIfStatement(const IfStatement& stm
     if (errorCondition) return errorCondition;
 
     if (!conditionType->isBool()) {
-        return Error("The type in your If condition is not BOOL",
-                     stmt.condition->getLocation());
+        return Error("The type in your If condition is not BOOL", stmt.condition->getLocation());
     }
 
     this->symbolTable.enterScope("if-then");
@@ -193,14 +192,14 @@ std::optional<Error> SemanticAnalyzer::analyzeIfStatement(const IfStatement& stm
 
 std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(const ReturnStatement& stmt)
 {
-    if (this->currentFunctionReturnTypes.empty()) {
-        return Error("Return statement outside of function", stmt.getLocation());
-    }
+    // if (this->currentFunctionReturnTypes.empty()) {
+    //     return Error("Return statement outside of function", stmt.getLocation());
+    // }
 
     if (stmt.value) {
         auto [actualReturnType, errorReturn] = analyzeExpression(*stmt.value);
         if (errorReturn) return errorReturn;
-        this->currentFunctionReturnTypes.push({actualReturnType.get(), stmt.getLocation()});
+        this->currentFunctionReturnTypes.push({*actualReturnType, stmt.getLocation()});
     }
     return std::nullopt;
 }
@@ -240,15 +239,15 @@ std::optional<Error> SemanticAnalyzer::analyzeWhenStatement(const WhenStatement&
         if (errorCase) return errorCase;
 
         if (!this->classTable.checkInherit(caseValueType->getName(), subjectType->getName())) {
-            return Error(
-                "The case type in the when statement does not match the declaration type",
-                caseItem.value->getLocation());
+            return Error("The case type in the when statement does not match the declaration type",
+                         caseItem.value->getLocation());
         }
         this->symbolTable.enterScope("when-case");
         auto errorBody = analyzeStatement(*caseItem.body);
         if (errorBody) return errorBody;
         this->symbolTable.exitScope();
     }
+    return std::nullopt;
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> SemanticAnalyzer::analyzeExpression(
@@ -325,7 +324,7 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
             if (!this->classTable.checkInherit(rightType->getName(), leftType->getName())) {
                 return {nullptr,
                         Error("The left and right types in your assignment expression "
-                                     "do not match",
+                              "do not match",
                               expr.getLocation())};
             }
             // return {std::make_unique<Type>(leftType.get()), std::nullopt};
@@ -339,15 +338,14 @@ SemanticAnalyzer::analyzeCallExpression(const CallExpression& expr)
     auto [calleeType, errorCallee] = analyzeExpression(*expr.callee);
     if (errorCallee) return {nullptr, errorCallee};
     if (calleeType->getKind() != SymbolType::SymbolKind::FUNC) {
-        return {
-            nullptr,
-            Error(Format("The callee of CallExpression must be a function"), expr.getLocation())};
+        return {nullptr,
+                Error("The callee of CallExpression must be a function", expr.getLocation())};
     }
     if (const auto* func = this->functionTable.find(calleeType->getName())) {
         if (func->parameters.size() != expr.arguments.size()) {
             return {nullptr,
-                    Error(Format("The actual number of arguments in this function call expression "
-                                 "does not match the number of arguments declared"),
+                    Error("The actual number of arguments in this function call expression "
+                          "does not match the number of arguments declared",
                           expr.getLocation())};
         }
         std::vector<std::unique_ptr<SymbolType>> argTypes;
@@ -375,7 +373,7 @@ SemanticAnalyzer::analyzeIdentifierExpression(const IdentifierExpression& expr)
     if (symbol == nullptr)
         return {nullptr,
                 Error(Format("This Identifier {0} is not defined", expr.name), expr.getLocation())};
-    return {std::make_unique<SymbolType>(symbol), std::nullopt};
+    return {std::make_unique<SymbolType>(*symbol), std::nullopt};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
@@ -418,8 +416,7 @@ SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
     }
     else {
         return {nullptr,
-                Error(Format("This expr is not a class and cannot access properties"),
-                      expr.getLocation())};
+                Error("This expr is not a class and cannot access properties", expr.getLocation())};
     }
 }
 
@@ -438,16 +435,14 @@ SemanticAnalyzer::analyzeUnaryExpression(const UnaryExpression& expr)
         case UnaryExpression::Operator::NEG:
             if (!operandType->canMathOp()) {
                 return {nullptr,
-                        Error(Format("This expression cannot use the NEG operator"),
-                              expr.getLocation())};
+                        Error("This expression cannot use the NEG operator", expr.getLocation())};
             }
             return {std::make_unique<SymbolType>(operandType->getName()), std::nullopt};
 
         case UnaryExpression::Operator::NOT:
             if (!operandType->isBool()) {
                 return {nullptr,
-                        Error(Format("This expression cannot use the NOT operator"),
-                              expr.getLocation())};
+                        Error("This expression cannot use the NOT operator", expr.getLocation())};
             }
             return {std::make_unique<SymbolType>(operandType->getName()), std::nullopt};
     }
@@ -480,7 +475,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
 
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
-            // this->functionTable.add(funcDecl->name, funcDecl);
+            this->functionTable.add(funcDecl->name, funcDecl);
             this->symbolTable.add(funcDecl->name, funcDecl->name, SymbolType::SymbolKind::FUNC);
         }
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
@@ -513,6 +508,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
             this->classTable.addInheritMap(classDecl->name, std::move(parents));
         }
     }
+
     // cat -> Dog -> animal
     for (const auto& decl : program->declarations) {
         if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
@@ -545,6 +541,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
             }
         }
     }
+
     for (const auto& decl : program->declarations) {
         if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             this->symbolTable.enterScope(Format("class {0}", classDecl->name));
@@ -569,6 +566,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                     for (const auto& param : method->function->parameters) {
                         this->symbolTable.add(param.name, param.type->getName());
                     }
+
                     auto error = analyzeStatement(*method->function->body);
                     if (error) {
                         return {nullptr, *error};
@@ -586,7 +584,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                         while (!this->currentFunctionReturnTypes.empty()) {
                             auto [type, returnLocation] = this->currentFunctionReturnTypes.top();
                             if (!this->classTable.checkInherit(
-                                    type->getName(), method->function->returnType->getName())) {
+                                    type.getName(), method->function->returnType->getName())) {
                                 return {nullptr,
                                         Error(Format("The return statment of your {0}.{1} is "
                                                      "different from the declared type!",
@@ -597,12 +595,12 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                             this->currentFunctionReturnTypes.pop();
                         }
                     }
-                    this->symbolTable.debug();
                     this->symbolTable.exitScope();
                 }
             }
-            this->symbolTable.debug();
             this->symbolTable.exitScope();
+        }
+        else if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
         }
     }
     return {std::move(program), std::nullopt};

@@ -9,11 +9,11 @@ data class C (name:String){
 base class Animal(name:String){
     fn eat() -> void
     fn sleep(){
-        print("sleep...")
+        //print("sleep...")
         return 0
     }
 }
-
+/*
 class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
     var age:int = 0
     var weight:float
@@ -57,13 +57,18 @@ fn func(a:int,b:int){
     }
     return 0
 }
-
+*/
+fn main() -> int{
+    return 0
+}
+/*
 fn main() -> int{
     // func()
     // val dog = Dog("aaa",color=Color.Green)
     // val dog2 = Dog("bbb",color=Color.Green)
-    val dog3 = dog + dog2 + dog.eat()
+    val dog3 = 1 + 2
     // val a = {b:u32 -> b}
 	// print(a(2))
     return 0
 }
+*/

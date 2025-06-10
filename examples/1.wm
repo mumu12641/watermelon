@@ -1,3 +1,9 @@
+
+class Animal(name:String){
+    fn sleep() -> bool{
+        return "asd"
+    }
+}
 fn main() -> int{
-    return 0,
+    return 0
 }

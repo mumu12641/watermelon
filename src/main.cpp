@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     }
 
     std::string firstArg  = argv[1];
-    std::string extension = ".wm";   // 默认扩展名
+    std::string extension = ".wm";  
 
     if (firstArg == "--dir") {
         if (argc < 3) {
