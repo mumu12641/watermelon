@@ -25,8 +25,6 @@ public:
     virtual ~Type()                               = default;
     virtual std::string dump(int level = 0) const = 0;
     virtual std::string getName() const           = 0;
-    virtual bool        isBool() const            = 0;
-    virtual bool        isVoid() const            = 0;
 };
 
 class PrimitiveType : public Type
@@ -47,9 +45,6 @@ public:
         : kind(kind)
     {
     }
-
-    bool isBool() const override { return getName() == "bool" || getName() == "int"; }
-    bool isVoid() const override { return getName() == "void"; }
 
     std::string getName() const override
     {
@@ -80,9 +75,6 @@ public:
         : name(std::move(name))
     {
     }
-
-    bool isBool() const override { return false; }
-    bool isVoid() const override { return false; }
     std::string getName() const override { return name; }
     std::string dump(int level = 0) const override { return indent(level) + "NamedType: " + name; }
 };
@@ -803,6 +795,7 @@ public:
     virtual ~ClassMember()                        = default;
     virtual std::string dump(int level = 0) const = 0;
     virtual std::string getName() const           = 0;
+    virtual std::string getType() const           = 0;
 };
 
 class PropertyMember : public ClassMember
@@ -822,6 +815,7 @@ public:
     }
 
     std::string getName() const override { return name; }
+    std::string getType() const override { return type->getName(); }
 
     std::string dump(int level = 0) const override
     {
@@ -849,6 +843,7 @@ public:
     }
 
     std::string getName() const override { return function.get()->name; }
+    std::string getType() const override { return function->returnType->getName(); }
 
     std::string dump(int level = 0) const override
     {
@@ -870,6 +865,8 @@ public:
     }
 
     std::string getName() const override { return ""; }
+    std::string getType() const override { return ""; }
+
 
     std::string dump(int level = 0) const override
     {
@@ -914,6 +911,15 @@ public:
     {
         for (const auto& m : this->members) {
             if (m->getName() == member->getName()) {
+                return m.get();
+            }
+        }
+        return nullptr;
+    }
+    const ClassMember* containMember(const std::string member) const
+    {
+        for (const auto& m : this->members) {
+            if (m->getName() == member) {
                 return m.get();
             }
         }

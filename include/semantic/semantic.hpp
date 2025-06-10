@@ -13,19 +13,46 @@
 
 class SymbolType
 {
-private:
-    std::string type;
-    // maybe some namespace or file name ...
+
 public:
+    enum class SymbolKind
+    {
+        VAR,
+        FUNC
+    };
     SymbolType()
-        : type("")
+        : name("")
+        , kind(SymbolKind::VAR)
     {
     }
     SymbolType(const std::string& s)
-        : type(s)
+        : name(s)
+        , kind(SymbolKind::VAR)
     {
     }
-    const std::string& getType() const { return type; }
+    SymbolType(const std::string& s, SymbolKind kind)
+        : name(s)
+        , kind(kind)
+    {
+    }
+
+    bool isBool() const { return kind == SymbolKind::VAR && (name == "bool" || name == "int"); }
+    bool isVoid() const { return kind == SymbolKind::VAR && name == "void"; }
+    bool canMathOp() const { return kind == SymbolKind::VAR && (name == "int" || name == "float"); }
+    bool canCompare() const
+    {
+        return kind == SymbolKind::VAR && (name == "int" || name == "float");
+    }
+
+    const std::string& getName() const { return name; }
+    const SymbolKind&  getKind() const { return kind; }
+
+
+private:
+    // only type name for simplity
+    std::string name;
+    SymbolKind  kind;
+    // maybe some namespace or file name ...
 };
 
 class Scope
@@ -54,7 +81,8 @@ public:
     void              enterScope(const std::string& name);
     void              exitScope();
     const SymbolType* find(const std::string& key);
-    void              add(const std::string& key, const std::string& type);
+    void              add(const std::string& key, const std::string& type,
+                          SymbolType::SymbolKind kind = SymbolType::SymbolKind::VAR);
     void              debug() const;
 };
 
@@ -73,14 +101,25 @@ public:
     const bool checkInherit(const std::string& child, const std::string& parent);
 };
 
+class FunctionTable
+{
+private:
+    std::unordered_map<std::string, const FunctionDeclaration*> functions;
+
+public:
+    void                       add(const std::string& className, const FunctionDeclaration*);
+    const FunctionDeclaration* find(const std::string& className);
+};
+
 class SemanticAnalyzer
 {
 private:
     SymbolTable              symbolTable;
     ClassTable               classTable;
+    FunctionTable            functionTable;
     std::unique_ptr<Program> program;
 
-    std::stack<std::pair<Type*, Location>> currentFunctionReturnTypes;
+    std::stack<std::pair<SymbolType*, Location>> currentFunctionReturnTypes;
 
 
 public:
@@ -88,6 +127,7 @@ public:
         : program(std::move(p))
         , symbolTable(SymbolTable())
         , classTable(ClassTable())
+        , functionTable(FunctionTable())
     {
     }
     std::optional<Error> validateMethodOverride(const MethodMember*     method,
@@ -114,25 +154,25 @@ public:
     std::optional<Error> analyzeVariableStatement(const VariableStatement& stmt);
     std::optional<Error> analyzeWhenStatement(const WhenStatement& stmt);
 
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeExpression(
         const Expression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeArrayExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeArrayExpression(
         const ArrayExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeBinaryExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeBinaryExpression(
         const BinaryExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeCallExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeCallExpression(
         const CallExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeIdentifierExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeIdentifierExpression(
         const IdentifierExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLambdaExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLambdaExpression(
         const LambdaExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLiteralExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLiteralExpression(
         const LiteralExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeMemberExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeMemberExpression(
         const MemberExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeTypeCheckExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeTypeCheckExpression(
         const TypeCheckExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeUnaryExpression(
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeUnaryExpression(
         const UnaryExpression& expr);
 };
 
