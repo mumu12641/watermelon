@@ -140,10 +140,10 @@ public:
                                                   const ClassDeclaration* parentClass);
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
-    // void analyzeDeclaration(const Declaration& decl);
-    // void analyzeClassDeclaration(const ClassDeclaration& decl);
-    // void analyzeEnumDeclaration(const EnumDeclaration& decl);
-    // void analyzeFunctionDeclaration(const FunctionDeclaration& decl);
+    std::optional<Error> analyzeDeclaration(const Declaration& decl);
+    std::optional<Error> analyzeClassDeclaration(const ClassDeclaration& decl);
+    std::optional<Error> analyzeEnumDeclaration(const EnumDeclaration& decl);
+    std::optional<Error> analyzeFunctionDeclaration(const FunctionDeclaration& decl);
 
     std::optional<Error> analyzeStatement(const Statement& stmt);
     std::optional<Error> analyzeBlockStatement(const BlockStatement& stmt);

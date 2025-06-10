@@ -837,7 +837,6 @@ public:
 
     explicit MethodMember(Location location, std::unique_ptr<FunctionDeclaration> function)
         : function(std::move(function))
-
         , ClassMember(location)
     {
     }

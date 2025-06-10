@@ -1,9 +1,10 @@
 
 class Animal(name:String){
-    fn sleep() -> bool{
-        return "asd"
+    fn sleep() -> int{
+        return 0
     }
 }
 fn main() -> int{
+    val dog = Dog("aaa",color=Color.Green)
     return 0
 }

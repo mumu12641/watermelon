@@ -29,6 +29,7 @@ void processSourceFile(const std::string& source, const std::string& filename = 
         parserError->printContext();
         return;
     }
+    std::cout << program->dump() << std::endl;
 
     SemanticAnalyzer semanticAnalyzer(std::move(program));
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
