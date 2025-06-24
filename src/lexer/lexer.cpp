@@ -1,6 +1,5 @@
 #include "../../include/lexer/lexer.hpp"
 
-
 #include <cctype>
 #include <iostream>
 #include <optional>
@@ -275,6 +274,9 @@ Token Lexer::nextToken()
         case '*': advance(); return Token(TokenType::MULT, currentLine, currentColumn, filename);
         case '/': advance(); return Token(TokenType::DIV, currentLine, currentColumn, filename);
         case '%': advance(); return Token(TokenType::MOD, currentLine, currentColumn, filename);
+        case ';':
+            advance();
+            return Token(TokenType::SEMICOLON, currentLine, currentColumn, filename);
 
         case '&':
             advance();
@@ -329,8 +331,7 @@ std::pair<std::vector<Token>, std::optional<Error>> Lexer::tokenize()
             break;
         }
         if (token.type == TokenType::ERROR) {
-            Error error(
-                std::get<std::string>(token.value), token.location);
+            Error error(std::get<std::string>(token.value), token.location);
             return {tokens, error};
         }
     }

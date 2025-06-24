@@ -13,6 +13,3 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 file(GLOB_RECURSE SRC_LIST ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_executable(watermelon ${SRC_LIST})
 target_include_directories(watermelon PUBLIC ${PROJECT_SOURCE_DIR}/include)
-
-
-

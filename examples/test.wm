@@ -13,7 +13,6 @@ base class Animal(name:String){
         return 0
     }
 }
-/*
 class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
     var age:int = 0
     var weight:float
@@ -57,11 +56,6 @@ fn func(a:int,b:int){
     }
     return 0
 }
-*/
-fn main() -> int{
-    return 0
-}
-/*
 fn main() -> int{
     // func()
     // val dog = Dog("aaa",color=Color.Green)
@@ -71,4 +65,3 @@ fn main() -> int{
 	// print(a(2))
     return 0
 }
-*/

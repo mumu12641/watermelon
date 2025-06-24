@@ -160,8 +160,8 @@ public:
         const ArrayExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeBinaryExpression(
         const BinaryExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeCallExpression(
-        const CallExpression& expr);
+    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeFunctionCallExpression(
+        const FunctionCallExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeIdentifierExpression(
         const IdentifierExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLambdaExpression(

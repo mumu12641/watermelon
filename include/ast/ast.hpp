@@ -274,13 +274,13 @@ public:
     }
 };
 
-class CallExpression : public Expression
+class FunctionCallExpression : public Expression
 {
 public:
     std::unique_ptr<Expression>              callee;
     std::vector<std::unique_ptr<Expression>> arguments;
 
-    CallExpression(Location location, std::unique_ptr<Expression> callee,
+    FunctionCallExpression(Location location, std::unique_ptr<Expression> callee,
                    std::vector<std::unique_ptr<Expression>> arguments)
         : callee(std::move(callee))
         , arguments(std::move(arguments))
@@ -323,6 +323,37 @@ public:
         std::string result = indent(level) + "MemberExpression: " + property + "\n";
         result += indent(level + 1) + "Object:\n";
         result += object->dump(level + 2);
+        return result;
+    }
+};
+
+class MethodCallExpression : public Expression
+{
+public:
+    std::unique_ptr<Expression>              object;
+    std::string                              methodName;
+    std::vector<std::unique_ptr<Expression>> arguments;
+
+    MethodCallExpression(Location location, std::unique_ptr<Expression> object,
+                         std::string methodName, std::vector<std::unique_ptr<Expression>> arguments)
+        : object(std::move(object))
+        , methodName(std::move(methodName))
+        , arguments(std::move(arguments))
+        , Expression(location)
+    {
+    }
+
+    std::string dump(int level = 0) const override
+    {
+        std::string result = indent(level) + "MethodCallExpression: " + methodName + "\n";
+        result += indent(level + 1) + "Object:\n";
+        result += object->dump(level + 2) + "\n";
+        if (!arguments.empty()) {
+            result += indent(level + 1) + "Arguments:\n";
+            for (const auto& arg : arguments) {
+                result += arg->dump(level + 2) + "\n";
+            }
+        }
         return result;
     }
 };

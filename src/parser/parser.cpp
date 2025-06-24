@@ -91,7 +91,6 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::assignment(
 
         return {nullptr, createError(previous(), "Invalid assignment target.")};
     }
-
     return {std::move(expr), std::nullopt};
 }
 
@@ -242,14 +241,13 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::call()
     Location l           = expr->getLocation();
 
     if (exprErr) return {nullptr, exprErr};
-
     while (true) {
         if (match(TokenType::LPAREN)) {
             return finishCall(std::move(expr));
         }
         else if (match(TokenType::DOT)) {
             auto [name, nameErr] =
-                consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+                consume(TokenType::IDENTIFIER, "Expect property/method name after '.'.");
             if (nameErr) return {nullptr, nameErr};
 
             expr = std::make_unique<MemberExpression>(
@@ -282,7 +280,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::finishCall(
     if (rparenErr) return {nullptr, rparenErr};
 
 
-    return {std::make_unique<CallExpression>(l, std::move(callee), std::move(arguments)),
+    return {std::make_unique<FunctionCallExpression>(l, std::move(callee), std::move(arguments)),
             std::nullopt};
 }
 
@@ -390,6 +388,9 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::expressionSt
 {
     auto [expr, exprErr] = expression();
     if (exprErr) return {nullptr, exprErr};
+
+    auto [_, semicolonErr] = consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+    if (semicolonErr) return {nullptr, semicolonErr};
 
     return {std::make_unique<ExpressionStatement>(expr->getLocation(), std::move(expr)),
             std::nullopt};
@@ -512,7 +513,8 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::returnStatem
 {
     auto [value, valueErr] = expression();
     if (valueErr) return {nullptr, valueErr};
-
+    auto [_, semicolonErr] = consume(TokenType::SEMICOLON, "Expect ';' after return statement.");
+    if (semicolonErr) return {nullptr, semicolonErr};
     return {std::make_unique<ReturnStatement>(value->getLocation(), std::move(value)),
             std::nullopt};
 }
@@ -544,7 +546,9 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
         if (initErr) return {nullptr, initErr};
         initializer = std::move(initExpr);
     }
-
+    auto [_, semicolonErr] =
+        consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+    if (semicolonErr) return {nullptr, semicolonErr};
     return {
         std::make_unique<VariableStatement>(
             l, kind, std::get<std::string>(name.value), std::move(varType), std::move(initializer)),
@@ -617,6 +621,11 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
         auto [expr, exprErr] = expression();
         Location l           = expr->getLocation();
         if (exprErr) return {nullptr, exprErr};
+
+        // auto [_, semicolonErr] =
+        //     consume(TokenType::SEMICOLON, "Expect ';' after function expression.");
+        // if (semicolonErr) return {nullptr, semicolonErr};
+
         auto returnStmt = std::make_unique<ReturnStatement>(l, std::move(expr));
         std::vector<std::unique_ptr<Statement>> statements;
         statements.push_back(std::move(returnStmt));
@@ -798,6 +807,9 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
             if (initErr) return {nullptr, initErr};
             initializer = std::move(initExpr);
         }
+        auto [_, semicolonErr] =
+            consume(TokenType::SEMICOLON, "Expect ';' after property declaration.");
+        if (semicolonErr) return {nullptr, semicolonErr};
 
         return {std::make_unique<PropertyMember>(name.location,
                                                  std::get<std::string>(name.value),

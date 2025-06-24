@@ -62,7 +62,7 @@ enum class TokenType
     NOT,
     ARROW,
     COLON,
-    // SEMICOLON,
+    SEMICOLON,
     COMMA,
     DOT,
     LPAREN,
