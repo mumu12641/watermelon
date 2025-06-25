@@ -281,7 +281,7 @@ public:
     std::vector<std::unique_ptr<Expression>> arguments;
 
     FunctionCallExpression(Location location, std::unique_ptr<Expression> callee,
-                   std::vector<std::unique_ptr<Expression>> arguments)
+                           std::vector<std::unique_ptr<Expression>> arguments)
         : callee(std::move(callee))
         , arguments(std::move(arguments))
         , Expression(location)
@@ -307,20 +307,41 @@ public:
 class MemberExpression : public Expression
 {
 public:
-    std::unique_ptr<Expression> object;
-    std::string                 property;
+    enum class Kind
+    {
+        PROPERTY,
+        METHOD,
+    };
+
+    std::unique_ptr<Expression>              object;
+    std::string                              property;
+    std::string                              methodName;
+    std::vector<std::unique_ptr<Expression>> arguments;
+    Kind                                     kind;
 
     MemberExpression(Location location, std::unique_ptr<Expression> object, std::string property)
         : object(std::move(object))
         , property(std::move(property))
         , Expression(location)
     {
+        kind = Kind::PROPERTY;
+    }
+    MemberExpression(Location location, std::unique_ptr<Expression> object, std::string methodName,
+                     std::vector<std::unique_ptr<Expression>> arguments)
+        : object(std::move(object))
+        , methodName(std::move(methodName))
+        , arguments(std::move(arguments))
+        , Expression(location)
+    {
+        kind = Kind::METHOD;
     }
 
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "MemberExpression: " + property + "\n";
+        std::string result =
+            indent(level) + "MemberExpression: " +
+            (kind == Kind::METHOD ? "method " + methodName : "property " + property) + "\n";
         result += indent(level + 1) + "Object:\n";
         result += object->dump(level + 2);
         return result;
@@ -852,7 +873,7 @@ public:
     {
         std::string result = indent(level) + "PropertyMember: " + name + "\n";
         result += indent(level + 1) + "Type:\n";
-        result += type->dump(level + 2);
+        if (type) result += type->dump(level + 2);
         if (initializer) {
             result += "\n" + indent(level + 1) + "Initializer:\n";
             result += initializer->dump(level + 2);

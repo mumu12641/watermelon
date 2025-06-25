@@ -32,12 +32,16 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
         do {
             auto [paramName, paramErr] = consume(TokenType::IDENTIFIER, "Expect parameter name.");
             if (paramErr) return {nullptr, paramErr};
+            std::cout << paramName.toString() ;
+
 
             std::unique_ptr<Type> paramType = nullptr;
             if (match(TokenType::COLON)) {
                 auto [typeVal, typeErr] = type();
                 if (typeErr) return {nullptr, typeErr};
                 paramType = std::move(typeVal);
+                std::cout << paramType->getName() << "\n";
+
             }
 
             std::unique_ptr<Expression> defaultValue = nullptr;
@@ -56,7 +60,7 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
     auto [__, rparenErr] = consume(TokenType::RPAREN, "Expect ')' after parameters.");
     if (rparenErr) return {nullptr, rparenErr};
 
-    std::unique_ptr<Type> returnType = nullptr;
+    std::unique_ptr<Type> returnType = std::make_unique<PrimitiveType>(PrimitiveType::Kind::VOID);
     if (match(TokenType::ARROW)) {
         auto [returnTypeVal, returnTypeErr] = type();
         if (returnTypeErr) return {nullptr, returnTypeErr};
@@ -160,11 +164,13 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
             if (paramErr) return {nullptr, paramErr};
 
             std::unique_ptr<Type> paramType = nullptr;
-            if (match(TokenType::COLON)) {
-                auto [typeVal, typeErr] = type();
-                if (typeErr) return {nullptr, typeErr};
-                paramType = std::move(typeVal);
-            }
+            auto [_, colonErr]              = consume(TokenType::COLON, "Expect parameter type.");
+            if (colonErr) return {nullptr, colonErr};
+
+            auto [typeVal, typeErr] = type();
+            if (typeErr) return {nullptr, typeErr};
+            paramType = std::move(typeVal);
+
 
             std::unique_ptr<Expression> defaultValue = nullptr;
             if (match(TokenType::ASSIGN)) {
@@ -173,10 +179,9 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
                 defaultValue = std::move(defaultVal);
             }
 
-            constructorParameters.push_back(
-                FunctionParameter(std::get<std::string>(paramName.value),
-                                  std::move(paramType),
-                                  std::move(defaultValue)));
+            constructorParameters.emplace_back(std::get<std::string>(paramName.value),
+                                               std::move(paramType),
+                                               std::move(defaultValue));
         } while (match(TokenType::COMMA));
     }
 
@@ -287,12 +292,12 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
     else if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
         auto [functionDecl, funcErr] = functionDeclaration();
         if (funcErr) return {nullptr, funcErr};
-        Location l                   = functionDecl->getLocation();
+        Location l = functionDecl->getLocation();
 
         return {std::make_unique<MethodMember>(
                     l,
                     std::unique_ptr<FunctionDeclaration>(
-                        static_cast<FunctionDeclaration*>(functionDecl.release()))),
+                        dynamic_cast<FunctionDeclaration*>(functionDecl.release()))),
                 std::nullopt};
     }
 

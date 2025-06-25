@@ -91,7 +91,6 @@ std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(const ReturnStatem
         this->currentFunctionReturnTypes.push(
             std::make_pair(SymbolType(actualReturnType->getName()), stmt.getLocation()));
     }
-    auto [type, l] = this->currentFunctionReturnTypes.top();
     return std::nullopt;
 }
 

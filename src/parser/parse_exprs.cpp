@@ -100,6 +100,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::comparison(
             case TokenType::LE: op = BinaryExpression::Operator::LE; break;
             case TokenType::GT: op = BinaryExpression::Operator::GT; break;
             case TokenType::GE: op = BinaryExpression::Operator::GE; break;
+            default: break;
         }
 
         auto [right, rightErr] = addition();
@@ -145,6 +146,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::multiplicat
             case TokenType::MULT: op = BinaryExpression::Operator::MUL; break;
             case TokenType::DIV: op = BinaryExpression::Operator::DIV; break;
             case TokenType::MOD: op = BinaryExpression::Operator::MOD; break;
+            default: break;
         }
 
         auto [right, rightErr] = unary();
@@ -186,9 +188,25 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::call()
             auto [name, nameErr] =
                 consume(TokenType::IDENTIFIER, "Expect property/method name after '.'.");
             if (nameErr) return {nullptr, nameErr};
+            if (match(TokenType::LPAREN)) {
+                std::vector<std::unique_ptr<Expression>> arguments;
+                if (!check(TokenType::RPAREN)) {
+                    do {
+                        auto [expr, exprErr] = expression();
+                        if (exprErr) return {nullptr, exprErr};
 
-            expr = std::make_unique<MemberExpression>(
-                l, std::move(expr), std::get<std::string>(name.value));
+                        arguments.push_back(std::move(expr));
+                    } while (match(TokenType::COMMA));
+                }
+                auto [_, rparenErr] = consume(TokenType::RPAREN, "Expect ')' after arguments.");
+                if (rparenErr) return {nullptr, rparenErr};
+                expr = std::make_unique<MemberExpression>(
+                    l, std::move(expr), std::get<std::string>(name.value), std::move(arguments));
+            }
+            else {
+                expr = std::make_unique<MemberExpression>(
+                    l, std::move(expr), std::get<std::string>(name.value));
+            }
         }
         else {
             break;

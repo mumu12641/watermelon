@@ -153,11 +153,19 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::forStatement
 
 std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::returnStatement()
 {
-    auto [value, valueErr] = expression();
-    if (valueErr) return {nullptr, valueErr};
+    Token                       returnToken = previous();
+    std::unique_ptr<Expression> value       = nullptr;
+
+    if (!check(TokenType::SEMICOLON)) {
+        auto [expr, exprErr] = expression();
+        if (exprErr) return {nullptr, exprErr};
+        value = std::move(expr);
+    }
+
     auto [_, semicolonErr] = consume(TokenType::SEMICOLON, "Expect ';' after return statement.");
     if (semicolonErr) return {nullptr, semicolonErr};
-    return {std::make_unique<ReturnStatement>(value->getLocation(), std::move(value)),
+
+    return {std::make_unique<ReturnStatement>(returnToken.location, std::move(value)),
             std::nullopt};
 }
 

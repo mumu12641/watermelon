@@ -19,6 +19,36 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
 {
     this->symbolTable.enterScope(Format("class {0}", classDecl.name));
     this->symbolTable.add("self", classDecl.name);
+    for (const auto& constructorParam : classDecl.constructorParameters) {
+        this->symbolTable.add(constructorParam.name, constructorParam.type->getName());
+    }
+    if (!classDecl.baseClass.empty()) {
+        auto parent = this->classTable.find(classDecl.baseClass);
+        if (classDecl.baseConstructorArgs.size() != parent->constructorParameters.size()) {
+            return Error(
+                Format("Base class '{0}' constructor expects {1} arguments, but {2} provided",
+                       classDecl.baseClass,
+                       parent->constructorParameters.size(),
+                       classDecl.baseConstructorArgs.size()),
+                classDecl.getLocation());
+        }
+        for (int i = 0; i < classDecl.baseConstructorArgs.size(); i++) {
+            const auto& baseArg         = classDecl.baseConstructorArgs[i];
+            const auto& parentParam     = parent->constructorParameters[i];
+            auto [baseArgType, exprErr] = analyzeExpression(*baseArg);
+            if (exprErr) return exprErr;
+            if (!this->classTable.checkInherit(baseArgType->getName(),
+                                               parentParam.type->getName())) {
+                return Error(Format("Cannot convert argument {0} from '{1}' to '{2}' in base class "
+                                    "'{3}' constructor",
+                                    i + 1,
+                                    baseArgType->getName(),
+                                    parentParam.type->getName(),
+                                    classDecl.baseClass),
+                             baseArg->getLocation());
+            }
+        }
+    }
     auto parents = this->classTable.getInheritMap(classDecl.name);
     for (const auto& parentClass : *parents) {
         for (const auto& parentMember : parentClass->members) {
@@ -32,43 +62,8 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
             this->symbolTable.add(property->getName(), property->type->getName());
         }
         else if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
-            this->symbolTable.enterScope(
-                Format("class {0} method {1}", classDecl.name, method->getName()));
-
-            for (const auto& param : method->function->parameters) {
-                this->symbolTable.add(param.name, param.type->getName());
-            }
-            if (method->function->body) {
-                auto error     = analyzeStatement(*method->function->body);
-                auto [type, l] = this->currentFunctionReturnTypes.top();
-                if (error) return error;
-                if (this->currentFunctionReturnTypes.empty()) {
-                    if (method->function->returnType->getName() != "void") {
-                        return Error(Format("You need return something in {0}.{1}",
-                                            classDecl.name,
-                                            method->getName()),
-                                     method->getLocation());
-                    }
-                }
-                else {
-                    while (!this->currentFunctionReturnTypes.empty()) {
-                        auto [type, returnLocation] = this->currentFunctionReturnTypes.top();
-                        if (!method->function->returnType) {}
-                        else {
-                            if (!this->classTable.checkInherit(
-                                    type.getName(), method->function->returnType->getName())) {
-                                return Error(Format("The return statment of your {0}.{1} is "
-                                                    "different from the declared type!",
-                                                    classDecl.name,
-                                                    method->getName()),
-                                             returnLocation);
-                            }
-                        }
-                        this->currentFunctionReturnTypes.pop();
-                    }
-                }
-            }
-            this->symbolTable.exitScope();
+            auto functionDeclErr = analyzeFunctionDeclaration(*method->function);
+            if (functionDeclErr) return functionDeclErr;
         }
     }
     this->symbolTable.exitScope();
@@ -82,6 +77,37 @@ std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration(const EnumDeclarat
 
 std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(const FunctionDeclaration& decl)
 {
-
+    this->symbolTable.enterScope(Format("function {0}", decl.name));
+    for (const auto& param : decl.parameters) {
+        this->symbolTable.add(param.name, param.type->getName());
+    }
+    if (decl.body) {
+        auto error = analyzeStatement(*decl.body);
+        if (error) return error;
+        if (this->currentFunctionReturnTypes.empty()) {
+            if (decl.returnType->getName() != "void") {
+                return Error(Format("You need return something in {0}", decl.name),
+                             decl.getLocation());
+            }
+        }
+        else {
+            auto [type, l] = this->currentFunctionReturnTypes.top();
+            while (!this->currentFunctionReturnTypes.empty()) {
+                auto [type, returnLocation] = this->currentFunctionReturnTypes.top();
+                if (!decl.returnType) {}
+                else {
+                    if (!this->classTable.checkInherit(type.getName(),
+                                                       decl.returnType->getName())) {
+                        return Error(Format("The return statment of your {0} is "
+                                            "different from the declared type!",
+                                            decl.name),
+                                     returnLocation);
+                    }
+                }
+                this->currentFunctionReturnTypes.pop();
+            }
+        }
+    }
+    this->symbolTable.exitScope();
     return std::nullopt;
 }

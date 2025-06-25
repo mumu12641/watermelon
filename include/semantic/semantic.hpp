@@ -96,9 +96,10 @@ private:
 public:
     void                    add(const std::string& className, const ClassDeclaration*);
     const ClassDeclaration* find(const std::string& className);
+
     void addInheritMap(const std::string& className, std::vector<const ClassDeclaration*> parents);
-    const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className);
-    const bool checkInherit(const std::string& child, const std::string& parent);
+    bool checkInherit(const std::string& child, const std::string& parent) const;
+    const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className) const;
 };
 
 class FunctionTable
@@ -114,13 +115,11 @@ public:
 class SemanticAnalyzer
 {
 private:
-    SymbolTable              symbolTable;
-    ClassTable               classTable;
-    FunctionTable            functionTable;
-    std::unique_ptr<Program> program;
-
+    SymbolTable                                 symbolTable;
+    ClassTable                                  classTable;
+    FunctionTable                               functionTable;
+    std::unique_ptr<Program>                    program;
     std::stack<std::pair<SymbolType, Location>> currentFunctionReturnTypes;
-
 
 public:
     SemanticAnalyzer(std::unique_ptr<Program> p)

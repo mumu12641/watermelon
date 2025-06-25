@@ -77,13 +77,14 @@ void ClassTable::addInheritMap(const std::string&                   className,
         std::pair<std::string, std::vector<const ClassDeclaration*>>(className, parents));
 }
 
-const std::vector<const ClassDeclaration*>* ClassTable::getInheritMap(const std::string& className)
+const std::vector<const ClassDeclaration*>* ClassTable::getInheritMap(
+    const std::string& className) const
 {
     auto iter = inheritMap.find(className);
     return iter != inheritMap.end() ? &(iter->second) : nullptr;
 }
 
-const bool ClassTable::checkInherit(const std::string& child, const std::string& parent)
+bool ClassTable::checkInherit(const std::string& child, const std::string& parent) const
 {
     if (child == parent) return true;
     const auto* inheritMap = getInheritMap(child);
@@ -132,6 +133,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             this->functionTable.add(funcDecl->name, funcDecl);
+            // key = value = funcDecl -> name
             this->symbolTable.add(funcDecl->name, funcDecl->name, SymbolType::SymbolKind::FUNC);
         }
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
@@ -212,7 +214,12 @@ std::optional<Error> SemanticAnalyzer::validateMethodOverride(const MethodMember
 {
     const auto parentMethod = dynamic_cast<const MethodMember*>(parentMember);
     if (!parentMethod) {
-        return std::nullopt;
+        return Error(Format("Parent's {0} is a property, but {1}'s {2} is a method",
+                            method->getName(),
+                            classDecl->name,
+                            method->getName()),
+                     method->getLocation());
+        ;
     }
 
     if (!method->function->checkParam(parentMethod->function.get())) {
@@ -241,7 +248,12 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
 {
     const auto parentProperty = dynamic_cast<const PropertyMember*>(parentMember);
     if (!parentProperty) {
-        return std::nullopt;
+        return Error(Format("Parent's {0} is a method, but {1}'s {2} is a property",
+                            property->getName(),
+                            classDecl->name,
+                            property->getName()),
+                     property->getLocation());
+        ;
     }
 
     if (parentProperty->getName() == property->getName()) {

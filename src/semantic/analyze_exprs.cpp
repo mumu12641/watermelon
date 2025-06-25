@@ -140,11 +140,11 @@ SemanticAnalyzer::analyzeLiteralExpression(const LiteralExpression& expr)
         case LiteralExpression::Kind::INT:
             return {std::make_unique<SymbolType>("int"), std::nullopt};
         case LiteralExpression::Kind::FLOAT:
-            return {std::make_unique<SymbolType>("int"), std::nullopt};
+            return {std::make_unique<SymbolType>("float"), std::nullopt};
         case LiteralExpression::Kind::BOOL:
-            return {std::make_unique<SymbolType>("int"), std::nullopt};
+            return {std::make_unique<SymbolType>("bool"), std::nullopt};
         case LiteralExpression::Kind::STRING:
-            return {std::make_unique<SymbolType>("int"), std::nullopt};
+            return {std::make_unique<SymbolType>("String"), std::nullopt};
     }
     return {nullptr, std::nullopt};
 }
@@ -152,10 +152,13 @@ SemanticAnalyzer::analyzeLiteralExpression(const LiteralExpression& expr)
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
 SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
 {
+
     auto [objectType, errorObject] = analyzeExpression(*expr.object);
     if (errorObject) return {nullptr, errorObject};
+
     if (const auto* objectClass = this->classTable.find(objectType->getName())) {
-        auto* classMember = objectClass->containMember(expr.property);
+        auto* classMember = objectClass->containMember(
+            expr.kind == MemberExpression::Kind::PROPERTY ? expr.property : expr.methodName);
         if (classMember == nullptr) {
             return {nullptr,
                     Error(Format("This class {0} does not have a member named {1}",
@@ -163,6 +166,47 @@ SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
                                  expr.property),
                           expr.getLocation())};
         }
+        if (expr.kind == MemberExpression::Kind::METHOD) {
+            const auto* classMethod = dynamic_cast<const MethodMember*>(classMember);
+
+            if (expr.arguments.size() != classMethod->function->parameters.size()) {
+
+                return {
+                    nullptr,
+                    Error(Format(
+                              "Method <{0}> in class <{1}> expects {2} arguments, but {3} provided",
+                              expr.methodName,
+                              objectClass->name,
+                              classMethod->function->parameters.size(),
+                              expr.arguments.size()),
+                          expr.getLocation())};
+            };
+            for (int i = 0; i < expr.arguments.size(); i++) {
+                const auto& exprArg         = expr.arguments[i];
+                const auto& methodParam     = classMethod->function->parameters[i];
+                auto [exprArgType, exprErr] = analyzeExpression(*exprArg);
+                if (exprErr) return {nullptr, exprErr};
+                std::cout << exprArgType->getName() << "\n";
+                std::cout << methodParam.type->getName() << "\n";
+                std::cout << methodParam.name << "\n";
+
+                if (!this->classTable.checkInherit(exprArgType->getName(),
+                                                   methodParam.type->getName())) {
+                    return {
+                        nullptr,
+                        Error(Format(
+                                  "Cannot convert argument {0} from <{1}> to <{2}> in method <{3}> "
+                                  "of class <{4}>",
+                                  i + 1,
+                                  exprArgType->getName(),
+                                  methodParam.type->getName(),
+                                  expr.methodName,
+                                  objectClass->name),
+                              exprArg->getLocation())};
+                }
+            }
+        }
+
         return {std::make_unique<SymbolType>(classMember->getType()), std::nullopt};
     }
     else {
