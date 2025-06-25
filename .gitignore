@@ -10,3 +10,4 @@ a.txt
 a.cpp
 examples/*.cpp
 cmake-build-debug/
+.idea/
