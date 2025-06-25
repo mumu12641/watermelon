@@ -1,0 +1,1 @@
+fn get_age() -> int = 0

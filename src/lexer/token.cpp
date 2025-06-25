@@ -56,7 +56,7 @@ std::string Token::toString() const
         {TokenType::NOT, "NOT"},
         {TokenType::ARROW, "ARROW"},
         {TokenType::COLON, "COLON"},
-        // {TokenType::SEMICOLON, "SEMICOLON"},
+        {TokenType::SEMICOLON, "SEMICOLON"},
         {TokenType::COMMA, "COMMA"},
         {TokenType::DOT, "DOT"},
         {TokenType::LPAREN, "LPAREN"},

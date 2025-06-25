@@ -24,7 +24,7 @@ class Dog(name:String, color:Color=Color.RED) inherits Animal(name){
         weight=0.0;
         isMale=false;
     }
-    fn get_age() -> int = self.age;
+    fn get_age() -> int = 0;
     
 }
 class Cat() inherits Dog(){
@@ -37,12 +37,12 @@ class Cat() inherits Dog(){
     }
 }
 
-fn intfunc() -> int {
+fn intfunc(a:int=0) -> int {
     return 0;
 }
 
 fn main() -> int{
     var a = 0;
-    a=1;
+    a=intfunc();
     return 0;
 }
