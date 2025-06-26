@@ -65,7 +65,9 @@ std::optional<Error> SemanticAnalyzer::analyzeIfStatement(const IfStatement& stm
     if (errorCondition) return errorCondition;
 
     if (!conditionType->isBool()) {
-        return Error("The type in your If condition is not BOOL", stmt.condition->getLocation());
+        return Error(
+            Format("If condition must be of type 'bool', got '{0}'", conditionType->getName()),
+            stmt.condition->getLocation());
     }
 
     this->symbolTable.enterScope("if-then");
@@ -106,10 +108,12 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableSt
     if (stmt.type) {
         if (initType != nullptr &&
             !this->classTable.checkInherit(initType->getName(), stmt.type->getName())) {
-            return Error(Format("The initialization statement type and declaration type of the "
-                                "{0} do not match",
-                                stmt.name),
-                         stmt.getLocation());
+            return Error(
+                Format("Cannot initialize variable '{0}' of type '{1}' with value of type '{2}'",
+                       stmt.name,
+                       stmt.type->getName(),
+                       initType->getName()),
+                stmt.getLocation());
         }
         this->symbolTable.add(stmt.name, stmt.type->getName());
     }
@@ -129,7 +133,9 @@ std::optional<Error> SemanticAnalyzer::analyzeWhenStatement(const WhenStatement&
         if (errorCase) return errorCase;
 
         if (!this->classTable.checkInherit(caseValueType->getName(), subjectType->getName())) {
-            return Error("The case type in the when statement does not match the declaration type",
+            return Error(Format("Type mismatch in when case: expected '{0}', got '{1}'",
+                                subjectType->getName(),
+                                caseValueType->getName()),
                          caseItem.value->getLocation());
         }
         this->symbolTable.enterScope("when-case");

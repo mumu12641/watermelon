@@ -10,7 +10,7 @@ std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> SemanticAnalyzer::a
     else if (const auto* binaryExpr = dynamic_cast<const BinaryExpression*>(&expr)) {
         return analyzeBinaryExpression(*binaryExpr);
     }
-    else if (const auto* callExpr = dynamic_cast<const FunctionCallExpression*>(&expr)) {
+    else if (const auto* callExpr = dynamic_cast<const CallExpression*>(&expr)) {
         return analyzeFunctionCallExpression(*callExpr);
     }
     else if (const auto* idExpr = dynamic_cast<const IdentifierExpression*>(&expr)) {
@@ -37,6 +37,7 @@ std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> SemanticAnalyzer::a
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
 SemanticAnalyzer::analyzeArrayExpression(const ArrayExpression& expr)
 {
+    // TODO
     return {nullptr, Error("Not yet implemented ArrayExpression Semantic Check")};
 }
 
@@ -55,8 +56,17 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
         case BinaryExpression::Operator::DIV:
         case BinaryExpression::Operator::MOD:
             // TODO: 检查操作数类型是否兼容
-            // return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::INT), std::nullopt};
-
+            if (leftType->canMathOp() && rightType->canMathOp() &&
+                leftType->getName() == rightType->getName()) {
+                return {std::make_unique<SymbolType>(leftType->getName()), std::nullopt};
+            }
+            else {
+                return {nullptr,
+                        Error(Format("Incompatible types: '{0}' and '{1}' in arithmetic operation",
+                                     leftType->getName(),
+                                     rightType->getName()),
+                              expr.getLocation())};
+            }
 
         case BinaryExpression::Operator::EQ:
         case BinaryExpression::Operator::NEQ:
@@ -64,57 +74,116 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
         case BinaryExpression::Operator::LE:
         case BinaryExpression::Operator::GT:
         case BinaryExpression::Operator::GE:
-        case BinaryExpression::Operator::AND:
-        case BinaryExpression::Operator::OR:
-            // return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::BOOL), std::nullopt};
-
-        case BinaryExpression::Operator::ASSIGN:
-            // 赋值运算符
-            // TODO: 检查右侧类型是否可以赋值给左侧
-            // 返回左侧类型
-            if (!this->classTable.checkInherit(rightType->getName(), leftType->getName())) {
+            if (leftType->canCompare() && rightType->canCompare() &&
+                leftType->getName() == rightType->getName()) {
+                return {std::make_unique<SymbolType>("bool"), std::nullopt};
+            }
+            else {
                 return {nullptr,
-                        Error("The left and right types in your assignment expression "
-                              "do not match",
+                        Error(Format("Incompatible types: '{0}' and '{1}' in comparison operation",
+                                     leftType->getName(),
+                                     rightType->getName()),
                               expr.getLocation())};
             }
-            // return {std::make_unique<Type>(leftType.get()), std::nullopt};
+        case BinaryExpression::Operator::AND:
+        case BinaryExpression::Operator::OR:
+            if (leftType->isBool() && rightType->isBool()) {
+                return {std::make_unique<SymbolType>("bool"), std::nullopt};
+            }
+            else {
+                return {nullptr,
+                        Error(Format("Incompatible types: '{0}' and '{1}' in logical operation",
+                                     leftType->getName(),
+                                     rightType->getName()),
+                              expr.getLocation())};
+            }
+
+        case BinaryExpression::Operator::ASSIGN:
+            // TODO: 检查右侧类型是否可以赋值给左侧
+            if (!this->classTable.checkInherit(rightType->getName(), leftType->getName())) {
+                return {nullptr,
+                        Error(Format("Cannot assign value of type '{0}' to variable of type '{1}'",
+                                     rightType->getName(),
+                                     leftType->getName()),
+                              expr.getLocation())};
+            }
+            return {std::make_unique<SymbolType>(leftType->getName()), std::nullopt};
     }
     return {nullptr, std::nullopt};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
-SemanticAnalyzer::analyzeFunctionCallExpression(const FunctionCallExpression& expr)
+SemanticAnalyzer::analyzeFunctionCallExpression(const CallExpression& expr)
 {
     auto [calleeType, errorCallee] = analyzeExpression(*expr.callee);
     if (errorCallee) return {nullptr, errorCallee};
-    if (calleeType->getKind() != SymbolType::SymbolKind::FUNC) {
+
+    if (calleeType->getKind() == SymbolType::SymbolKind::VAR) {
         return {nullptr,
-                Error("The callee of CallExpression must be a function", expr.getLocation())};
+                Error("Cannot call a variable as a function or constructor", expr.getLocation())};
     }
-    if (const auto* func = this->functionTable.find(calleeType->getName())) {
-        if (func->parameters.size() != expr.arguments.size()) {
-            return {nullptr,
-                    Error("The actual number of arguments in this function call expression "
-                          "does not match the number of arguments declared",
-                          expr.getLocation())};
+
+    auto validateArguments = [this, &expr](const std::vector<FunctionParameter>& params,
+                                           const std::string&                    callType,
+                                           const std::string& name) -> std::optional<Error> {
+        if (params.size() != expr.arguments.size()) {
+            return Error(Format("{0} '{1}' expects {2} arguments, but {3} were provided",
+                                callType,
+                                name,
+                                params.size(),
+                                expr.arguments.size()),
+                         expr.getLocation());
         }
-        std::vector<std::unique_ptr<SymbolType>> argTypes;
-        for (size_t i = 0; i < func->parameters.size(); i++) {
-            auto [currArgType, errorArg] = analyzeExpression(*(expr.arguments[i]));
-            if (errorArg) return {nullptr, errorArg};
-            if (!this->classTable.checkInherit(currArgType->getName(),
-                                               func->parameters[i].type->getName())) {
-                return {nullptr,
-                        Error(Format("The type of the {0}th parameter in this function call "
-                                     "expression does not match the declared type.",
-                                     i + 1),
-                              expr.getLocation())};
+
+        for (size_t i = 0; i < params.size(); i++) {
+            auto [argType, errorArg] = analyzeExpression(*(expr.arguments[i]));
+            if (errorArg) return errorArg;
+
+            const std::string& expectedType = params[i].type->getName();
+            const std::string& actualType   = argType->getName();
+
+            if (!this->classTable.checkInherit(actualType, expectedType)) {
+                return Error(Format("Argument {0}: cannot convert from '{1}' to '{2}' in {3} '{4}'",
+                                    i + 1,
+                                    actualType,
+                                    expectedType,
+                                    callType,
+                                    name),
+                             expr.arguments[i]->getLocation());
             }
         }
+
+        return std::nullopt;
+    };
+
+    if (calleeType->getKind() == SymbolType::SymbolKind::CLASS) {
+        const auto* cls = this->classTable.find(calleeType->getName());
+        if (!cls) {
+            return {
+                nullptr,
+                Error(Format("Class '{0}' not found", calleeType->getName()), expr.getLocation())};
+        }
+
+        if (auto error = validateArguments(cls->constructorParameters, "constructor", cls->name)) {
+            return {nullptr, error};
+        }
+
+        return {std::make_unique<SymbolType>(cls->name), std::nullopt};
+    }
+    else {
+        const auto* func = this->functionTable.find(calleeType->getName());
+        if (!func) {
+            return {nullptr,
+                    Error(Format("Function '{0}' not found", calleeType->getName()),
+                          expr.getLocation())};
+        }
+
+        if (auto error = validateArguments(func->parameters, "function", func->name)) {
+            return {nullptr, error};
+        }
+
         return {std::make_unique<SymbolType>(func->returnType->getName()), std::nullopt};
     }
-    return {nullptr, std::nullopt};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
@@ -123,14 +192,15 @@ SemanticAnalyzer::analyzeIdentifierExpression(const IdentifierExpression& expr)
     auto symbol = this->symbolTable.find(expr.name);
     if (symbol == nullptr)
         return {nullptr,
-                Error(Format("This Identifier {0} is not defined", expr.name), expr.getLocation())};
+                Error(Format("Undefined identifier '{0}'", expr.name), expr.getLocation())};
     return {std::make_unique<SymbolType>(*symbol), std::nullopt};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
 SemanticAnalyzer::analyzeLambdaExpression(const LambdaExpression& expr)
 {
-    return {nullptr, std::nullopt};
+    // TODO
+    return {nullptr, Error("Not yet implemented LambdaExpression Semantic Check")};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
@@ -168,9 +238,7 @@ SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
         }
         if (expr.kind == MemberExpression::Kind::METHOD) {
             const auto* classMethod = dynamic_cast<const MethodMember*>(classMember);
-
             if (expr.arguments.size() != classMethod->function->parameters.size()) {
-
                 return {
                     nullptr,
                     Error(Format(
@@ -186,10 +254,6 @@ SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
                 const auto& methodParam     = classMethod->function->parameters[i];
                 auto [exprArgType, exprErr] = analyzeExpression(*exprArg);
                 if (exprErr) return {nullptr, exprErr};
-                std::cout << exprArgType->getName() << "\n";
-                std::cout << methodParam.type->getName() << "\n";
-                std::cout << methodParam.name << "\n";
-
                 if (!this->classTable.checkInherit(exprArgType->getName(),
                                                    methodParam.type->getName())) {
                     return {
@@ -211,14 +275,15 @@ SemanticAnalyzer::analyzeMemberExpression(const MemberExpression& expr)
     }
     else {
         return {nullptr,
-                Error("This expr is not a class and cannot access properties", expr.getLocation())};
+                Error("This expr is not a class and cannot access members", expr.getLocation())};
     }
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
 SemanticAnalyzer::analyzeTypeCheckExpression(const TypeCheckExpression& expr)
 {
-    return {nullptr, std::nullopt};
+    // TODO
+    return {nullptr, Error("Not yet implemented TypeCheckExpression Semantic Check")};
 }
 
 std::pair<std::unique_ptr<SymbolType>, std::optional<Error>>
@@ -226,20 +291,27 @@ SemanticAnalyzer::analyzeUnaryExpression(const UnaryExpression& expr)
 {
     auto [operandType, errorOp] = analyzeExpression(*expr.operand);
     if (errorOp) return {nullptr, errorOp};
+
     switch (expr.op) {
         case UnaryExpression::Operator::NEG:
             if (!operandType->canMathOp()) {
                 return {nullptr,
-                        Error("This expression cannot use the NEG operator", expr.getLocation())};
+                        Error(Format("Unary operator '-' cannot be applied to type '{0}'",
+                                     operandType->getName()),
+                              expr.getLocation())};
             }
             return {std::make_unique<SymbolType>(operandType->getName()), std::nullopt};
 
         case UnaryExpression::Operator::NOT:
             if (!operandType->isBool()) {
-                return {nullptr,
-                        Error("This expression cannot use the NOT operator", expr.getLocation())};
+                return {
+                    nullptr,
+                    Error(Format("Logical negation operator '!' cannot be applied to type '{0}'",
+                                 operandType->getName()),
+                          expr.getLocation())};
             }
             return {std::make_unique<SymbolType>(operandType->getName()), std::nullopt};
     }
+
     return {nullptr, std::nullopt};
 }

@@ -1,6 +1,9 @@
 fn get_age() -> int = 0;
 class A(age:int) {
     var a:int = 0;
+    init{
+        a = 1 + 0;
+    }
     fn handle(b:string) -> A{
         return self;
     }
@@ -10,10 +13,11 @@ class B(name:string) inherits A(1){
         return self;
     }
     fn get_name() -> string{
-        return self.handle("Asd");
+        return "asd";
     }
 }
 
-fn main(){
-    return ;
+fn main() -> A{
+    var a= C(12);
+    return a;
 }

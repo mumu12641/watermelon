@@ -65,6 +65,10 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
             auto functionDeclErr = analyzeFunctionDeclaration(*method->function);
             if (functionDeclErr) return functionDeclErr;
         }
+        else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
+            auto initBlockErr = analyzeBlockStatement(*init->block);
+            if (initBlockErr) return initBlockErr;
+        }
     }
     this->symbolTable.exitScope();
     return std::nullopt;
@@ -86,7 +90,9 @@ std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(const Function
         if (error) return error;
         if (this->currentFunctionReturnTypes.empty()) {
             if (decl.returnType->getName() != "void") {
-                return Error(Format("You need return something in {0}", decl.name),
+                return Error(Format("Function '{0}' with return type '{1}' has no return statement",
+                                    decl.name,
+                                    decl.returnType->getName()),
                              decl.getLocation());
             }
         }
@@ -98,10 +104,13 @@ std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(const Function
                 else {
                     if (!this->classTable.checkInherit(type.getName(),
                                                        decl.returnType->getName())) {
-                        return Error(Format("The return statment of your {0} is "
-                                            "different from the declared type!",
-                                            decl.name),
-                                     returnLocation);
+                        return Error(
+                            Format(
+                                "Return type mismatch in function '{0}': expected '{1}', got '{2}'",
+                                decl.name,
+                                decl.returnType->getName(),
+                                type.getName()),
+                            returnLocation);
                     }
                 }
                 this->currentFunctionReturnTypes.pop();

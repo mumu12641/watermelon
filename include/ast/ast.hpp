@@ -274,13 +274,14 @@ public:
     }
 };
 
-class FunctionCallExpression : public Expression
+class CallExpression : public Expression
 {
+    // function call & class init
 public:
     std::unique_ptr<Expression>              callee;
     std::vector<std::unique_ptr<Expression>> arguments;
 
-    FunctionCallExpression(Location location, std::unique_ptr<Expression> callee,
+    CallExpression(Location location, std::unique_ptr<Expression> callee,
                            std::vector<std::unique_ptr<Expression>> arguments)
         : callee(std::move(callee))
         , arguments(std::move(arguments))

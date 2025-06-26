@@ -236,7 +236,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::finishCall(
     if (rparenErr) return {nullptr, rparenErr};
 
 
-    return {std::make_unique<FunctionCallExpression>(l, std::move(callee), std::move(arguments)),
+    return {std::make_unique<CallExpression>(l, std::move(callee), std::move(arguments)),
             std::nullopt};
 }
 

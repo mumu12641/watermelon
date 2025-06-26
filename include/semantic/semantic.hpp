@@ -18,7 +18,8 @@ public:
     enum class SymbolKind
     {
         VAR,
-        FUNC
+        FUNC,
+        CLASS
     };
     SymbolType()
         : name("")
@@ -160,7 +161,7 @@ public:
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeBinaryExpression(
         const BinaryExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeFunctionCallExpression(
-        const FunctionCallExpression& expr);
+        const CallExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeIdentifierExpression(
         const IdentifierExpression& expr);
     std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLambdaExpression(

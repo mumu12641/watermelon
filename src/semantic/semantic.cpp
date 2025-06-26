@@ -110,6 +110,7 @@ const FunctionDeclaration* FunctionTable::find(const std::string& functionName)
 std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::analyze()
 {
     bool mainFlag = false;
+    this->symbolTable.enterScope("global");
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             if (funcDecl->name == "main") {
@@ -123,9 +124,9 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                               classDecl->getLocation())};
             }
             this->classTable.add(classDecl->name, classDecl);
+            this->symbolTable.add(classDecl->name, classDecl->name, SymbolType::SymbolKind::CLASS);
         }
     }
-
     if (!mainFlag) {
         return {nullptr, Error("Your program is missing the Main function!!!")};
     }
@@ -204,6 +205,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         auto errorDecl = analyzeDeclaration(*decl);
         if (errorDecl) return {nullptr, errorDecl};
     }
+    this->symbolTable.exitScope();
     return {std::move(program), std::nullopt};
 }
 
