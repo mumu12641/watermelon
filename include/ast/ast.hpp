@@ -282,7 +282,7 @@ public:
     std::vector<std::unique_ptr<Expression>> arguments;
 
     CallExpression(Location location, std::unique_ptr<Expression> callee,
-                           std::vector<std::unique_ptr<Expression>> arguments)
+                   std::vector<std::unique_ptr<Expression>> arguments)
         : callee(std::move(callee))
         , arguments(std::move(arguments))
         , Expression(location)
@@ -944,6 +944,7 @@ public:
     std::string                               baseClass;
     std::vector<std::unique_ptr<Expression>>  baseConstructorArgs;
     std::vector<std::unique_ptr<ClassMember>> members;
+    bool                                      iter;
 
     ClassDeclaration(Location location, Kind kind, std::string name,
                      std::vector<FunctionParameter> constructorParameters, std::string baseClass,

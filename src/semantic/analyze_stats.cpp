@@ -48,10 +48,17 @@ std::optional<Error> SemanticAnalyzer::analyzeForStatement(const ForStatement& s
     auto [iterableType, errorIterableExpr] = analyzeExpression(*stmt.iterable);
     if (errorIterableExpr) return errorIterableExpr;
     // TODO: 检查iterableType是否可迭代
+    auto iterable = this->classTable.isClassIterable(iterableType->getName());
+    if (iterable == nullptr) {
+        return Error(Format("Type '{0}' is not iterable - must implement both '_first' and '_next' "
+                            "operator methods with matching return types",
+                            iterableType->getName()),
+                     stmt.iterable->getLocation());
+    }
 
     this->symbolTable.enterScope("for-loop");
     // TODO: get variable type from iterableType
-    this->symbolTable.add(stmt.variable, "int");
+    this->symbolTable.add(stmt.variable, iterable->second);
 
     auto errorBody = analyzeStatement(*stmt.body);
     if (errorBody) return errorBody;

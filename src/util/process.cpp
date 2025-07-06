@@ -15,9 +15,9 @@ void processSourceFile(const std::string& source, const std::string& filename = 
 
     Lexer lexer(source, filename);
     auto [tokens, lexerError] = lexer.tokenize();
-    for (const auto& token : tokens) {
-        std::cout << token.toString() << std::endl;
-    }
+    // for (const auto& token : tokens) {
+    //     std::cout << token.toString() << std::endl;
+    // }
     if (lexerError) {
         lexerError->print();
         lexerError->printContext();

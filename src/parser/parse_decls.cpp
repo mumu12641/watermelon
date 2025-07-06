@@ -19,7 +19,11 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::declaratio
 
 std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDeclaration()
 {
-    bool     isOperator  = previous().type == TokenType::OPERATOR;
+    bool isOperator = false;
+    if (previous().type == TokenType::OPERATOR) {
+        isOperator = true;
+        advance();
+    }
     Location l           = previous().location;
     auto [name, nameErr] = consume(TokenType::IDENTIFIER, "Expect function name.");
     if (nameErr) return {nullptr, nameErr};
@@ -32,7 +36,7 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
         do {
             auto [paramName, paramErr] = consume(TokenType::IDENTIFIER, "Expect parameter name.");
             if (paramErr) return {nullptr, paramErr};
-            std::cout << paramName.toString() ;
+            std::cout << paramName.toString();
 
 
             std::unique_ptr<Type> paramType = nullptr;
@@ -41,7 +45,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
                 if (typeErr) return {nullptr, typeErr};
                 paramType = std::move(typeVal);
                 std::cout << paramType->getName() << "\n";
-
             }
 
             std::unique_ptr<Expression> defaultValue = nullptr;
@@ -289,7 +292,7 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
                     std::make_unique<BlockStatement>(Location(), std::move(statements))),
                 std::nullopt};
     }
-    else if (match(TokenType::FN) || (match(TokenType::OPERATOR) && match(TokenType::FUN))) {
+    else if (match(TokenType::FN) || match(TokenType::OPERATOR) || match(TokenType::FUN)) {
         auto [functionDecl, funcErr] = functionDeclaration();
         if (funcErr) return {nullptr, funcErr};
         Location l = functionDecl->getLocation();

@@ -50,7 +50,7 @@ void SymbolTable::debug() const
 {
     std::cout << "SymbolTable Debug Information:\n";
     for (size_t i = 0; i < scopes.size(); ++i) {
-        std::cout << "Scope " << i << scopes[i].getName() << ":\n";
+        std::cout << "Scope " << i << " " << scopes[i].getName() << ":\n";
         for (const auto& pair : scopes[i].getMap()) {
             std::cout << "  Key: " << pair.first << ", Symbol Type: " << pair.second.getName()
                       << "\n";
@@ -62,6 +62,7 @@ void SymbolTable::debug() const
 void ClassTable::add(const std::string& className, const ClassDeclaration* classDecl)
 {
     classes.insert(std::pair<std::string, const ClassDeclaration*>(className, classDecl));
+    classIterableMap[className] = {false, ""};
 }
 
 const ClassDeclaration* ClassTable::find(const std::string& className)
@@ -95,6 +96,22 @@ bool ClassTable::checkInherit(const std::string& child, const std::string& paren
     return false;
 }
 
+void ClassTable::setClassIterableMap(const std::string& className, bool iterable,
+                                     const std::string& type)
+{
+    classIterableMap[className] = {iterable, type};
+}
+const std::pair<bool, std::string>* ClassTable::isClassIterable(const std::string& className) const
+{
+    auto it = classIterableMap.find(className);
+    if (it != classIterableMap.end() && it->second.first == true) {
+        return &it->second;
+    }
+    else {
+        return nullptr;
+    }
+}
+
 void FunctionTable::add(const std::string& functionName, const FunctionDeclaration* functionDecl)
 {
     functions.insert(
@@ -120,7 +137,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             if (this->classTable.find(classDecl->name)) {
                 return {nullptr,
-                        Error(Format("Class {0} has been defined!", classDecl->name),
+                        Error(Format("Class '{0}' is already defined", classDecl->name),
                               classDecl->getLocation())};
             }
             this->classTable.add(classDecl->name, classDecl);
@@ -128,7 +145,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         }
     }
     if (!mainFlag) {
-        return {nullptr, Error("Your program is missing the Main function!!!")};
+        return {nullptr, Error("Program requires a 'main' function")};
     }
 
     for (const auto& decl : program->declarations) {
@@ -143,7 +160,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
             while (1) {
                 if (currParent == classDecl->name) {
                     return {nullptr,
-                            Error(Format("There is an inheritance cycle about Class {0}!",
+                            Error(Format("Circular inheritance detected in class '{0}'",
                                          classDecl->name),
                                   classDecl->getLocation())};
                 }
@@ -154,8 +171,9 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                     auto decl = this->classTable.find(currParent);
                     if (decl == nullptr) {
                         return {nullptr,
-                                Error(Format("Your Class {0} inherits an undefined Class !",
-                                             classDecl->name),
+                                Error(Format("Class '{0}' inherits from undefined class '{1}'",
+                                             classDecl->name,
+                                             currParent),
                                       classDecl->getLocation())};
                     }
                     else {
@@ -171,18 +189,17 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
     // cat -> Dog -> animal
     for (const auto& decl : program->declarations) {
         if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
+            checkClassOperator(classDecl);
             auto parents = this->classTable.getInheritMap(classDecl->name);
             if (!parents || parents->empty()) {
                 continue;
             }
-
             for (const auto& member : classDecl->members) {
                 for (const auto& parentClass : *parents) {
                     const ClassMember* parentMember = parentClass->containMember(member.get());
                     if (!parentMember) {
                         continue;
                     }
-
                     if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
                         if (auto error = validateMethodOverride(
                                 method, parentMember, classDecl, parentClass)) {
@@ -216,28 +233,37 @@ std::optional<Error> SemanticAnalyzer::validateMethodOverride(const MethodMember
 {
     const auto parentMethod = dynamic_cast<const MethodMember*>(parentMember);
     if (!parentMethod) {
-        return Error(Format("Parent's {0} is a property, but {1}'s {2} is a method",
-                            method->getName(),
-                            classDecl->name,
-                            method->getName()),
-                     method->getLocation());
-        ;
+        return Error(
+            Format("Type mismatch: '{0}' is a property in parent class but a method in class '{1}'",
+                   method->getName(),
+                   classDecl->name),
+            method->getLocation());
     }
-
-    if (!method->function->checkParam(parentMethod->function.get())) {
-        return Error(Format("An error occurred in the parameter type of the method <{0}> "
-                            "overridden by Class {1}!",
+    if (method->function->isOperator != parentMethod->function->isOperator) {
+        return Error(Format("Operator status mismatch: '{0}::{1}' cannot override parent method in "
+                            "class '{2}' with different operator status",
+                            classDecl->name,
                             method->getName(),
-                            classDecl->name),
+                            parentClass->name),
+                     method->getLocation());
+    }
+    if (!method->function->checkParam(parentMethod->function.get())) {
+        return Error(Format("Method override error: parameter types in '{0}::{1}' don't match "
+                            "parent class '{2}'",
+                            classDecl->name,
+                            method->getName(),
+                            parentClass->name),
                      method->getLocation());
     }
 
     if (!method->function->checkReturnType(parentMethod->function.get())) {
-        return Error(Format("An error occurred in the return type of the method <{0}> "
-                            "overridden by Class {1}!",
-                            method->getName(),
-                            classDecl->name),
-                     method->getLocation());
+        return Error(
+            Format(
+                "Method override error: return type of '{0}::{1}' doesn't match parent class '{2}'",
+                classDecl->name,
+                method->getName(),
+                parentClass->name),
+            method->getLocation());
     }
 
     return std::nullopt;
@@ -250,17 +276,16 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
 {
     const auto parentProperty = dynamic_cast<const PropertyMember*>(parentMember);
     if (!parentProperty) {
-        return Error(Format("Parent's {0} is a method, but {1}'s {2} is a property",
-                            property->getName(),
-                            classDecl->name,
-                            property->getName()),
-                     property->getLocation());
-        ;
+        return Error(
+            Format("Type mismatch: '{0}' is a method in parent class but a property in class '{1}'",
+                   property->getName(),
+                   classDecl->name),
+            property->getLocation());
     }
 
     if (parentProperty->getName() == property->getName()) {
-        return Error(Format("You cannot define the same property <{0}> in the subclass {1} "
-                            "as the superclass {2}",
+        return Error(Format("Property '{0}' in class '{1}' cannot override property with same name "
+                            "from parent class '{2}'",
                             property->getName(),
                             classDecl->name,
                             parentClass->name),
@@ -268,4 +293,50 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
     }
 
     return std::nullopt;
+}
+
+void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
+{
+    bool        hasFirst = false;
+    bool        hasNext  = false;
+    std::string firstReturnType;
+    std::string nextReturnType;
+
+    for (const auto& member : classDecl->members) {
+        if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
+            if (method->function->isOperator) {
+                if (method->function->name == "_first") {
+                    hasFirst        = true;
+                    firstReturnType = method->function->returnType->getName();
+                }
+                else if (method->function->name == "_next") {
+                    hasNext        = true;
+                    nextReturnType = method->function->returnType->getName();
+                }
+            }
+        }
+    }
+    if (hasFirst && !hasNext) {
+        throw Error(
+            Format(
+                "Class '{0}' has '_first' operator but is missing '_next' operator for iteration",
+                classDecl->name),
+            classDecl->getLocation());
+    }
+    else if (!hasFirst && hasNext) {
+        throw Error(
+            Format(
+                "Class '{0}' has '_next' operator but is missing '_first' operator for iteration",
+                classDecl->name),
+            classDecl->getLocation());
+    }
+    else if (hasFirst && hasNext) {
+        if (firstReturnType != nextReturnType) {
+            throw Error(Format("Iterator operators '_first' and '_next' in class '{0}' must have "
+                               "the same return type",
+                               classDecl->name),
+                        classDecl->getLocation());
+        }
+        this->classTable.setClassIterableMap(classDecl->name, true, firstReturnType);
+    }
 }

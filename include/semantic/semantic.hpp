@@ -90,17 +90,18 @@ public:
 class ClassTable
 {
 private:
-    std::unordered_map<std::string, const ClassDeclaration*> classes;
-    // std::vector<std::pair<std::string, const ClassDeclaration*>> classes;
+    std::unordered_map<std::string, const ClassDeclaration*>              classes;
     std::unordered_map<std::string, std::vector<const ClassDeclaration*>> inheritMap;
+    std::unordered_map<std::string, std::pair<bool, std::string>>         classIterableMap;
 
 public:
     void                    add(const std::string& className, const ClassDeclaration*);
     const ClassDeclaration* find(const std::string& className);
-
     void addInheritMap(const std::string& className, std::vector<const ClassDeclaration*> parents);
     bool checkInherit(const std::string& child, const std::string& parent) const;
     const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className) const;
+    void setClassIterableMap(const std::string& className, bool iterable, const std::string& type);
+    const std::pair<bool, std::string>* isClassIterable(const std::string& className) const;
 };
 
 class FunctionTable
@@ -138,6 +139,7 @@ public:
                                                   const ClassMember*      parentMember,
                                                   const ClassDeclaration* classDecl,
                                                   const ClassDeclaration* parentClass);
+    void                 checkClassOperator(const ClassDeclaration* classDecl);
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
     std::optional<Error> analyzeDeclaration(const Declaration& decl);

@@ -9,15 +9,35 @@ class A(age:int) {
     }
 }
 class B(name:string) inherits A(1){
+    var index:int = 0;
     fn handle(b:string) -> A{
         return self;
     }
     fn get_name() -> string{
         return "asd";
     }
+    operator fn _first() -> int{
+        return 0;
+    }
+    operator fn _next() -> int{
+        index = index + 1;
+        return index;
+    }
 }
 
+fn opera(){
+    var a = 1;
+    if(a > 0){
+        if(a < 2){
+            for (b in B("asd")){
+
+            }
+            return;
+        }
+    }
+    return ;
+}
 fn main() -> A{
-    var a= C(12);
-    return a;
+
+    return A(1);
 }
