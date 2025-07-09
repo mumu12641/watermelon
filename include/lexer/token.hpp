@@ -1,9 +1,10 @@
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 
+#include "../utils/error.hpp"
+
 #include <string>
 #include <variant>
-#include "../utils/error.hpp"
 
 enum class TokenType
 {
@@ -88,40 +89,46 @@ struct Token
     // std::string                                                 filename;
     Location location;
 
-    Token(TokenType type, int line, int column, const std::string& filename = "")
+    explicit Token(TokenType type, int line, int column, const std::string& filename = "")
         : type(type)
         , value(std::monostate{})
         , location(line, column, filename)
     {
     }
 
-    Token(TokenType type, int value, int line, int column, const std::string& filename = "")
+    explicit Token(TokenType type, int value, int line, int column,
+                   const std::string& filename = "")
         : type(type)
         , value(value)
         , location(line, column, filename)
     {
     }
 
-    Token(TokenType type, float value, int line, int column, const std::string& filename = "")
+    explicit Token(TokenType type, float value, int line, int column,
+                   const std::string& filename = "")
         : type(type)
         , value(value)
         , location(line, column, filename)
     {
     }
 
-    Token(TokenType type, bool value, int line, int column, const std::string& filename = "")
-        : type(type)
-        , value(value)
-        , location(line, column, filename)
-    {
-    }
-
-    Token(TokenType type, std::string value, int line, int column, const std::string& filename = "")
+    explicit Token(TokenType type, std::string value, int line, int column,
+                   const std::string& filename = "")
         : type(type)
         , value(std::move(value))
         , location(line, column, filename)
     {
     }
+    
+    explicit Token(TokenType type, bool value, int line, int column,
+                   const std::string& filename = "")
+        : type(type)
+        , value(value)
+        , location(line, column, filename)
+    {
+    }
+
+
 
     std::string toString() const;
 };

@@ -13,7 +13,9 @@
 
 
 int main(int argc, char* argv[])
-{
+{   
+    cout_pink("🎉Welcome to watermelon compiler!!\n");
+    printLogo();
     if (argc < 2) {
         printUsage(argv[0]);
         return 1;

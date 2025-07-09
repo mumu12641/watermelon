@@ -17,4 +17,5 @@ void processFile(const std::string& filepath);
 void processDirectory(const std::string& dirPath, const std::string& extension = ".wm");
 
 void printUsage(const char* programName);
+void printLogo();
 #endif

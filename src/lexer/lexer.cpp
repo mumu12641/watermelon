@@ -191,7 +191,8 @@ Token Lexer::scanString()
     }
 
     if (peek() == '\0') {
-        return Token(TokenType::ERROR, "Unterminated string", startLine, startColumn, filename);
+        return Token(
+            TokenType::ERROR, std::string("Unterminated string"), startLine, startColumn, filename);
     }
 
     advance();
@@ -283,16 +284,22 @@ Token Lexer::nextToken()
             if (match('&')) {
                 return Token(TokenType::AND, currentLine, currentColumn, filename);
             }
-            return Token(
-                TokenType::ERROR, "Unexpected character '&'", currentLine, currentColumn, filename);
+            return Token(TokenType::ERROR,
+                         std::string("Unexpected character '&'"),
+                         currentLine,
+                         currentColumn,
+                         filename);
 
         case '|':
             advance();
             if (match('|')) {
                 return Token(TokenType::OR, currentLine, currentColumn, filename);
             }
-            return Token(
-                TokenType::ERROR, "Unexpected character '|'", currentLine, currentColumn, filename);
+            return Token(TokenType::ERROR,
+                         std::string("Unexpected character '|'"),
+                         currentLine,
+                         currentColumn,
+                         filename);
 
         case ':': advance(); return Token(TokenType::COLON, currentLine, currentColumn, filename);
         case ',': advance(); return Token(TokenType::COMMA, currentLine, currentColumn, filename);
@@ -312,7 +319,7 @@ Token Lexer::nextToken()
         default:
             advance();
             return Token(TokenType::ERROR,
-                         std::string("Unexpected character '") + c + "'",
+                         Format("Unexpected character '{}' ", c),
                          currentLine,
                          currentColumn,
                          filename);

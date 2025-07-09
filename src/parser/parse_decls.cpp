@@ -36,7 +36,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
         do {
             auto [paramName, paramErr] = consume(TokenType::IDENTIFIER, "Expect parameter name.");
             if (paramErr) return {nullptr, paramErr};
-            std::cout << paramName.toString();
 
 
             std::unique_ptr<Type> paramType = nullptr;
@@ -44,7 +43,6 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
                 auto [typeVal, typeErr] = type();
                 if (typeErr) return {nullptr, typeErr};
                 paramType = std::move(typeVal);
-                std::cout << paramType->getName() << "\n";
             }
 
             std::unique_ptr<Expression> defaultValue = nullptr;

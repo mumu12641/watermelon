@@ -4,7 +4,6 @@ class A(age:int) {
     val b:int = 1;
     init{
         a = 1 + 0;
-        b = a;
     }
     fn handle(b:string) -> A{
         return self;
@@ -28,7 +27,7 @@ class B(name:string) inherits A(1){
 }
 
 fn opera(){
-    var a = 1;
+    var a = 1
     if(a > 0){
         if(a < 2){
             for (b in B("asd")){
