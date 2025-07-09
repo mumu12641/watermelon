@@ -58,7 +58,7 @@ std::optional<Error> SemanticAnalyzer::analyzeForStatement(const ForStatement& s
 
     this->symbolTable.enterScope("for-loop");
     // TODO: get variable type from iterableType
-    this->symbolTable.add(stmt.variable, iterable->second);
+    this->symbolTable.add(stmt.variable, iterable->second, SymbolType::SymbolKind::VAL);
 
     auto errorBody = analyzeStatement(*stmt.body);
     if (errorBody) return errorBody;
@@ -122,10 +122,14 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableSt
                        initType->getName()),
                 stmt.getLocation());
         }
-        this->symbolTable.add(stmt.name, stmt.type->getName());
+        this->symbolTable.add(stmt.name,
+                              stmt.type->getName(),
+                              stmt.immutable);
     }
     else if (initType) {
-        this->symbolTable.add(stmt.name, initType->getName());
+        this->symbolTable.add(stmt.name,
+                              initType->getName(),
+                              stmt.immutable);
     }
     return std::nullopt;
 }

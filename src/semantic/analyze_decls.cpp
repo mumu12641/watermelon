@@ -18,7 +18,7 @@ std::optional<Error> SemanticAnalyzer::analyzeDeclaration(const Declaration& dec
 std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclaration& classDecl)
 {
     this->symbolTable.enterScope(Format("class {0}", classDecl.name));
-    this->symbolTable.add("self", classDecl.name);
+    this->symbolTable.add("self", classDecl.name, SymbolType::SymbolKind::VAL);
     for (const auto& constructorParam : classDecl.constructorParameters) {
         this->symbolTable.add(constructorParam.name, constructorParam.type->getName());
     }
@@ -53,13 +53,15 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
     for (const auto& parentClass : *parents) {
         for (const auto& parentMember : parentClass->members) {
             if (const auto property = dynamic_cast<const PropertyMember*>(parentMember.get())) {
-                this->symbolTable.add(property->getName(), property->type->getName());
+                this->symbolTable.add(property->getName(),
+                                      property->type->getName(),
+                                      property->immutable);
             }
         }
     }
     for (const auto& member : classDecl.members) {
         if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
-            this->symbolTable.add(property->getName(), property->type->getName());
+            this->symbolTable.add(property->getName(), property->type->getName(),property->immutable);
         }
         else if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
             auto functionDeclErr = analyzeFunctionDeclaration(*method->function);

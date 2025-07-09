@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     }
 
     std::string firstArg  = argv[1];
-    std::string extension = ".wm";  
+    std::string extension = ".wm";
 
     if (firstArg == "--dir") {
         if (argc < 3) {
@@ -41,17 +41,16 @@ int main(int argc, char* argv[])
         for (int i = 2; i < argc; i++) {
             std::string arg = argv[i];
             if (arg == "--ext") {
-                i++;   // 跳过这个参数和它的值
+                i++;
                 continue;
             }
             if (arg.substr(0, 2) == "--") {
-                continue;   // 跳过其他可能的选项
+                continue;
             }
             processFile(arg);
         }
     }
     else {
-        // 处理单个文件
         processFile(firstArg);
     }
 

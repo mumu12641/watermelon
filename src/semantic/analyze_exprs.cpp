@@ -67,6 +67,7 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
                                      rightType->getName()),
                               expr.getLocation())};
             }
+            break;
 
         case BinaryExpression::Operator::EQ:
         case BinaryExpression::Operator::NEQ:
@@ -85,6 +86,8 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
                                      rightType->getName()),
                               expr.getLocation())};
             }
+            break;
+
         case BinaryExpression::Operator::AND:
         case BinaryExpression::Operator::OR:
             if (leftType->isBool() && rightType->isBool()) {
@@ -97,9 +100,20 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
                                      rightType->getName()),
                               expr.getLocation())};
             }
+            break;
+
 
         case BinaryExpression::Operator::ASSIGN:
             // TODO: 检查右侧类型是否可以赋值给左侧
+            // TODO: 左侧的变量是否可以可变
+            // directly cast
+            const IdentifierExpression* leftExpr =
+                dynamic_cast<const IdentifierExpression*>(expr.left.get());
+            if (this->symbolTable.find(leftExpr->name)->isImmutable()) {
+                return {nullptr,
+                    Error(Format("Cannot assign to immutable variable '{0}'", leftExpr->name),
+                          expr.getLocation())};
+            }
             if (!this->classTable.checkInherit(rightType->getName(), leftType->getName())) {
                 return {nullptr,
                         Error(Format("Cannot assign value of type '{0}' to variable of type '{1}'",
@@ -107,6 +121,8 @@ SemanticAnalyzer::analyzeBinaryExpression(const BinaryExpression& expr)
                                      leftType->getName()),
                               expr.getLocation())};
             }
+
+
             return {std::make_unique<SymbolType>(leftType->getName()), std::nullopt};
     }
     return {nullptr, std::nullopt};

@@ -648,20 +648,14 @@ public:
 class VariableStatement : public Statement
 {
 public:
-    enum class Kind
-    {
-        VAR,
-        VAL,
-    };
-
-    Kind                        kind;
+    bool                        immutable;
     std::string                 name;
     std::unique_ptr<Type>       type;
     std::unique_ptr<Expression> initializer;
 
-    VariableStatement(Location location, Kind kind, std::string name, std::unique_ptr<Type> type,
-                      std::unique_ptr<Expression> initializer)
-        : kind(kind)
+    VariableStatement(Location location, bool immutable, std::string name,
+                      std::unique_ptr<Type> type, std::unique_ptr<Expression> initializer)
+        : immutable(immutable)
         , name(std::move(name))
         , type(std::move(type))
         , initializer(std::move(initializer))
@@ -673,9 +667,9 @@ public:
     std::string dump(int level = 0) const override
     {
         std::string kindStr;
-        switch (kind) {
-            case Kind::VAR: kindStr = "var"; break;
-            case Kind::VAL: kindStr = "val"; break;
+        switch (immutable) {
+            case false: kindStr = "var"; break;
+            case true: kindStr = "val"; break;
         }
 
         std::string result = indent(level) + "VariableStatement (" + kindStr + "): " + name;
@@ -854,13 +848,15 @@ public:
 class PropertyMember : public ClassMember
 {
 public:
+    bool                        immutable;
     std::string                 name;
     std::unique_ptr<Type>       type;
     std::unique_ptr<Expression> initializer;
 
-    PropertyMember(Location location, std::string name, std::unique_ptr<Type> type,
+    PropertyMember(Location location, bool immutable, std::string name, std::unique_ptr<Type> type,
                    std::unique_ptr<Expression> initializer = nullptr)
-        : name(std::move(name))
+        : immutable(immutable)
+        , name(std::move(name))
         , type(std::move(type))
         , ClassMember(location)
         , initializer(std::move(initializer))

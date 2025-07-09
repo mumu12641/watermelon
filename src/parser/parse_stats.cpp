@@ -171,15 +171,8 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::returnStatem
 
 std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStatment()
 {
-    VariableStatement::Kind kind;
-    Location                l = previous().location;
-    if (previous().type == TokenType::VAR) {
-        kind = VariableStatement::Kind::VAR;
-    }
-    else if (previous().type == TokenType::VAL) {
-        kind = VariableStatement::Kind::VAL;
-    }
-
+    bool     immutable   = previous().type == TokenType::VAL;
+    Location l           = previous().location;
     auto [name, nameErr] = consume(TokenType::IDENTIFIER, "Expect variable name.");
     if (nameErr) return {nullptr, nameErr};
 
@@ -199,8 +192,10 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
     auto [_, semicolonErr] =
         consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
     if (semicolonErr) return {nullptr, semicolonErr};
-    return {
-        std::make_unique<VariableStatement>(
-            l, kind, std::get<std::string>(name.value), std::move(varType), std::move(initializer)),
-        std::nullopt};
+    return {std::make_unique<VariableStatement>(l,
+                                                immutable,
+                                                std::get<std::string>(name.value),
+                                                std::move(varType),
+                                                std::move(initializer)),
+            std::nullopt};
 }

@@ -18,6 +18,7 @@ public:
     enum class SymbolKind
     {
         VAR,
+        VAL,
         FUNC,
         CLASS
     };
@@ -37,13 +38,26 @@ public:
     {
     }
 
-    bool isBool() const { return kind == SymbolKind::VAR && (name == "bool" || name == "int"); }
-    bool isVoid() const { return kind == SymbolKind::VAR && name == "void"; }
-    bool canMathOp() const { return kind == SymbolKind::VAR && (name == "int" || name == "float"); }
+    bool isBool() const
+    {
+        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+               (name == "bool" || name == "int");
+    }
+    bool isVoid() const
+    {
+        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) && name == "void";
+    }
+    bool canMathOp() const
+    {
+        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+               (name == "int" || name == "float");
+    }
     bool canCompare() const
     {
-        return kind == SymbolKind::VAR && (name == "int" || name == "float");
+        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+               (name == "int" || name == "float");
     }
+    bool isImmutable() const { return kind == SymbolKind::VAL; }
 
     const std::string& getName() const { return name; }
     const SymbolKind&  getKind() const { return kind; }
@@ -84,6 +98,7 @@ public:
     const SymbolType* find(const std::string& key);
     void              add(const std::string& key, const std::string& type,
                           SymbolType::SymbolKind kind = SymbolType::SymbolKind::VAR);
+    void              add(const std::string& key, const std::string& type, bool immutable);
     void              debug() const;
 };
 

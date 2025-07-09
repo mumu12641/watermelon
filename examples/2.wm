@@ -1,8 +1,10 @@
 fn get_age() -> int = 0;
 class A(age:int) {
     var a:int = 0;
+    val b:int = 1;
     init{
         a = 1 + 0;
+        b = a;
     }
     fn handle(b:string) -> A{
         return self;

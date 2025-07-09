@@ -23,6 +23,7 @@ void processSourceFile(const std::string& source, const std::string& filename = 
         lexerError->printContext();
         return;
     }
+    std::cout << "pass lexer check" << std::endl;
 
     Parser parser(tokens);
     auto [program, parserError] = parser.parse();
@@ -32,7 +33,9 @@ void processSourceFile(const std::string& source, const std::string& filename = 
         parserError->printContext();
         return;
     }
-    std::cout << program->dump() << std::endl;
+    std::cout << "pass paser check" << std::endl;
+
+    // std::cout << program->dump() << std::endl;
 
     SemanticAnalyzer semanticAnalyzer(std::move(program));
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
@@ -41,6 +44,8 @@ void processSourceFile(const std::string& source, const std::string& filename = 
         semanticError->printContext();
         return;
     }
+    std::cout << "pass semantic check" << std::endl;
+
 }
 
 

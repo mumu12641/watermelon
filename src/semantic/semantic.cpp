@@ -45,6 +45,16 @@ void SymbolTable::add(const std::string& key, const std::string& type, SymbolTyp
         scopes.back().add(key, SymbolType(type, kind));
     }
 }
+void SymbolTable::add(const std::string& key, const std::string& type, bool immutable)
+{
+    if (!scopes.empty()) {
+        scopes.back().add(
+            key,
+            SymbolType(type,
+                       immutable ? SymbolType::SymbolKind::VAL : SymbolType::SymbolKind::VAR));
+    }
+}
+
 
 void SymbolTable::debug() const
 {

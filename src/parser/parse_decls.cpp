@@ -245,7 +245,9 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::classDecla
 
 std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMember()
 {
+
     if (match({TokenType::VAR, TokenType::VAL})) {
+        bool immutable       = previous().type == TokenType::VAL;
         auto [name, nameErr] = consume(TokenType::IDENTIFIER, "Expect property name.");
         if (nameErr) return {nullptr, nameErr};
 
@@ -267,6 +269,7 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
         if (semicolonErr) return {nullptr, semicolonErr};
 
         return {std::make_unique<PropertyMember>(name.location,
+                                                 immutable,
                                                  std::get<std::string>(name.value),
                                                  std::move(propType),
                                                  std::move(initializer)),
