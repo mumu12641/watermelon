@@ -61,7 +61,7 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
     auto [__, rparenErr] = consume(TokenType::RPAREN, "Expect ')' after parameters.");
     if (rparenErr) return {nullptr, rparenErr};
 
-    std::unique_ptr<Type> returnType = std::make_unique<PrimitiveType>(PrimitiveType::Kind::VOID);
+    std::unique_ptr<Type> returnType = std::make_unique<Type>(Type::builtinVoid);
     if (match(TokenType::ARROW)) {
         auto [returnTypeVal, returnTypeErr] = type();
         if (returnTypeErr) return {nullptr, returnTypeErr};
@@ -311,24 +311,24 @@ std::pair<std::unique_ptr<ClassMember>, std::optional<Error>> Parser::classMembe
 std::pair<std::unique_ptr<Type>, std::optional<Error>> Parser::type()
 {
     if (match(TokenType::VOID)) {
-        return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::VOID), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinVoid()), std::nullopt};
     }
     else if (match(TokenType::INT_TYPE)) {
-        return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::INT), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinInt()), std::nullopt};
     }
     else if (match(TokenType::FLOAT_TYPE)) {
-        return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::FLOAT), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinFloat), std::nullopt};
     }
     else if (match(TokenType::BOOL_TYPE)) {
-        return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::BOOL), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
     }
     else if (match(TokenType::STRING_TYPE)) {
-        return {std::make_unique<PrimitiveType>(PrimitiveType::Kind::STRING), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinString), std::nullopt};
     }
     else if (match(TokenType::IDENTIFIER)) {
         std::string typeName = std::get<std::string>(previous().value);
 
-        return {std::make_unique<CustomType>(std::move(typeName)), std::nullopt};
+        return {std::make_unique<Type>(Type::classType(typeName)), std::nullopt};
     }
 
     return {nullptr, createError(peek(), "Expect type.")};

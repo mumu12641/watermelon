@@ -11,8 +11,86 @@
 #include <unordered_map>
 #include <vector>
 
-class SymbolType
+// class Type
+// {
+
+// public:
+//     enum class SymbolKind
+//     {
+//         VAR,
+//         VAL,
+//         FUNC,
+//         CLASS
+//     };
+//     Type()
+//         : name("")
+//         , kind(SymbolKind::VAR)
+//     {
+//     }
+//     Type(const std::string& s)
+//         : name(s)
+//         , kind(SymbolKind::VAR)
+//     {
+//     }
+//     Type(const std::string& s, SymbolKind kind)
+//         : name(s)
+//         , kind(kind)
+//     {
+//     }
+
+//     bool isBool() const
+//     {
+//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+//                (name == "bool" || name == "int");
+//     }
+//     bool isVoid() const
+//     {
+//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) && name == "void";
+//     }
+//     bool canMathOp() const
+//     {
+//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+//                (name == "int" || name == "float");
+//     }
+//     bool canCompare() const
+//     {
+//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
+//                (name == "int" || name == "float");
+//     }
+//     bool isImmutable() const { return kind == SymbolKind::VAL; }
+
+//     const std::string& getName() const { return name; }
+//     const SymbolKind&  getKind() const { return kind; }
+
+
+// private:
+//     // only type name for simplity
+//     std::string name;
+//     SymbolKind  kind;
+//     // maybe some namespace or file name ...
+// };
+
+class Scope
 {
+private:
+    std::string                           name;
+    std::unordered_map<std::string, Type> map;
+
+public:
+    Scope(const std::string s)
+        : name(s)
+    {
+    }
+    void                                         add(const std::string& key, Type type);
+    const Type*                                  find(const std::string& key);
+    const std::unordered_map<std::string, Type>& getMap() const { return map; }
+    const std::string&                           getName() const { return name; }
+};
+
+class SymbolTable
+{
+private:
+    std::vector<Scope> scopes;
 
 public:
     enum class SymbolKind
@@ -22,84 +100,12 @@ public:
         FUNC,
         CLASS
     };
-    SymbolType()
-        : name("")
-        , kind(SymbolKind::VAR)
-    {
-    }
-    SymbolType(const std::string& s)
-        : name(s)
-        , kind(SymbolKind::VAR)
-    {
-    }
-    SymbolType(const std::string& s, SymbolKind kind)
-        : name(s)
-        , kind(kind)
-    {
-    }
-
-    bool isBool() const
-    {
-        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-               (name == "bool" || name == "int");
-    }
-    bool isVoid() const
-    {
-        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) && name == "void";
-    }
-    bool canMathOp() const
-    {
-        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-               (name == "int" || name == "float");
-    }
-    bool canCompare() const
-    {
-        return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-               (name == "int" || name == "float");
-    }
-    bool isImmutable() const { return kind == SymbolKind::VAL; }
-
-    const std::string& getName() const { return name; }
-    const SymbolKind&  getKind() const { return kind; }
-
-
-private:
-    // only type name for simplity
-    std::string name;
-    SymbolKind  kind;
-    // maybe some namespace or file name ...
-};
-
-class Scope
-{
-private:
-    std::string                                 name;
-    std::unordered_map<std::string, SymbolType> map;
-
-public:
-    Scope(const std::string s)
-        : name(s)
-    {
-    }
-    void                                               add(const std::string& key, SymbolType type);
-    const SymbolType*                                  find(const std::string& key);
-    const std::unordered_map<std::string, SymbolType>& getMap() const { return map; }
-    const std::string&                                 getName() const { return name; }
-};
-
-class SymbolTable
-{
-private:
-    std::vector<Scope> scopes;
-
-public:
-    void              enterScope(const std::string& name);
-    void              exitScope();
-    const SymbolType* find(const std::string& key);
-    void              add(const std::string& key, const std::string& type,
-                          SymbolType::SymbolKind kind = SymbolType::SymbolKind::VAR);
-    void              add(const std::string& key, const std::string& type, bool immutable);
-    void              debug() const;
+    void        enterScope(const std::string& name);
+    void        exitScope();
+    const Type* find(const std::string& key);
+    void add(const std::string& key, const std::string& type, SymbolKind kind = SymbolKind::VAR);
+    void add(const std::string& key, const std::string& type, bool immutable);
+    void debug() const;
 };
 
 class ClassTable
@@ -132,11 +138,11 @@ public:
 class SemanticAnalyzer
 {
 private:
-    SymbolTable                                 symbolTable;
-    ClassTable                                  classTable;
-    FunctionTable                               functionTable;
-    std::unique_ptr<Program>                    program;
-    std::stack<std::pair<SymbolType, Location>> currentFunctionReturnTypes;
+    SymbolTable                           symbolTable;
+    ClassTable                            classTable;
+    FunctionTable                         functionTable;
+    std::unique_ptr<Program>              program;
+    std::stack<std::pair<Type, Location>> currentFunctionReturnTypes;
 
 public:
     SemanticAnalyzer(std::unique_ptr<Program> p)
@@ -171,25 +177,25 @@ public:
     std::optional<Error> analyzeVariableStatement(const VariableStatement& stmt);
     std::optional<Error> analyzeWhenStatement(const WhenStatement& stmt);
 
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeExpression(
         const Expression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeArrayExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeArrayExpression(
         const ArrayExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeBinaryExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeBinaryExpression(
         const BinaryExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeFunctionCallExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeFunctionCallExpression(
         const CallExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeIdentifierExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeIdentifierExpression(
         const IdentifierExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLambdaExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLambdaExpression(
         const LambdaExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeLiteralExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLiteralExpression(
         const LiteralExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeMemberExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeMemberExpression(
         const MemberExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeTypeCheckExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeTypeCheckExpression(
         const TypeCheckExpression& expr);
-    std::pair<std::unique_ptr<SymbolType>, std::optional<Error>> analyzeUnaryExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeUnaryExpression(
         const UnaryExpression& expr);
 };
 

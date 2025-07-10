@@ -2,12 +2,12 @@
 
 #include "../include/utils/format.hpp"
 
-void Scope::add(const std::string& key, SymbolType type)
+void Scope::add(const std::string& key, Type type)
 {
     this->map[key] = type;
 }
 
-const SymbolType* Scope::find(const std::string& key)
+const Type* Scope::find(const std::string& key)
 {
     auto it = map.find(key);
     if (it != map.end()) {
@@ -28,10 +28,10 @@ void SymbolTable::exitScope()
     }
 }
 
-const SymbolType* SymbolTable::find(const std::string& key)
+const Type* SymbolTable::find(const std::string& key)
 {
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        const SymbolType* type = it->find(key);
+        const Type* type = it->find(key);
         if (type) {
             return type;
         }
@@ -39,10 +39,10 @@ const SymbolType* SymbolTable::find(const std::string& key)
     return nullptr;
 }
 
-void SymbolTable::add(const std::string& key, const std::string& type, SymbolType::SymbolKind kind)
+void SymbolTable::add(const std::string& key, const std::string& type, SymbolKind kind)
 {
     if (!scopes.empty()) {
-        scopes.back().add(key, SymbolType(type, kind));
+        scopes.back().add(key, Type(type, kind));
     }
 }
 void SymbolTable::add(const std::string& key, const std::string& type, bool immutable)
@@ -50,8 +50,8 @@ void SymbolTable::add(const std::string& key, const std::string& type, bool immu
     if (!scopes.empty()) {
         scopes.back().add(
             key,
-            SymbolType(type,
-                       immutable ? SymbolType::SymbolKind::VAL : SymbolType::SymbolKind::VAR));
+            Type(type,
+                       immutable ? Type::SymbolKind::VAL : Type::SymbolKind::VAR));
     }
 }
 
@@ -151,7 +151,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                               classDecl->getLocation())};
             }
             this->classTable.add(classDecl->name, classDecl);
-            this->symbolTable.add(classDecl->name, classDecl->name, SymbolType::SymbolKind::CLASS);
+            this->symbolTable.add(classDecl->name, classDecl->name, Type::SymbolKind::CLASS);
         }
     }
     if (!mainFlag) {
@@ -162,7 +162,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             this->functionTable.add(funcDecl->name, funcDecl);
             // key = value = funcDecl -> name
-            this->symbolTable.add(funcDecl->name, funcDecl->name, SymbolType::SymbolKind::FUNC);
+            this->symbolTable.add(funcDecl->name, funcDecl->name, Type::SymbolKind::FUNC);
         }
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             std::vector<const ClassDeclaration*> parents;

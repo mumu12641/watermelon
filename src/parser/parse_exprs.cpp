@@ -245,23 +245,23 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::primary()
     Location l = peek().location;
     if (match(TokenType::BOOL_LITERAL)) {
         return {std::make_unique<LiteralExpression>(
-                    l, LiteralExpression::Kind::BOOL, std::get<bool>(previous().value)),
+                    l, Type::builtinBool(), std::get<bool>(previous().value)),
                 std::nullopt};
     }
 
     if (match(TokenType::INT_LITERAL)) {
         return {std::make_unique<LiteralExpression>(
-                    l, LiteralExpression::Kind::INT, std::get<int>(previous().value)),
+                    l, Type::builtinInt(), std::get<int>(previous().value)),
                 std::nullopt};
     }
     if (match(TokenType::FLOAT_LITERAL)) {
         return {std::make_unique<LiteralExpression>(
-                    l, LiteralExpression::Kind::FLOAT, std::get<float>(previous().value)),
+                    l, Type::builtinFloat(), std::get<float>(previous().value)),
                 std::nullopt};
     }
     if (match(TokenType::STRING_LITERAL)) {
         return {std::make_unique<LiteralExpression>(
-                    l, LiteralExpression::Kind::STRING, std::get<std::string>(previous().value)),
+                    l, Type::builtinString(), std::get<std::string>(previous().value)),
                 std::nullopt};
     }
 

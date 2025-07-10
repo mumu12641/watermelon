@@ -22,96 +22,58 @@ class Declaration;
 class Type
 {
 public:
-    virtual ~Type()                               = default;
-    virtual std::string dump(int level = 0) const = 0;
-    virtual std::string getName() const           = 0;
-};
-
-class PrimitiveType : public Type
-{
-public:
     enum class Kind
     {
+        EMPTY,
         VOID,
         INT,
         FLOAT,
         BOOL,
-        STRING
+        STRING,
+
+        CLASS
     };
-
-    Kind kind;
-
-    explicit PrimitiveType(Kind kind)
-        : kind(kind)
-    {
-    }
-
-    std::string getName() const override
-    {
-        std::string s;
-        switch (kind) {
-            case Kind::VOID: s = "void"; break;
-            case Kind::INT: s = "int"; break;
-            case Kind::FLOAT: s = "float"; break;
-            case Kind::BOOL: s = "bool"; break;
-            case Kind::STRING: s = "String"; break;
-            default: s = "unknown"; break;
-        }
-        return s;
-    }
-
-    std::string dump(int level = 0) const override
-    {
-        return indent(level) + "PrimitiveType: " + getName();
-    }
-};
-
-class CustomType : public Type
-{
-public:
+    Kind        kind;
     std::string name;
+    static Type builtinVoid() { return {Kind::VOID, "void"}; }
+    static Type builtinInt() { return {Kind::INT, "int"}; }
+    static Type builtinFloat() { return {Kind::FLOAT, "float"}; }
+    static Type builtinBool() { return {Kind::BOOL, "bool"}; }
+    static Type builtinString() { return {Kind::STRING, "string"}; }
+    static Type classType(const std::string& name) { return {Kind::CLASS, name}; }
 
-    explicit CustomType(std::string name)
-        : name(std::move(name))
+    std::string dump(int level = 0) const { return indent(level) + "Type: " + name; }
+    std::string getName() const { return name; }
+
+    Type(Kind kind, std::string name)
+        : kind(kind)
+        , name(std::move(name)) {};
+    Type()
+        : kind(Kind::EMPTY)
+        , name("")
     {
     }
-    std::string getName() const override { return name; }
-    std::string dump(int level = 0) const override { return indent(level) + "NamedType: " + name; }
 };
-
-// class GenericType : public NamedType
-// {
-// public:
-//     std::vector<std::unique_ptr<Type>> typeArguments;
-
-//     GenericType(std::string name, std::vector<std::unique_ptr<Type>> typeArguments)
-//         : NamedType(name)
-//         , typeArguments(std::move(typeArguments))
-//     {
-//     }
-
-//     std::string dump(int level = 0) const override
-//     {
-//         std::string result = indent(level) + "GenericType: " + name + "\n";
-//         for (const auto& arg : typeArguments) {
-//             result += arg->dump(level + 1) + "\n";
-//         }
-//         return result;
-//     }
-// };
 
 class Expression
 {
-private:
+protected:
     Location location;
-    
+    Type     type;
 
 public:
     Expression(Location l)
         : location(l)
     {
     }
+    Expression(Location l, Type t)
+        : location(l)
+        , type(t)
+    {
+    }
     Location getLocation() const { return location; }
+    Type     getType() const { return type; }
+    void     setType(Type t) { type = t; }
     virtual ~Expression()                         = default;
     virtual std::string dump(int level = 0) const = 0;
 };
@@ -119,42 +81,32 @@ public:
 class LiteralExpression : public Expression
 {
 public:
-    enum class Kind
-    {
-        INT,
-        FLOAT,
-        BOOL,
-        STRING
-    };
-
-    Kind                                        kind;
     std::variant<int, float, bool, std::string> value;
 
-    LiteralExpression(Location location, Kind kind,
-                      std::variant<int, float, bool, std::string> value)
-        : kind(kind)
-        , value(std::move(value))
-        , Expression(location)
+    explicit LiteralExpression(Location location, Type type,
+                               std::variant<int, float, bool, std::string> value)
+        : value(std::move(value))
+        , Expression(location, type)
     {
     }
 
     std::string dump(int level = 0) const override
     {
         std::string kindStr, s;
-        switch (kind) {
-            case Kind::INT:
+        switch (type.kind) {
+            case Type::Kind::INT:
                 kindStr = "INT";
                 s       = std::to_string(std::get<int>(value));
                 break;
-            case Kind::FLOAT:
+            case Type::Kind::FLOAT:
                 kindStr = "FLOAT";
                 s       = std::to_string(std::get<float>(value));
                 break;
-            case Kind::BOOL:
+            case Type::Kind::BOOL:
                 kindStr = "BOOL";
                 s       = std::get<bool>(value) ? "true" : "false";
                 break;
-            case Kind::STRING:
+            case Type::Kind::STRING:
                 kindStr = "STRING";
                 s       = "\"" + std::get<std::string>(value) + "\"";
                 break;
