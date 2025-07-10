@@ -11,3 +11,4 @@ a.cpp
 examples/*.cpp
 cmake-build-debug/
 .idea/
+*.ll
