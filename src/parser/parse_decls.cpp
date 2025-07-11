@@ -61,7 +61,7 @@ std::pair<std::unique_ptr<Declaration>, std::optional<Error>> Parser::functionDe
     auto [__, rparenErr] = consume(TokenType::RPAREN, "Expect ')' after parameters.");
     if (rparenErr) return {nullptr, rparenErr};
 
-    std::unique_ptr<Type> returnType = std::make_unique<Type>(Type::builtinVoid);
+    std::unique_ptr<Type> returnType = std::make_unique<Type>(Type::builtinVoid());
     if (match(TokenType::ARROW)) {
         auto [returnTypeVal, returnTypeErr] = type();
         if (returnTypeErr) return {nullptr, returnTypeErr};
@@ -317,17 +317,16 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> Parser::type()
         return {std::make_unique<Type>(Type::builtinInt()), std::nullopt};
     }
     else if (match(TokenType::FLOAT_TYPE)) {
-        return {std::make_unique<Type>(Type::builtinFloat), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinFloat()), std::nullopt};
     }
     else if (match(TokenType::BOOL_TYPE)) {
         return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
     }
     else if (match(TokenType::STRING_TYPE)) {
-        return {std::make_unique<Type>(Type::builtinString), std::nullopt};
+        return {std::make_unique<Type>(Type::builtinString()), std::nullopt};
     }
     else if (match(TokenType::IDENTIFIER)) {
         std::string typeName = std::get<std::string>(previous().value);
-
         return {std::make_unique<Type>(Type::classType(typeName)), std::nullopt};
     }
 

@@ -58,7 +58,7 @@ std::optional<Error> SemanticAnalyzer::analyzeForStatement(const ForStatement& s
 
     this->symbolTable.enterScope("for-loop");
     // TODO: get variable type from iterableType
-    this->symbolTable.add(stmt.variable, iterable->second, SymbolType::SymbolKind::VAL);
+    this->symbolTable.add(stmt.variable, iterable->second, SymbolKind::VAL);
 
     auto errorBody = analyzeStatement(*stmt.body);
     if (errorBody) return errorBody;
@@ -98,14 +98,14 @@ std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(const ReturnStatem
         auto [actualReturnType, errorReturn] = analyzeExpression(*stmt.value);
         if (errorReturn) return errorReturn;
         this->currentFunctionReturnTypes.push(
-            std::make_pair(SymbolType(actualReturnType->getName()), stmt.getLocation()));
+            std::make_pair(std::move(*actualReturnType), stmt.getLocation()));
     }
     return std::nullopt;
 }
 
 std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableStatement& stmt)
 {
-    std::unique_ptr<SymbolType> initType = nullptr;
+    std::unique_ptr<Type> initType = nullptr;
     if (stmt.initializer) {
         auto [analyzedType, initError] = analyzeExpression(*stmt.initializer);
         if (initError) return initError;
@@ -122,14 +122,10 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableSt
                        initType->getName()),
                 stmt.getLocation());
         }
-        this->symbolTable.add(stmt.name,
-                              stmt.type->getName(),
-                              stmt.immutable);
+        this->symbolTable.add(stmt.name, *stmt.type, stmt.immutable);
     }
     else if (initType) {
-        this->symbolTable.add(stmt.name,
-                              initType->getName(),
-                              stmt.immutable);
+        this->symbolTable.add(stmt.name, *initType, stmt.immutable);
     }
     return std::nullopt;
 }

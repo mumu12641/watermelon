@@ -27,7 +27,7 @@ class B(name:string) inherits A(1){
 }
 
 fn opera(){
-    var a = 1
+    var a = 1;
     if(a > 0){
         if(a < 2){
             for (b in B("asd")){

@@ -11,80 +11,33 @@
 #include <unordered_map>
 #include <vector>
 
-// class Type
-// {
-
-// public:
-//     enum class SymbolKind
-//     {
-//         VAR,
-//         VAL,
-//         FUNC,
-//         CLASS
-//     };
-//     Type()
-//         : name("")
-//         , kind(SymbolKind::VAR)
-//     {
-//     }
-//     Type(const std::string& s)
-//         : name(s)
-//         , kind(SymbolKind::VAR)
-//     {
-//     }
-//     Type(const std::string& s, SymbolKind kind)
-//         : name(s)
-//         , kind(kind)
-//     {
-//     }
-
-//     bool isBool() const
-//     {
-//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-//                (name == "bool" || name == "int");
-//     }
-//     bool isVoid() const
-//     {
-//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) && name == "void";
-//     }
-//     bool canMathOp() const
-//     {
-//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-//                (name == "int" || name == "float");
-//     }
-//     bool canCompare() const
-//     {
-//         return (kind == SymbolKind::VAR || kind == SymbolKind::VAL) &&
-//                (name == "int" || name == "float");
-//     }
-//     bool isImmutable() const { return kind == SymbolKind::VAL; }
-
-//     const std::string& getName() const { return name; }
-//     const SymbolKind&  getKind() const { return kind; }
-
-
-// private:
-//     // only type name for simplity
-//     std::string name;
-//     SymbolKind  kind;
-//     // maybe some namespace or file name ...
-// };
+enum class SymbolKind
+{
+    VAR,
+    VAL,
+    FUNC,
+    CLASS
+};
 
 class Scope
 {
 private:
-    std::string                           name;
-    std::unordered_map<std::string, Type> map;
+    std::string                                                  name;
+    std::unordered_map<std::string, std::pair<Type, SymbolKind>> map;
 
 public:
     Scope(const std::string s)
         : name(s)
     {
     }
-    void                                         add(const std::string& key, Type type);
-    const Type*                                  find(const std::string& key);
-    const std::unordered_map<std::string, Type>& getMap() const { return map; }
-    const std::string&                           getName() const { return name; }
+    void              add(const std::string& key, Type type, SymbolKind kind);
+    const Type*       findType(const std::string& key);
+    const SymbolKind* findKind(const std::string& key);
+    const std::unordered_map<std::string, std::pair<Type, SymbolKind>>& getMap() const
+    {
+        return map;
+    }
+    const std::string& getName() const { return name; }
 };
 
 class SymbolTable
@@ -93,18 +46,12 @@ private:
     std::vector<Scope> scopes;
 
 public:
-    enum class SymbolKind
-    {
-        VAR,
-        VAL,
-        FUNC,
-        CLASS
-    };
-    void        enterScope(const std::string& name);
-    void        exitScope();
-    const Type* find(const std::string& key);
-    void add(const std::string& key, const std::string& type, SymbolKind kind = SymbolKind::VAR);
-    void add(const std::string& key, const std::string& type, bool immutable);
+    void              enterScope(const std::string& name);
+    void              exitScope();
+    const Type*       findType(const std::string& key);
+    const SymbolKind* findKind(const std::string& key);
+    void              add(const std::string& key, const Type& type, bool immutable);
+    void add(const std::string& key, const Type& type, SymbolKind kind = SymbolKind::VAR);
     void debug() const;
 };
 
@@ -113,16 +60,18 @@ class ClassTable
 private:
     std::unordered_map<std::string, const ClassDeclaration*>              classes;
     std::unordered_map<std::string, std::vector<const ClassDeclaration*>> inheritMap;
-    std::unordered_map<std::string, std::pair<bool, std::string>>         classIterableMap;
+    std::unordered_map<std::string, std::pair<bool, Type>>                classIterableMap;
 
 public:
     void                    add(const std::string& className, const ClassDeclaration*);
     const ClassDeclaration* find(const std::string& className);
+
+    const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className) const;
+    const std::pair<bool, Type>*                isClassIterable(const std::string& className) const;
+
     void addInheritMap(const std::string& className, std::vector<const ClassDeclaration*> parents);
     bool checkInherit(const std::string& child, const std::string& parent) const;
-    const std::vector<const ClassDeclaration*>* getInheritMap(const std::string& className) const;
-    void setClassIterableMap(const std::string& className, bool iterable, const std::string& type);
-    const std::pair<bool, std::string>* isClassIterable(const std::string& className) const;
+    void setClassIterableMap(const std::string& className, bool iterable, const Type& type);
 };
 
 class FunctionTable
@@ -183,7 +132,7 @@ public:
         const ArrayExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeBinaryExpression(
         const BinaryExpression& expr);
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeFunctionCallExpression(
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeCallExpression(
         const CallExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeIdentifierExpression(
         const IdentifierExpression& expr);

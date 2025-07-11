@@ -25,11 +25,11 @@ class Dog(name:String) inherits Animal(name){
     fn get_age() -> int = 0;
     
 }
-class Cat() inherits Dog(){
+class Cat() inherits Dog("1"){
     var num:int = 1;
     //var age:int = 0
     //fn get_age() -> bool = self.age
-    fn fish(num:int) {
+    fn fish(num:int)->int {
         // return self.get_age(num,
         return 0;
     }
@@ -41,6 +41,6 @@ fn intfunc(a:int=0) -> int {
 
 fn main() -> int{
     var a = 0;
-    a=intfunc();
+    a=a();
     return 0;
 }

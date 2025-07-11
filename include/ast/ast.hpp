@@ -30,17 +30,28 @@ public:
         FLOAT,
         BOOL,
         STRING,
-
-        CLASS
+        CLASS,
+        FUNCTION
     };
     Kind        kind;
     std::string name;
-    static Type builtinVoid() { return {Kind::VOID, "void"}; }
-    static Type builtinInt() { return {Kind::INT, "int"}; }
-    static Type builtinFloat() { return {Kind::FLOAT, "float"}; }
-    static Type builtinBool() { return {Kind::BOOL, "bool"}; }
-    static Type builtinString() { return {Kind::STRING, "string"}; }
-    static Type classType(const std::string& name) { return {Kind::CLASS, name}; }
+    static Type builtinVoid() { return Type(Kind::VOID, "void"); }
+    static Type builtinInt() { return Type(Kind::INT, "int"); }
+    static Type builtinFloat() { return Type(Kind::FLOAT, "float"); }
+    static Type builtinBool() { return Type(Kind::BOOL, "bool"); }
+    static Type builtinString() { return Type(Kind::STRING, "String"); }
+    static Type classType(const std::string& name) { return Type(Kind::CLASS, name); }
+    static Type functionType(const std::string& name) { return Type(Kind::FUNCTION, name); }
+
+    bool isBool() const { return kind == Kind::BOOL; }
+    bool isVoid() const { return kind == Kind::VOID; }
+    bool canMathOp() const { return kind == Kind::INT || kind == Kind::FLOAT; }
+    bool canCompare() const { return kind == Kind::INT || kind == Kind::FLOAT; }
+
+    inline bool operator==(const Type& type) const
+    {
+        return this->kind == type.kind && this->name == type.name;
+    }
 
     std::string dump(int level = 0) const { return indent(level) + "Type: " + name; }
     std::string getName() const { return name; }
@@ -48,6 +59,23 @@ public:
     Type(Kind kind, std::string name)
         : kind(kind)
         , name(std::move(name)) {};
+
+    Type(std::string name)
+        : name(std::move(name))
+    {
+        if (name == "void")
+            kind = Kind::VOID;
+        else if (name == "int")
+            kind = Kind::INT;
+        else if (name == "float")
+            kind = Kind::FLOAT;
+        else if (name == "bool")
+            kind = Kind::BOOL;
+        else if (name == "String")
+            kind = Kind::STRING;
+        else
+            kind = Kind::CLASS;
+    }
     Type()
         : kind(Kind::EMPTY)
         , name("")
@@ -713,7 +741,7 @@ public:
             if (param1.name != param2.name) {
                 return false;
             }
-            if (!param1.type || !param2.type || param1.type->getName() != param2.type->getName()) {
+            if (!param1.type || !param2.type || !(param1.type == param2.type)) {
                 return false;
             }
         }
@@ -722,7 +750,7 @@ public:
 
     bool checkReturnType(const FunctionDeclaration* func) const
     {
-        return returnType.get()->getName() == func->returnType.get()->getName();
+        return *returnType== *func->returnType;
     }
 
     std::string dump(int level = 0) const override
@@ -795,7 +823,7 @@ public:
     virtual ~ClassMember()                        = default;
     virtual std::string dump(int level = 0) const = 0;
     virtual std::string getName() const           = 0;
-    virtual std::string getType() const           = 0;
+    virtual Type        getType() const           = 0;
 };
 
 class PropertyMember : public ClassMember
@@ -817,7 +845,7 @@ public:
     }
 
     std::string getName() const override { return name; }
-    std::string getType() const override { return type->getName(); }
+    Type        getType() const override { return *type; }
 
     std::string dump(int level = 0) const override
     {
@@ -844,7 +872,7 @@ public:
     }
 
     std::string getName() const override { return function.get()->name; }
-    std::string getType() const override { return function->returnType->getName(); }
+    Type        getType() const override { return *function->returnType; }
 
     std::string dump(int level = 0) const override
     {
@@ -866,7 +894,7 @@ public:
     }
 
     std::string getName() const override { return ""; }
-    std::string getType() const override { return ""; }
+    Type        getType() const override { return Type(); }
 
 
     std::string dump(int level = 0) const override

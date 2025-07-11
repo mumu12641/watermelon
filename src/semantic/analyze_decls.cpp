@@ -18,9 +18,9 @@ std::optional<Error> SemanticAnalyzer::analyzeDeclaration(const Declaration& dec
 std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclaration& classDecl)
 {
     this->symbolTable.enterScope(Format("class {0}", classDecl.name));
-    this->symbolTable.add("self", classDecl.name, SymbolType::SymbolKind::VAL);
+    this->symbolTable.add("self", Type::classType(classDecl.name), SymbolKind::VAL);
     for (const auto& constructorParam : classDecl.constructorParameters) {
-        this->symbolTable.add(constructorParam.name, constructorParam.type->getName());
+        this->symbolTable.add(constructorParam.name, *constructorParam.type);
     }
     if (!classDecl.baseClass.empty()) {
         auto parent = this->classTable.find(classDecl.baseClass);
@@ -53,15 +53,13 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
     for (const auto& parentClass : *parents) {
         for (const auto& parentMember : parentClass->members) {
             if (const auto property = dynamic_cast<const PropertyMember*>(parentMember.get())) {
-                this->symbolTable.add(property->getName(),
-                                      property->type->getName(),
-                                      property->immutable);
+                this->symbolTable.add(property->getName(), *property->type, property->immutable);
             }
         }
     }
     for (const auto& member : classDecl.members) {
         if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
-            this->symbolTable.add(property->getName(), property->type->getName(),property->immutable);
+            this->symbolTable.add(property->getName(), *property->type, property->immutable);
         }
         else if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
             auto functionDeclErr = analyzeFunctionDeclaration(*method->function);
@@ -78,20 +76,20 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
 
 std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration(const EnumDeclaration& decl)
 {
-    return std::nullopt;
+    throw "Not yet implemented SemanticAnalyzer::analyzeEnumDeclaration";
 }
 
 std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(const FunctionDeclaration& decl)
 {
     this->symbolTable.enterScope(Format("function {0}", decl.name));
     for (const auto& param : decl.parameters) {
-        this->symbolTable.add(param.name, param.type->getName());
+        this->symbolTable.add(param.name, *param.type);
     }
     if (decl.body) {
         auto error = analyzeStatement(*decl.body);
         if (error) return error;
         if (this->currentFunctionReturnTypes.empty()) {
-            if (decl.returnType->getName() != "void") {
+            if (!decl.returnType->isVoid()) {
                 return Error(Format("Function '{0}' with return type '{1}' has no return statement",
                                     decl.name,
                                     decl.returnType->getName()),

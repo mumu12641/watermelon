@@ -167,7 +167,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::unary()
         auto [right, rightErr] = unary();
         if (rightErr) return {nullptr, rightErr};
 
-        return {std::make_unique<UnaryExpression>(Location(), op, std::move(right)), std::nullopt};
+        return {std::make_unique<UnaryExpression>(right->getLocation(), op, std::move(right)), std::nullopt};
     }
 
     return call();
@@ -220,7 +220,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::finishCall(
     std::unique_ptr<Expression> callee)
 {
     std::vector<std::unique_ptr<Expression>> arguments;
-    Location                                 l;
+    Location                                 l=callee->getLocation();
 
     if (!check(TokenType::RPAREN)) {
         do {

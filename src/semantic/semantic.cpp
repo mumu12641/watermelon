@@ -2,16 +2,25 @@
 
 #include "../include/utils/format.hpp"
 
-void Scope::add(const std::string& key, Type type)
+void Scope::add(const std::string& key, Type type, SymbolKind kind)
 {
-    this->map[key] = type;
+    this->map[key] = {type, kind};
 }
 
-const Type* Scope::find(const std::string& key)
+const Type* Scope::findType(const std::string& key)
 {
     auto it = map.find(key);
     if (it != map.end()) {
-        return &it->second;
+        return &it->second.first;
+    }
+    return nullptr;
+}
+
+const SymbolKind* Scope::findKind(const std::string& key)
+{
+    auto it = map.find(key);
+    if (it != map.end()) {
+        return &it->second.second;
     }
     return nullptr;
 }
@@ -28,10 +37,10 @@ void SymbolTable::exitScope()
     }
 }
 
-const Type* SymbolTable::find(const std::string& key)
+const Type* SymbolTable::findType(const std::string& key)
 {
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
-        const Type* type = it->find(key);
+        const Type* type = it->findType(key);
         if (type) {
             return type;
         }
@@ -39,22 +48,29 @@ const Type* SymbolTable::find(const std::string& key)
     return nullptr;
 }
 
-void SymbolTable::add(const std::string& key, const std::string& type, SymbolKind kind)
+const SymbolKind* SymbolTable::findKind(const std::string& key)
 {
-    if (!scopes.empty()) {
-        scopes.back().add(key, Type(type, kind));
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+        const SymbolKind* kind = it->findKind(key);
+        if (kind) {
+            return kind;
+        }
     }
-}
-void SymbolTable::add(const std::string& key, const std::string& type, bool immutable)
-{
-    if (!scopes.empty()) {
-        scopes.back().add(
-            key,
-            Type(type,
-                       immutable ? Type::SymbolKind::VAL : Type::SymbolKind::VAR));
-    }
+    return nullptr;
 }
 
+void SymbolTable::add(const std::string& key, const Type& type, SymbolKind kind)
+{
+    if (!scopes.empty()) {
+        scopes.back().add(key, Type(type), kind);
+    }
+}
+void SymbolTable::add(const std::string& key, const Type& type, bool immutable)
+{
+    if (!scopes.empty()) {
+        scopes.back().add(key, Type(type), immutable ? SymbolKind::VAL : SymbolKind::VAR);
+    }
+}
 
 void SymbolTable::debug() const
 {
@@ -62,7 +78,7 @@ void SymbolTable::debug() const
     for (size_t i = 0; i < scopes.size(); ++i) {
         std::cout << "Scope " << i << " " << scopes[i].getName() << ":\n";
         for (const auto& pair : scopes[i].getMap()) {
-            std::cout << "  Key: " << pair.first << ", Symbol Type: " << pair.second.getName()
+            std::cout << "  Key: " << pair.first << ", Symbol Type: " << pair.second.first.getName()
                       << "\n";
         }
     }
@@ -72,7 +88,7 @@ void SymbolTable::debug() const
 void ClassTable::add(const std::string& className, const ClassDeclaration* classDecl)
 {
     classes.insert(std::pair<std::string, const ClassDeclaration*>(className, classDecl));
-    classIterableMap[className] = {false, ""};
+    classIterableMap[className] = {false, Type()};
 }
 
 const ClassDeclaration* ClassTable::find(const std::string& className)
@@ -106,12 +122,12 @@ bool ClassTable::checkInherit(const std::string& child, const std::string& paren
     return false;
 }
 
-void ClassTable::setClassIterableMap(const std::string& className, bool iterable,
-                                     const std::string& type)
+void ClassTable::setClassIterableMap(const std::string& className, bool iterable, const Type& type)
 {
     classIterableMap[className] = {iterable, type};
 }
-const std::pair<bool, std::string>* ClassTable::isClassIterable(const std::string& className) const
+
+const std::pair<bool, Type>* ClassTable::isClassIterable(const std::string& className) const
 {
     auto it = classIterableMap.find(className);
     if (it != classIterableMap.end() && it->second.first == true) {
@@ -151,7 +167,8 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                               classDecl->getLocation())};
             }
             this->classTable.add(classDecl->name, classDecl);
-            this->symbolTable.add(classDecl->name, classDecl->name, Type::SymbolKind::CLASS);
+            this->symbolTable.add(
+                classDecl->name, Type::classType(classDecl->name), SymbolKind::CLASS);
         }
     }
     if (!mainFlag) {
@@ -162,7 +179,8 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             this->functionTable.add(funcDecl->name, funcDecl);
             // key = value = funcDecl -> name
-            this->symbolTable.add(funcDecl->name, funcDecl->name, Type::SymbolKind::FUNC);
+            this->symbolTable.add(
+                funcDecl->name, Type::functionType(funcDecl->name), SymbolKind::FUNC);
         }
         else if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             std::vector<const ClassDeclaration*> parents;
@@ -307,21 +325,21 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
 
 void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
 {
-    bool        hasFirst = false;
-    bool        hasNext  = false;
-    std::string firstReturnType;
-    std::string nextReturnType;
+    bool hasFirst = false;
+    bool hasNext  = false;
+    Type firstReturnType;
+    Type nextReturnType;
 
     for (const auto& member : classDecl->members) {
         if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
             if (method->function->isOperator) {
                 if (method->function->name == "_first") {
                     hasFirst        = true;
-                    firstReturnType = method->function->returnType->getName();
+                    firstReturnType = *method->function->returnType;
                 }
                 else if (method->function->name == "_next") {
                     hasNext        = true;
-                    nextReturnType = method->function->returnType->getName();
+                    nextReturnType = *method->function->returnType;
                 }
             }
         }
@@ -341,7 +359,7 @@ void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
             classDecl->getLocation());
     }
     else if (hasFirst && hasNext) {
-        if (firstReturnType != nextReturnType) {
+        if (!(firstReturnType == nextReturnType)) {
             throw Error(Format("Iterator operators '_first' and '_next' in class '{0}' must have "
                                "the same return type",
                                classDecl->name),
