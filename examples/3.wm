@@ -1,17 +1,6 @@
 class B(){
     var index:int = 0;
-    operator fn _first() -> int{
-        return 0;
-    }
-    operator fn _next() -> int{
-        index = index + 1;
-        return index;
-    }
 }
 fn main(){
-    for (b in B()){
-
-            }
-            return;
     return;
 }

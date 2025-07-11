@@ -1,5 +1,6 @@
 #include "../../include/utils/process.hpp"
 
+#include "../../include/ir/ir.hpp"
 #include "../../include/lexer/lexer.hpp"
 #include "../../include/lexer/token.hpp"
 #include "../../include/parser/parser.hpp"
@@ -19,7 +20,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
         "Processing " + (filename.empty() ? "source code" : "'" + filename + "'") + ":\n";
     cout_yellow(s);
 
-    cout_pink("  [1/3] Lexical analysis... ");
+    cout_pink("  [1/4] Lexical analysis... ");
     Lexer lexer(source, filename);
     auto [tokens, lexerError] = lexer.tokenize();
 
@@ -32,7 +33,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [2/3] Syntax analysis...  ");
+    cout_pink("  [2/4] Syntax analysis...  ");
     Parser parser(tokens);
     auto [program, parserError] = parser.parse();
 
@@ -45,7 +46,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [3/3] Semantic analysis... ");
+    cout_pink("  [3/4] Semantic analysis... ");
     SemanticAnalyzer semanticAnalyzer(std::move(program));
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
 
@@ -59,6 +60,12 @@ void processSourceFile(const std::string& source, const std::string& filename)
     cout_green("Passed");
     std::cout << std::endl;
 
+    cout_pink("  [4/4] LLVM IR generating... ");
+    IRGen irGen(std::move(resolveProgram));
+    auto  llvmIR = irGen.generateIR();
+    // llvmIR->dump();
+    llvmIR->print(llvm::outs(), nullptr);
+    std::cout << std::endl;
     cout_blue("✓ Compilation successful");
     std::cout << std::endl;
 }

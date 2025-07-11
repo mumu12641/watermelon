@@ -25,27 +25,33 @@
 class IRGen
 {
 private:
-    llvm::LLVMContext        context;
-    llvm::IRBuilder<>        builder;
-    llvm::Module             module;
-    std::unique_ptr<Program> program;
+    std::unique_ptr<llvm::LLVMContext> context;   // 先声明 context
+    std::unique_ptr<llvm::Module>      module;    // 再声明 module
+    std::unique_ptr<llvm::IRBuilder<>> builder;   // 最后声明 builder
+
+    //    llvm::Module                          _module;
+    std::unique_ptr<Program>              program;
+    std::unordered_map<Type, llvm::Type*> typeMap;
 
 public:
     IRGen(std::unique_ptr<Program> p)
-        : program(std::move(p))
-        , builder(context)
-        , module("test_module", context)
+        : context(std::make_unique<llvm::LLVMContext>())
+        , module(std::make_unique<llvm::Module>("test_module", *context))
+        , builder(std::make_unique<llvm::IRBuilder<>>(*context))
+        , program(std::move(p))
     {
-        module.setTargetTriple(llvm::sys::getDefaultTargetTriple());
+        module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
     }
 
-    llvm::Type* generateType(Type* type);
+    void        installType();
+    llvm::Type* generateType(const Type& type);
 
-    llvm::Module* generateIR();
-    void          generateDeclaration(const Declaration& decl);
-    void          generateClassDeclaration(const ClassDeclaration& decl);
-    void          generateEnumDeclaration(const EnumDeclaration& decl);
-    void          generateFunctionDeclaration(const FunctionDeclaration& decl);
+    //    llvm::Module* generateIR();
+    std::unique_ptr<llvm::Module> generateIR();
+    void                          generateDeclaration(const Declaration& decl);
+    void                          generateClassDeclaration(const ClassDeclaration& decl);
+    void                          generateEnumDeclaration(const EnumDeclaration& decl);
+    void                          generateFunctionDeclaration(const FunctionDeclaration& decl);
 
     llvm::Value* generateStatement(const Statement& stmt);
     llvm::Value* generateBlockStatement(const BlockStatement& stmt);

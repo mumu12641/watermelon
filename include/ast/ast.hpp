@@ -81,6 +81,16 @@ public:
     }
 };
 
+namespace std {
+template<> struct hash<Type>
+{
+    std::size_t operator()(const Type& type) const noexcept
+    {
+        return std::hash<std::string>{}(type.getName());
+    }
+};
+}  
+
 class Expression
 {
 protected:
