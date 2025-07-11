@@ -112,40 +112,44 @@ public:
     void                 checkClassOperator(const ClassDeclaration* classDecl);
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
-    std::optional<Error> analyzeDeclaration(const Declaration& decl);
-    std::optional<Error> analyzeClassDeclaration(const ClassDeclaration& decl);
-    std::optional<Error> analyzeEnumDeclaration(const EnumDeclaration& decl);
-    std::optional<Error> analyzeFunctionDeclaration(const FunctionDeclaration& decl);
+    std::optional<Error> analyzeDeclaration(Declaration& decl);
+    std::optional<Error> analyzeClassDeclaration(ClassDeclaration& decl);
+    std::optional<Error> analyzeEnumDeclaration(EnumDeclaration& decl);
+    std::optional<Error> analyzeFunctionDeclaration(FunctionDeclaration& decl);
 
-    std::optional<Error> analyzeStatement(const Statement& stmt);
-    std::optional<Error> analyzeBlockStatement(const BlockStatement& stmt);
-    std::optional<Error> analyzeExpressionStatement(const ExpressionStatement& stmt);
-    std::optional<Error> analyzeForStatement(const ForStatement& stmt);
-    std::optional<Error> analyzeIfStatement(const IfStatement& stmt);
-    std::optional<Error> analyzeReturnStatement(const ReturnStatement& stmt);
-    std::optional<Error> analyzeVariableStatement(const VariableStatement& stmt);
-    std::optional<Error> analyzeWhenStatement(const WhenStatement& stmt);
+    std::optional<Error> analyzeStatement(Statement& stmt);
+    std::optional<Error> analyzeBlockStatement(BlockStatement& stmt);
+    std::optional<Error> analyzeExpressionStatement(ExpressionStatement& stmt);
+    std::optional<Error> analyzeForStatement(ForStatement& stmt);
+    std::optional<Error> analyzeIfStatement(IfStatement& stmt);
+    std::optional<Error> analyzeReturnStatement(ReturnStatement& stmt);
+    std::optional<Error> analyzeVariableStatement(VariableStatement& stmt);
+    std::optional<Error> analyzeWhenStatement(WhenStatement& stmt);
 
-    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeExpression(
-        const Expression& expr);
+    template<typename ExprType>
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> handleExpression(
+        Expression& expr,
+        std::function<std::pair<std::unique_ptr<Type>, std::optional<Error>>(ExprType&)>
+            analyzeFunc);
+    std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeExpression(Expression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeArrayExpression(
-        const ArrayExpression& expr);
+        ArrayExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeBinaryExpression(
-        const BinaryExpression& expr);
+        BinaryExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeCallExpression(
-        const CallExpression& expr);
+        CallExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeIdentifierExpression(
-        const IdentifierExpression& expr);
+        IdentifierExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLambdaExpression(
-        const LambdaExpression& expr);
+        LambdaExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeLiteralExpression(
-        const LiteralExpression& expr);
+        LiteralExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeMemberExpression(
-        const MemberExpression& expr);
+        MemberExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeTypeCheckExpression(
-        const TypeCheckExpression& expr);
+        TypeCheckExpression& expr);
     std::pair<std::unique_ptr<Type>, std::optional<Error>> analyzeUnaryExpression(
-        const UnaryExpression& expr);
+        UnaryExpression& expr);
 };
 
 #endif

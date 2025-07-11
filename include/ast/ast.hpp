@@ -48,10 +48,8 @@ public:
     bool canMathOp() const { return kind == Kind::INT || kind == Kind::FLOAT; }
     bool canCompare() const { return kind == Kind::INT || kind == Kind::FLOAT; }
 
-    inline bool operator==(const Type& type) const
-    {
-        return this->kind == type.kind && this->name == type.name;
-    }
+    bool operator==(const Type& other) const { return kind == other.kind && name == other.name; }
+    bool operator!=(const Type& other) const { return !(*this == other); }
 
     std::string dump(int level = 0) const { return indent(level) + "Type: " + name; }
     std::string getName() const { return name; }
@@ -78,7 +76,7 @@ public:
     }
     Type()
         : kind(Kind::EMPTY)
-        , name("")
+        , name("none")
     {
     }
 };
@@ -161,7 +159,7 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        return indent(level) + "IdentifierExpression: " + name;
+        return indent(level) + "IdentifierExpression: " + name + " type: " + type.getName();
     }
 };
 
@@ -219,7 +217,8 @@ public:
             case Operator::OR: opStr = "||"; break;
             case Operator::ASSIGN: opStr = "="; break;
         }
-        std::string result = indent(level) + "BinaryExpression: " + opStr + "\n";
+        std::string result =
+            indent(level) + "BinaryExpression: " + opStr + " type: " + type.getName() + "\n";
         result += left->dump(level + 1) + "\n";
         result += right->dump(level + 1);
         return result;
@@ -273,7 +272,7 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "CallExpression:\n";
+        std::string result = indent(level) + "CallExpression:" + " type: " + type.getName() + "\n";
         result += indent(level + 1) + "Callee:\n";
         result += callee->dump(level + 2) + "\n";
         if (!arguments.empty()) {
@@ -323,7 +322,8 @@ public:
     {
         std::string result =
             indent(level) + "MemberExpression: " +
-            (kind == Kind::METHOD ? "method " + methodName : "property " + property) + "\n";
+            (kind == Kind::METHOD ? "method " + methodName : "property " + property) +
+            " type: " + type.getName() + "\n";
         result += indent(level + 1) + "Object:\n";
         result += object->dump(level + 2);
         return result;
@@ -348,7 +348,8 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "MethodCallExpression: " + methodName + "\n";
+        std::string result = indent(level) + "MethodCallExpression: " + methodName +
+                             " type: " + type.getName() + "\n";
         result += indent(level + 1) + "Object:\n";
         result += object->dump(level + 2) + "\n";
         if (!arguments.empty()) {
@@ -374,7 +375,7 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "ArrayExpression:\n";
+        std::string result = indent(level) + "ArrayExpression:" + " type: " + type.getName() + "\n";
         for (const auto& elem : elements) {
             result += elem->dump(level + 1) + "\n";
         }
@@ -405,7 +406,8 @@ public:
 
     std::string dump(int level = 0) const override
     {
-        std::string result = indent(level) + "LambdaExpression:\n";
+        std::string result =
+            indent(level) + "LambdaExpression:" + " type: " + type.getName() + "\n";
         if (!parameters.empty()) {
             result += indent(level + 1) + "Parameters:\n";
             for (const auto& param : parameters) {
@@ -741,7 +743,7 @@ public:
             if (param1.name != param2.name) {
                 return false;
             }
-            if (!param1.type || !param2.type || !(param1.type == param2.type)) {
+            if (!param1.type || !param2.type || !(*param1.type == *param2.type)) {
                 return false;
             }
         }
@@ -750,7 +752,7 @@ public:
 
     bool checkReturnType(const FunctionDeclaration* func) const
     {
-        return *returnType== *func->returnType;
+        return *returnType == *func->returnType;
     }
 
     std::string dump(int level = 0) const override

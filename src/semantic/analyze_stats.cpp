@@ -1,32 +1,32 @@
 #include "../include/semantic/semantic.hpp"
 #include "../include/utils/format.hpp"
-std::optional<Error> SemanticAnalyzer::analyzeStatement(const Statement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeStatement(Statement& stmt)
 {
-    if (const auto* blockStmt = dynamic_cast<const BlockStatement*>(&stmt)) {
+    if (auto* blockStmt = dynamic_cast<BlockStatement*>(&stmt)) {
         return analyzeBlockStatement(*blockStmt);
     }
-    else if (const auto* exprStmt = dynamic_cast<const ExpressionStatement*>(&stmt)) {
+    else if (auto* exprStmt = dynamic_cast<ExpressionStatement*>(&stmt)) {
         return analyzeExpressionStatement(*exprStmt);
     }
-    else if (const auto* forStmt = dynamic_cast<const ForStatement*>(&stmt)) {
+    else if (auto* forStmt = dynamic_cast<ForStatement*>(&stmt)) {
         return analyzeForStatement(*forStmt);
     }
-    else if (const auto* ifStmt = dynamic_cast<const IfStatement*>(&stmt)) {
+    else if (auto* ifStmt = dynamic_cast<IfStatement*>(&stmt)) {
         return analyzeIfStatement(*ifStmt);
     }
-    else if (const auto* returnStmt = dynamic_cast<const ReturnStatement*>(&stmt)) {
+    else if (auto* returnStmt = dynamic_cast<ReturnStatement*>(&stmt)) {
         return analyzeReturnStatement(*returnStmt);
     }
-    else if (const auto* varStmt = dynamic_cast<const VariableStatement*>(&stmt)) {
+    else if (auto* varStmt = dynamic_cast<VariableStatement*>(&stmt)) {
         return analyzeVariableStatement(*varStmt);
     }
-    else if (const auto* whenStmt = dynamic_cast<const WhenStatement*>(&stmt)) {
+    else if (auto* whenStmt = dynamic_cast<WhenStatement*>(&stmt)) {
         return analyzeWhenStatement(*whenStmt);
     }
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeBlockStatement(const BlockStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeBlockStatement(BlockStatement& stmt)
 {
     this->symbolTable.enterScope("block");
     for (const auto& s : stmt.statements) {
@@ -37,13 +37,13 @@ std::optional<Error> SemanticAnalyzer::analyzeBlockStatement(const BlockStatemen
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeExpressionStatement(const ExpressionStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeExpressionStatement(ExpressionStatement& stmt)
 {
     auto [_, error] = analyzeExpression(*stmt.expression);
     return error;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeForStatement(const ForStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeForStatement(ForStatement& stmt)
 {
     auto [iterableType, errorIterableExpr] = analyzeExpression(*stmt.iterable);
     if (errorIterableExpr) return errorIterableExpr;
@@ -66,7 +66,7 @@ std::optional<Error> SemanticAnalyzer::analyzeForStatement(const ForStatement& s
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeIfStatement(const IfStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeIfStatement(IfStatement& stmt)
 {
     auto [conditionType, errorCondition] = analyzeExpression(*stmt.condition);
     if (errorCondition) return errorCondition;
@@ -92,7 +92,7 @@ std::optional<Error> SemanticAnalyzer::analyzeIfStatement(const IfStatement& stm
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(const ReturnStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(ReturnStatement& stmt)
 {
     if (stmt.value) {
         auto [actualReturnType, errorReturn] = analyzeExpression(*stmt.value);
@@ -103,7 +103,7 @@ std::optional<Error> SemanticAnalyzer::analyzeReturnStatement(const ReturnStatem
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(VariableStatement& stmt)
 {
     std::unique_ptr<Type> initType = nullptr;
     if (stmt.initializer) {
@@ -130,7 +130,7 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(const VariableSt
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeWhenStatement(const WhenStatement& stmt)
+std::optional<Error> SemanticAnalyzer::analyzeWhenStatement(WhenStatement& stmt)
 {
     auto [subjectType, errorSubject] = analyzeExpression(*stmt.subject);
     if (errorSubject) return errorSubject;

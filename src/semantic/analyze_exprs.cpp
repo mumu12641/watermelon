@@ -1,48 +1,68 @@
 #include "../include/semantic/semantic.hpp"
 #include "../include/utils/format.hpp"
 
+#include <typeindex>
+
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeExpression(
-    const Expression& expr)
+    Expression& expr)
 {
-    if (const auto* arrayExpr = dynamic_cast<const ArrayExpression*>(&expr)) {
-        return analyzeArrayExpression(*arrayExpr);
+    auto analyzeAndSetType =
+        [&](auto&& analyzeFunc,
+            auto&  specificExpr) -> std::pair<std::unique_ptr<Type>, std::optional<Error>> {
+        auto [type, err] = analyzeFunc(specificExpr);
+        if (err) return {nullptr, err};
+
+        expr.setType(std::move(*type));
+        return {std::make_unique<Type>(expr.getType()), std::nullopt};
+    };
+
+    if (auto* arrayExpr = dynamic_cast<ArrayExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeArrayExpression(e); }, *arrayExpr);
     }
-    else if (const auto* binaryExpr = dynamic_cast<const BinaryExpression*>(&expr)) {
-        return analyzeBinaryExpression(*binaryExpr);
+    else if (auto* binaryExpr = dynamic_cast<BinaryExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeBinaryExpression(e); },
+                                 *binaryExpr);
     }
-    else if (const auto* callExpr = dynamic_cast<const CallExpression*>(&expr)) {
-        return analyzeCallExpression(*callExpr);
+    else if (auto* callExpr = dynamic_cast<CallExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeCallExpression(e); }, *callExpr);
     }
-    else if (const auto* idExpr = dynamic_cast<const IdentifierExpression*>(&expr)) {
-        return analyzeIdentifierExpression(*idExpr);
+    else if (auto* idExpr = dynamic_cast<IdentifierExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeIdentifierExpression(e); },
+                                 *idExpr);
     }
-    else if (const auto* lambdaExpr = dynamic_cast<const LambdaExpression*>(&expr)) {
-        return analyzeLambdaExpression(*lambdaExpr);
+    else if (auto* lambdaExpr = dynamic_cast<LambdaExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeLambdaExpression(e); },
+                                 *lambdaExpr);
     }
-    else if (const auto* literalExpr = dynamic_cast<const LiteralExpression*>(&expr)) {
-        return analyzeLiteralExpression(*literalExpr);
+    else if (auto* literalExpr = dynamic_cast<LiteralExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeLiteralExpression(e); },
+                                 *literalExpr);
     }
-    else if (const auto* memberExpr = dynamic_cast<const MemberExpression*>(&expr)) {
-        return analyzeMemberExpression(*memberExpr);
+    else if (auto* memberExpr = dynamic_cast<MemberExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeMemberExpression(e); },
+                                 *memberExpr);
     }
-    else if (const auto* typeCheckExpr = dynamic_cast<const TypeCheckExpression*>(&expr)) {
-        return analyzeTypeCheckExpression(*typeCheckExpr);
+    else if (auto* typeCheckExpr = dynamic_cast<TypeCheckExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeTypeCheckExpression(e); },
+                                 *typeCheckExpr);
     }
-    else if (const auto* unaryExpr = dynamic_cast<const UnaryExpression*>(&expr)) {
-        return analyzeUnaryExpression(*unaryExpr);
+    else if (auto* unaryExpr = dynamic_cast<UnaryExpression*>(&expr)) {
+        return analyzeAndSetType([this](auto& e) { return analyzeUnaryExpression(e); }, *unaryExpr);
     }
+
     return {nullptr, std::nullopt};
 }
 
+
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeArrayExpression(
-    const ArrayExpression& expr)
+    ArrayExpression& expr)
 {
-    // TODO
+    // TODO analyzeArrayExpression
     return {nullptr, Error("Not yet implemented ArrayExpression Semantic Check")};
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeBinaryExpression(
-    const BinaryExpression& expr)
+    BinaryExpression& expr)
 {
     auto [leftType, errorLeft] = analyzeExpression(*expr.left);
     if (errorLeft) return {nullptr, errorLeft};
@@ -56,9 +76,8 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case BinaryExpression::Operator::DIV:
         case BinaryExpression::Operator::MOD:
             // TODO: 检查操作数类型是否兼容
-            if (leftType->canMathOp() && rightType->canMathOp() && leftType == rightType) {
+            if (leftType->canMathOp() && rightType->canMathOp() && *leftType == *rightType) {
                 return {std::make_unique<Type>(std::move(*leftType)), std::nullopt};
-                // exprType = std::move(*leftType);
             }
             else {
                 return {nullptr,
@@ -75,9 +94,8 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case BinaryExpression::Operator::LE:
         case BinaryExpression::Operator::GT:
         case BinaryExpression::Operator::GE:
-            if (leftType->canCompare() && rightType->canCompare() && leftType == rightType) {
+            if (leftType->canCompare() && rightType->canCompare() && *leftType == *rightType) {
                 return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
-                // exprType = Type::builtinBool();
             }
             else {
                 return {nullptr,
@@ -92,7 +110,6 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case BinaryExpression::Operator::OR:
             if (leftType->isBool() && rightType->isBool()) {
                 return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
-                // exprType = Type::builtinBool();
             }
             else {
                 return {nullptr,
@@ -125,14 +142,12 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 
 
             return {std::make_unique<Type>(std::move(*leftType)), std::nullopt};
-            // exprType = std::move(*leftType);
     }
-    // expr.setType(exprType);
     return {nullptr, std::nullopt};
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeCallExpression(
-    const CallExpression& expr)
+    CallExpression& expr)
 {
     auto [calleeType, errorCallee] = analyzeExpression(*expr.callee);
     if (errorCallee) return {nullptr, errorCallee};
@@ -153,10 +168,8 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         for (size_t i = 0; i < params.size(); i++) {
             auto [argType, errorArg] = analyzeExpression(*(expr.arguments[i]));
             if (errorArg) return errorArg;
-
             const std::string& expectedType = params[i].type->getName();
             const std::string& actualType   = argType->getName();
-
             if (!this->classTable.checkInherit(actualType, expectedType)) {
                 return Error(Format("Argument {0}: cannot convert from '{1}' to '{2}' in {3} '{4}'",
                                     i + 1,
@@ -173,8 +186,6 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 
     const auto* cls  = this->classTable.find(calleeType->getName());
     const auto* func = this->functionTable.find(calleeType->getName());
-
-
 
     if (cls) {
         if (auto error = validateArguments(cls->constructorParameters, "constructor", cls->name)) {
@@ -196,7 +207,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>>
-SemanticAnalyzer::analyzeIdentifierExpression(const IdentifierExpression& expr)
+SemanticAnalyzer::analyzeIdentifierExpression(IdentifierExpression& expr)
 {
     auto symbol = this->symbolTable.findType(expr.name);
     if (symbol == nullptr)
@@ -206,14 +217,14 @@ SemanticAnalyzer::analyzeIdentifierExpression(const IdentifierExpression& expr)
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeLambdaExpression(
-    const LambdaExpression& expr)
+    LambdaExpression& expr)
 {
-    // TODO
+    // TODO analyzeLambdaExpression
     return {nullptr, Error("Not yet implemented LambdaExpression Semantic Check")};
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeLiteralExpression(
-    const LiteralExpression& expr)
+    LiteralExpression& expr)
 {
     switch (expr.getType().kind) {
         case Type::Kind::INT: return {std::make_unique<Type>(Type::builtinInt()), std::nullopt};
@@ -226,7 +237,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeMemberExpression(
-    const MemberExpression& expr)
+    MemberExpression& expr)
 {
 
     auto [objectType, errorObject] = analyzeExpression(*expr.object);
@@ -286,14 +297,14 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeTypeCheckExpression(
-    const TypeCheckExpression& expr)
+    TypeCheckExpression& expr)
 {
-    // TODO
+    // TODO analyzeTypeCheckExpression
     return {nullptr, Error("Not yet implemented TypeCheckExpression Semantic Check")};
 }
 
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeUnaryExpression(
-    const UnaryExpression& expr)
+    UnaryExpression& expr)
 {
     auto [operandType, errorOp] = analyzeExpression(*expr.operand);
     if (errorOp) return {nullptr, errorOp};

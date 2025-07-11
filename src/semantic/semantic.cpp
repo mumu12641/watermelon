@@ -246,7 +246,7 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         }
     }
 
-    for (const auto& decl : program->declarations) {
+    for (auto& decl : program->declarations) {
         auto errorDecl = analyzeDeclaration(*decl);
         if (errorDecl) return {nullptr, errorDecl};
     }

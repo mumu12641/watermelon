@@ -1,21 +1,21 @@
 #include "../include/semantic/semantic.hpp"
 #include "../include/utils/format.hpp"
 
-std::optional<Error> SemanticAnalyzer::analyzeDeclaration(const Declaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeDeclaration( Declaration& decl)
 {
-    if (const auto* classDecl = dynamic_cast<const ClassDeclaration*>(&decl)) {
+    if ( auto* classDecl = dynamic_cast< ClassDeclaration*>(&decl)) {
         return analyzeClassDeclaration(*classDecl);
     }
-    else if (const auto* enumDecl = dynamic_cast<const EnumDeclaration*>(&decl)) {
+    else if ( auto* enumDecl = dynamic_cast< EnumDeclaration*>(&decl)) {
         return analyzeEnumDeclaration(*enumDecl);
     }
-    else if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(&decl)) {
+    else if ( auto* funcDecl = dynamic_cast< FunctionDeclaration*>(&decl)) {
         return analyzeFunctionDeclaration(*funcDecl);
     }
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclaration& classDecl)
+std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration& classDecl)
 {
     this->symbolTable.enterScope(Format("class {0}", classDecl.name));
     this->symbolTable.add("self", Type::classType(classDecl.name), SymbolKind::VAL);
@@ -74,12 +74,12 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(const ClassDeclar
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration(const EnumDeclaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration( EnumDeclaration& decl)
 {
     throw "Not yet implemented SemanticAnalyzer::analyzeEnumDeclaration";
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(const FunctionDeclaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration( FunctionDeclaration& decl)
 {
     this->symbolTable.enterScope(Format("function {0}", decl.name));
     for (const auto& param : decl.parameters) {
