@@ -67,7 +67,7 @@ void IRGen::buildVTables()
 {
     for (const auto& decl : program->declarations) {
         if (const ClassDeclaration* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
-            std::string                  vTableName         = Format("VTable_{0}", classDecl->name);
+            std::string                  vTableName         = Format("vTable_{0}", classDecl->name);
             std::vector<llvm::Type*>     vTableMethods      = {};
             std::vector<llvm::Constant*> vTableAInitializer = {};
 
@@ -89,13 +89,14 @@ void IRGen::buildVTables()
                 }
             }
             auto vTableType = llvm::StructType::create(*this->context, vTableMethods, vTableName);
-            auto vTableAConstant      = llvm::ConstantStruct::get(vTableType, vTableAInitializer);
-            this->vTableVars[vTableName] = new llvm::GlobalVariable(*this->module,
-                                                                 vTableType,
-                                                                 false,
-                                                                 llvm::GlobalValue::ExternalLinkage,
-                                                                 vTableAConstant,
-                                                                 vTableName);
+            auto vTableAConstant = llvm::ConstantStruct::get(vTableType, vTableAInitializer);
+            this->vTableVars[vTableName] =
+                new llvm::GlobalVariable(*this->module,
+                                         vTableType,
+                                         false,
+                                         llvm::GlobalValue::ExternalLinkage,
+                                         vTableAConstant,
+                                         vTableName);
             this->vTableTypes[vTableName] = vTableType;
         }
     }
@@ -107,21 +108,36 @@ void IRGen::defineClasses()
         if (const ClassDeclaration* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
             auto it = this->typeMap.find(Type::classType(classDecl->name));
             if (it != this->typeMap.end()) {
-                std::string              vTableName = Format("VTable_{0}", classDecl->name);
+                // TODO: here add all parents' param
+                const auto* inheritanceChain = this->classTable.getInheritMap(classDecl->name);
+                std::string vTableName       = Format("vTable_{0}", classDecl->name);
                 llvm::StructType*        structType = static_cast<llvm::StructType*>(it->second);
-                std::vector<llvm::Type*> fieldTypes;
-                fieldTypes.emplace_back(this->vTableTypes[vTableName]);
+                std::vector<llvm::Type*> fieldTypes = {this->vTableTypes[vTableName]};
+                std::map<std::string, llvm::Type*> paramMap;
 
-                for (const auto& baseArgExpr : classDecl->baseConstructorArgs) {
-                    fieldTypes.emplace_back(this->generateType(baseArgExpr->getType()));
+                for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend();
+                     ++cls) {
+                    for (const auto& param : (*cls)->constructorParameters) {
+                        paramMap[param.name] = this->generateType(*param.type);
+                    }
+                    for (const auto& member : (*cls)->members) {
+                        if (const auto property =
+                                dynamic_cast<const PropertyMember*>(member.get())) {
+                            paramMap[property->getName()] = this->generateType(property->getType());
+                        }
+                    }
                 }
+
                 for (const auto& constructorParam : classDecl->constructorParameters) {
-                    fieldTypes.emplace_back(this->generateType(*constructorParam.type));
+                    paramMap[constructorParam.name] = this->generateType(*constructorParam.type);
                 }
                 for (const auto& member : classDecl->members) {
                     if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
-                        fieldTypes.emplace_back(this->generateType(property->getType()));
+                        paramMap[property->getName()] = this->generateType(property->getType());
                     }
+                }
+                for (const auto& [paramName, paramType] : paramMap) {
+                    fieldTypes.emplace_back(paramType);
                 }
                 if (!fieldTypes.empty() && structType->isOpaque()) {
                     structType->setBody(fieldTypes);
@@ -140,6 +156,10 @@ void IRGen::defineClasses()
 
 void IRGen::setupClasses()
 {
+    // for (const auto* s : *(this->classTable.getInheritMap("C"))) {
+    //     cout_yellow(s->name + " ");
+    // }
+    // cout_yellow("\n");
     this->declareClasses();
     this->buildVTables();
     this->defineClasses();

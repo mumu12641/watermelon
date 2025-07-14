@@ -11,6 +11,7 @@ class A(age:int) {
 }
 class B(name:String) inherits A(1){
     var index:int = 0;
+    var name:String;
     fn handle(b:String) -> A{
         return self;
     }
@@ -18,7 +19,7 @@ class B(name:String) inherits A(1){
         return "asd";
     }
     operator fn _first() -> int{
-        return 0;
+        return age;
     }
     operator fn _next() -> int{
         index = index + 1;

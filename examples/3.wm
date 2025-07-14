@@ -1,6 +1,7 @@
 class A(){
     var b:B;
     fn method1() -> void{
+        
         return;
     }
 }
@@ -11,6 +12,7 @@ class B(){
         index = 1 + 0;
     }
     fn method2(a:int=1) -> int{
+        index = 2 + 1;
         return index+a ;
     }
 }

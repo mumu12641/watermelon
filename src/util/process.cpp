@@ -61,7 +61,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
     std::cout << std::endl;
 
     cout_pink("  [4/4] LLVM IR generating... ");
-    IRGen irGen(std::move(resolveProgram));
+    IRGen irGen(std::move(resolveProgram), semanticAnalyzer.getClassTable());
     auto  llvmIR = irGen.generateIR();
     // llvmIR->dump();
     llvmIR->print(llvm::outs(), nullptr);

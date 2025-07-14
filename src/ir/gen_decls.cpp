@@ -19,11 +19,24 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
     this->valueTable.enterScope();
     this->currClass = &decl;
     for (const auto& member : decl.members) {
-        if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {}
-        else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
-            generateStatement(*init->block);
+        if (const auto method = dynamic_cast<const PropertyMember*>(member.get())) {
+
         }
     }
+    for (const auto& member : decl.members) {
+        if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
+            this->currFunc = method->function.get();
+            auto entryBB   = llvm::BasicBlock::Create(*this->context, "entry", this->getCurrFunc());
+
+            this->builder->SetInsertPoint(entryBB);
+
+            this->generateStatement(*method->function->body);
+        }
+        else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
+            // this->generateStatement(*init->block);
+        }
+    }
+    this->currClass = nullptr;
     this->valueTable.exitScope();
 }
 void IRGen::generateEnumDeclaration(const EnumDeclaration& decl)

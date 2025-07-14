@@ -1,15 +1,15 @@
 #include "../include/semantic/semantic.hpp"
 #include "../include/utils/format.hpp"
 
-std::optional<Error> SemanticAnalyzer::analyzeDeclaration( Declaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeDeclaration(Declaration& decl)
 {
-    if ( auto* classDecl = dynamic_cast< ClassDeclaration*>(&decl)) {
+    if (auto* classDecl = dynamic_cast<ClassDeclaration*>(&decl)) {
         return analyzeClassDeclaration(*classDecl);
     }
-    else if ( auto* enumDecl = dynamic_cast< EnumDeclaration*>(&decl)) {
+    else if (auto* enumDecl = dynamic_cast<EnumDeclaration*>(&decl)) {
         return analyzeEnumDeclaration(*enumDecl);
     }
-    else if ( auto* funcDecl = dynamic_cast< FunctionDeclaration*>(&decl)) {
+    else if (auto* funcDecl = dynamic_cast<FunctionDeclaration*>(&decl)) {
         return analyzeFunctionDeclaration(*funcDecl);
     }
     return std::nullopt;
@@ -19,17 +19,54 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
 {
     this->symbolTable.enterScope(Format("class {0}", classDecl.name));
     this->symbolTable.add("self", Type::classType(classDecl.name), SymbolKind::VAL);
+
+    // parents' all construtor param
+    if (!classDecl.baseClass.empty()) {
+        auto parents = this->classTable.getInheritMap(classDecl.name);
+        for (auto it = parents->rbegin(); it != parents->rend(); ++it) {
+            for (const auto& constructorParam : (*it)->constructorParameters) {
+                this->symbolTable.add(constructorParam.name, *constructorParam.type);
+            }
+        }
+    }
+    // self's construtor param override
+    bool hasDefaultParam = false;
     for (const auto& constructorParam : classDecl.constructorParameters) {
+        if (hasDefaultParam && constructorParam.defaultValue == nullptr) {
+            return Error(Format("Parameter '{0}' without default value follows parameter with "
+                                "default value in class '{1}' constructor",
+                                constructorParam.name,
+                                classDecl.name),
+                         classDecl.getLocation());
+        }
+        if (constructorParam.defaultValue != nullptr) {
+            hasDefaultParam = true;
+        }
+
         this->symbolTable.add(constructorParam.name, *constructorParam.type);
     }
     if (!classDecl.baseClass.empty()) {
-        auto parent = this->classTable.find(classDecl.baseClass);
-        if (classDecl.baseConstructorArgs.size() != parent->constructorParameters.size()) {
+        auto parent             = this->classTable.find(classDecl.baseClass);
+        int  requiredParamCount = 0;
+        for (const auto& param : parent->constructorParameters) {
+            if (param.defaultValue == nullptr) requiredParamCount++;
+        }
+        if (classDecl.baseConstructorArgs.size() < requiredParamCount) {
+            return Error(Format("Base class '{0}' constructor requires at least {1} arguments, but "
+                                "only {2} provided",
+                                parent->name,
+                                requiredParamCount,
+                                classDecl.baseConstructorArgs.size()),
+                         classDecl.getLocation());
+        }
+
+        if (classDecl.baseConstructorArgs.size() > parent->constructorParameters.size()) {
             return Error(
-                Format("Base class '{0}' constructor expects {1} arguments, but {2} provided",
-                       classDecl.baseClass,
-                       parent->constructorParameters.size(),
-                       classDecl.baseConstructorArgs.size()),
+                Format(
+                    "Base class '{0}' constructor accepts at most {1} arguments, but {2} provided",
+                    parent->name,
+                    parent->constructorParameters.size(),
+                    classDecl.baseConstructorArgs.size()),
                 classDecl.getLocation());
         }
         for (int i = 0; i < classDecl.baseConstructorArgs.size(); i++) {
@@ -74,15 +111,26 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
     return std::nullopt;
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration( EnumDeclaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeEnumDeclaration(EnumDeclaration& decl)
 {
     throw "Not yet implemented SemanticAnalyzer::analyzeEnumDeclaration";
 }
 
-std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration( FunctionDeclaration& decl)
+std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(FunctionDeclaration& decl)
 {
     this->symbolTable.enterScope(Format("function {0}", decl.name));
+    bool hasDefaultParam = false;
     for (const auto& param : decl.parameters) {
+        if (hasDefaultParam && param.defaultValue == nullptr) {
+            return Error(Format("Parameter '{0}' without default value follows parameter with "
+                                "default value in function '{1}'",
+                                param.name,
+                                decl.name),
+                         decl.getLocation());
+        }
+        if (param.defaultValue != nullptr) {
+            hasDefaultParam = true;
+        }
         this->symbolTable.add(param.name, *param.type);
     }
     if (decl.body) {

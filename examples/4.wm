@@ -1,0 +1,15 @@
+class A(a:int) {
+    var a_s:String;
+}
+class B(c:int = 1) inherits A(1){
+    var b_s:String;
+}
+class C(c:String, d:int) inherits B(){
+    var c_s:String;
+    fn method() -> int{
+        return a;
+    }
+}
+fn main(){
+    return;
+}

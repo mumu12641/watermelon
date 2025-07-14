@@ -3,6 +3,7 @@
 
 #include "../ast/ast.hpp"
 #include "../lexer/token.hpp"
+#include "../semantic/semantic.hpp"
 #include "../utils/error.hpp"
 
 #include <llvm/IR/BasicBlock.h>
@@ -56,9 +57,11 @@ private:
     std::unique_ptr<llvm::Module>      module;
     std::unique_ptr<llvm::IRBuilder<>> builder;
 
-    IRValueTable             valueTable;
-    const ClassDeclaration*  currClass;
-    std::unique_ptr<Program> program;
+    IRValueTable               valueTable;
+    const ClassDeclaration*    currClass;
+    const FunctionDeclaration* currFunc;
+    std::unique_ptr<Program>   program;
+    ClassTable                 classTable;
 
     std::unordered_map<Type, llvm::Type*>                  typeMap;
     std::unordered_map<std::string, llvm::StructType*>     classTypes;
@@ -67,13 +70,15 @@ private:
     std::unordered_map<std::string, llvm::GlobalVariable*> vTableVars;
 
 public:
-    IRGen(std::unique_ptr<Program> p)
+    IRGen(std::unique_ptr<Program> p, ClassTable classTable)
         : context(std::make_unique<llvm::LLVMContext>())
         , module(std::make_unique<llvm::Module>("test_module", *context))
         , builder(std::make_unique<llvm::IRBuilder<>>(*context))
         , valueTable(IRValueTable())
+        , currFunc(nullptr)
         , currClass(nullptr)
         , program(std::move(p))
+        , classTable(classTable)
     {
         module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
     }
@@ -83,6 +88,12 @@ public:
     void        buildVTables();
     void        setupClasses();
     llvm::Type* generateType(const Type& type, bool ptr = false);
+
+    llvm::Function* getCurrFunc()
+    {
+        return currClass == nullptr ? methodMap[currFunc->name]
+                                    : methodMap[Format("{0}_{1}", currClass->name, currFunc->name)];
+    }
 
     //    llvm::Module* generateIR();
     std::unique_ptr<llvm::Module> generateIR();

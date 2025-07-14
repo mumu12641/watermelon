@@ -178,7 +178,6 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             this->functionTable.add(funcDecl->name, funcDecl);
-            // key = value = funcDecl -> name
             this->symbolTable.add(
                 funcDecl->name, Type::functionType(funcDecl->name), SymbolKind::FUNC);
         }
@@ -217,6 +216,13 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
     // cat -> Dog -> animal
     for (const auto& decl : program->declarations) {
         if (const auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
+            for (const auto& member : classDecl->members) {
+                if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
+                    if (auto error = checkPropertyConstructorConflict(property, classDecl)) {
+                        return {nullptr, *error};
+                    }
+                }
+            }
             checkClassOperator(classDecl);
             auto parents = this->classTable.getInheritMap(classDecl->name);
             if (!parents || parents->empty()) {
@@ -225,9 +231,6 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
             for (const auto& member : classDecl->members) {
                 for (const auto& parentClass : *parents) {
                     const ClassMember* parentMember = parentClass->containMember(member.get());
-                    if (!parentMember) {
-                        continue;
-                    }
                     if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
                         if (auto error = validateMethodOverride(
                                 method, parentMember, classDecl, parentClass)) {
@@ -236,6 +239,9 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                     }
                     else if (const auto property =
                                  dynamic_cast<const PropertyMember*>(member.get())) {
+                        if (auto error = checkPropertyConstructorConflict(property, parentClass)) {
+                            return {nullptr, *error};
+                        }
                         if (auto error = validatePropertyOverride(
                                 property, parentMember, classDecl, parentClass)) {
                             return {nullptr, *error};
@@ -259,6 +265,7 @@ std::optional<Error> SemanticAnalyzer::validateMethodOverride(const MethodMember
                                                               const ClassDeclaration* classDecl,
                                                               const ClassDeclaration* parentClass)
 {
+    if (!parentMember) return std::nullopt;
     const auto parentMethod = dynamic_cast<const MethodMember*>(parentMember);
     if (!parentMethod) {
         return Error(
@@ -302,6 +309,7 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
                                                                 const ClassDeclaration* classDecl,
                                                                 const ClassDeclaration* parentClass)
 {
+    if (!parentMember) return std::nullopt;
     const auto parentProperty = dynamic_cast<const PropertyMember*>(parentMember);
     if (!parentProperty) {
         return Error(
@@ -319,6 +327,7 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
                             parentClass->name),
                      property->getLocation());
     }
+
 
     return std::nullopt;
 }
@@ -367,4 +376,20 @@ void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
         }
         this->classTable.setClassIterableMap(classDecl->name, true, firstReturnType);
     }
+}
+
+std::optional<Error> SemanticAnalyzer::checkPropertyConstructorConflict(
+    const PropertyMember* property, const ClassDeclaration* classDecl)
+{
+    for (const auto& constructorParameter : classDecl->constructorParameters) {
+        if (constructorParameter.name == property->getName()) {
+            return Error(Format("Property name '{0}' conflicts with "
+                                "constructor parameter in class '{1}'",
+                                property->getName(),
+                                classDecl->name),
+                         property->getLocation());
+        }
+    }
+
+    return std::nullopt;
 }

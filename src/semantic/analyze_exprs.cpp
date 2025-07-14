@@ -152,12 +152,24 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
     auto [calleeType, errorCallee] = analyzeExpression(*expr.callee);
     if (errorCallee) return {nullptr, errorCallee};
 
-
     auto validateArguments = [this, &expr](const std::vector<FunctionParameter>& params,
                                            const std::string&                    callType,
                                            const std::string& name) -> std::optional<Error> {
-        if (params.size() != expr.arguments.size()) {
-            return Error(Format("{0} '{1}' expects {2} arguments, but {3} were provided",
+        int requiredParamCount = 0;
+        for (const auto& param : params) {
+            if (param.defaultValue == nullptr) requiredParamCount++;
+        }
+        if (expr.arguments.size() < requiredParamCount) {
+            return Error(
+                Format("{0} '{1}' requires at least {2} arguments, but only {3} were provided",
+                       callType,
+                       name,
+                       requiredParamCount,
+                       expr.arguments.size()),
+                expr.getLocation());
+        }
+        if (expr.arguments.size() > params.size()) {
+            return Error(Format("{0} '{1}' accepts at most {2} arguments, but {3} were provided",
                                 callType,
                                 name,
                                 params.size(),
@@ -191,7 +203,6 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         if (auto error = validateArguments(cls->constructorParameters, "constructor", cls->name)) {
             return {nullptr, error};
         }
-
         return {std::make_unique<Type>(Type::classType(cls->name)), std::nullopt};
     }
 
@@ -199,7 +210,6 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         if (auto error = validateArguments(func->parameters, "function", func->name)) {
             return {nullptr, error};
         }
-
         return {std::make_unique<Type>(*func->returnType), std::nullopt};
     }
 

@@ -101,6 +101,8 @@ public:
         , functionTable(FunctionTable())
     {
     }
+    ClassTable getClassTable() { return classTable; }
+
     std::optional<Error> validateMethodOverride(const MethodMember*     method,
                                                 const ClassMember*      parentMember,
                                                 const ClassDeclaration* classDecl,
@@ -109,10 +111,12 @@ public:
                                                   const ClassMember*      parentMember,
                                                   const ClassDeclaration* classDecl,
                                                   const ClassDeclaration* parentClass);
+    std::optional<Error> checkPropertyConstructorConflict(const PropertyMember*   property,
+                                                          const ClassDeclaration* classDecl);
     void                 checkClassOperator(const ClassDeclaration* classDecl);
-    std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
 
-    std::optional<Error> analyzeDeclaration(Declaration& decl);
+    std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
+    std::optional<Error>                                      analyzeDeclaration(Declaration& decl);
     std::optional<Error> analyzeClassDeclaration(ClassDeclaration& decl);
     std::optional<Error> analyzeEnumDeclaration(EnumDeclaration& decl);
     std::optional<Error> analyzeFunctionDeclaration(FunctionDeclaration& decl);
