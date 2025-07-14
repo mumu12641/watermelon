@@ -22,29 +22,67 @@
 #include <utility>
 #include <vector>
 
+class IRScope
+{
+private:
+    std::string                                   name;
+    std::unordered_map<std::string, llvm::Value*> map;
+
+public:
+    IRScope(const std::string& s)
+        : name(s)
+    {
+    }
+    void               add(const std::string& key, llvm::Value* value);
+    const llvm::Value* find(const std::string& key);
+};
+
+class IRValueTable
+{
+private:
+    std::vector<IRScope> scopes;
+
+public:
+    void               enterScope(const std::string& name = "");
+    void               exitScope();
+    void               add(const std::string& key, llvm::Value* value);
+    const llvm::Value* find(const std::string& key);
+};
+
 class IRGen
 {
 private:
-    std::unique_ptr<llvm::LLVMContext> context;   // 先声明 context
-    std::unique_ptr<llvm::Module>      module;    // 再声明 module
-    std::unique_ptr<llvm::IRBuilder<>> builder;   // 最后声明 builder
+    std::unique_ptr<llvm::LLVMContext> context;
+    std::unique_ptr<llvm::Module>      module;
+    std::unique_ptr<llvm::IRBuilder<>> builder;
 
-    //    llvm::Module                          _module;
-    std::unique_ptr<Program>              program;
-    std::unordered_map<Type, llvm::Type*> typeMap;
+    IRValueTable             valueTable;
+    const ClassDeclaration*  currClass;
+    std::unique_ptr<Program> program;
+
+    std::unordered_map<Type, llvm::Type*>                  typeMap;
+    std::unordered_map<std::string, llvm::StructType*>     classTypes;
+    std::unordered_map<std::string, llvm::StructType*>     vTableTypes;
+    std::unordered_map<std::string, llvm::Function*>       methodMap;
+    std::unordered_map<std::string, llvm::GlobalVariable*> vTableVars;
 
 public:
     IRGen(std::unique_ptr<Program> p)
         : context(std::make_unique<llvm::LLVMContext>())
         , module(std::make_unique<llvm::Module>("test_module", *context))
         , builder(std::make_unique<llvm::IRBuilder<>>(*context))
+        , valueTable(IRValueTable())
+        , currClass(nullptr)
         , program(std::move(p))
     {
         module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
     }
 
-    void        installType();
-    llvm::Type* generateType(const Type& type);
+    void        declareClasses();
+    void        defineClasses();
+    void        buildVTables();
+    void        setupClasses();
+    llvm::Type* generateType(const Type& type, bool ptr = false);
 
     //    llvm::Module* generateIR();
     std::unique_ptr<llvm::Module> generateIR();
@@ -53,14 +91,14 @@ public:
     void                          generateEnumDeclaration(const EnumDeclaration& decl);
     void                          generateFunctionDeclaration(const FunctionDeclaration& decl);
 
-    llvm::Value* generateStatement(const Statement& stmt);
-    llvm::Value* generateBlockStatement(const BlockStatement& stmt);
-    llvm::Value* generateExpressionStatement(const ExpressionStatement& stmt);
-    llvm::Value* generateForStatement(const ForStatement& stmt);
-    llvm::Value* generateIfStatement(const IfStatement& stmt);
-    llvm::Value* generateReturnStatement(const ReturnStatement& stmt);
-    llvm::Value* generateVariableStatement(const VariableStatement& stmt);
-    llvm::Value* generateWhenStatement(const WhenStatement& stmt);
+    void generateStatement(const Statement& stmt);
+    void generateBlockStatement(const BlockStatement& stmt);
+    void generateExpressionStatement(const ExpressionStatement& stmt);
+    void generateForStatement(const ForStatement& stmt);
+    void generateIfStatement(const IfStatement& stmt);
+    void generateReturnStatement(const ReturnStatement& stmt);
+    void generateVariableStatement(const VariableStatement& stmt);
+    void generateWhenStatement(const WhenStatement& stmt);
 
     llvm::Value* generateExpression(const Expression& expr);
     llvm::Value* generateArrayExpression(const ArrayExpression& expr);

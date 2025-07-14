@@ -16,12 +16,15 @@ void IRGen::generateDeclaration(const Declaration& decl)
 
 void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
 {
-    // for()
-    // decl.baseConstructorArgs
-    // decl.constructorParameters
-    for (const auto& baseArgs : decl.baseConstructorArgs) {
-        // baseArgs->
+    this->valueTable.enterScope();
+    this->currClass = &decl;
+    for (const auto& member : decl.members) {
+        if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {}
+        else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
+            generateStatement(*init->block);
+        }
     }
+    this->valueTable.exitScope();
 }
 void IRGen::generateEnumDeclaration(const EnumDeclaration& decl)
 {
