@@ -15,10 +15,12 @@
 - Program
 
 ## IRGen
-每个类的字段应该包括所有父类的字段
+- [x] 每个类的字段应该包括所有父类的字段
+- [x] 先把所有的function都decl出来
+- [x] 每个类应该有自己的function table
 
-先把所有的function都decl出来
-每个类应该有自己的function table
+- [ ] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
+
 
 ## TODO
 - [x] 子类和父类的初始化函数(done)，init 块(done)

@@ -47,18 +47,18 @@ void IRGen::generateIfStatement(const IfStatement& stmt) {}
 
 void IRGen::generateReturnStatement(const ReturnStatement& stmt)
 {
-    // if (stmt.value) {
-    //     auto value = generateExpression(*stmt.value);
-    //     this->builder->CreateRet(
-    //         this->builder->CreateLoad(this->generateType(stmt.value->getType()), this->retVal));
-    // }
-    // this->builder->CreateRetVoid();
     if (stmt.value) {
         builder->CreateStore(generateExpression(*stmt.value), retVal);
     }
     builder->CreateBr(retBB);
 }
 
-void IRGen::generateVariableStatement(const VariableStatement& stmt) {}
+void IRGen::generateVariableStatement(const VariableStatement& stmt)
+{
+    llvm::Value* value = this->allocateStackVariable(stmt.name, this->generateType(*stmt.type));
+    llvm::Value* init  = generateExpression(*stmt.initializer);
+    this->builder->CreateStore(init, value);
+    this->valueTable.add(stmt.name, IRValue(value));
+}
 
 void IRGen::generateWhenStatement(const WhenStatement& stmt) {}

@@ -11,7 +11,7 @@ llvm::Value* IRGen::generateExpression(const Expression& expr)
         return generateBinaryExpression(*binaryExpr);
     }
     else if (const auto* callExpr = dynamic_cast<const CallExpression*>(&expr)) {
-        return generateFunctionCallExpression(*callExpr);
+        return generateCallExpression(*callExpr);
     }
     else if (const auto* idExpr = dynamic_cast<const IdentifierExpression*>(&expr)) {
         return generateIdentifierExpression(*idExpr);
@@ -103,7 +103,7 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
     }
 }
 
-llvm::Value* IRGen::generateFunctionCallExpression(const CallExpression& expr) {}
+llvm::Value* IRGen::generateCallExpression(const CallExpression& expr) {}
 
 llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& expr)
 {

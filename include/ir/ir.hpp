@@ -158,8 +158,7 @@ public:
                                     : methodMap[Format("{0}_{1}", currClass->name, currFunc->name)];
     }
 
-    llvm::AllocaInst*             allocateStackVariable(llvm::Function*        function,
-                                                        const std::string_view identifier, llvm::Type* type);
+    llvm::AllocaInst* allocateStackVariable(const std::string_view identifier, llvm::Type* type);
     std::unique_ptr<llvm::Module> generateIR();
     void                          generateDeclaration(const Declaration& decl);
     void                          generateClassDeclaration(const ClassDeclaration& decl);
@@ -178,7 +177,7 @@ public:
     llvm::Value* generateExpression(const Expression& expr);
     llvm::Value* generateArrayExpression(const ArrayExpression& expr);
     llvm::Value* generateBinaryExpression(const BinaryExpression& expr);
-    llvm::Value* generateFunctionCallExpression(const CallExpression& expr);
+    llvm::Value* generateCallExpression(const CallExpression& expr);
     llvm::Value* generateIdentifierExpression(const IdentifierExpression& expr);
     llvm::Value* generateLambdaExpression(const LambdaExpression& expr);
     llvm::Value* generateLiteralExpression(const LiteralExpression& expr);

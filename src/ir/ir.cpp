@@ -234,8 +234,7 @@ llvm::Type* IRGen::generateType(const std::string& type, bool ptr)
     }
 }
 
-llvm::AllocaInst* IRGen::allocateStackVariable(llvm::Function*        function,
-                                               const std::string_view identifier, llvm::Type* type)
+llvm::AllocaInst* IRGen::allocateStackVariable(const std::string_view identifier, llvm::Type* type)
 {
     llvm::IRBuilder<> tmpBuilder(*context);
     tmpBuilder.SetInsertPoint(allocaInsertPoint);
