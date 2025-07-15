@@ -44,6 +44,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
         return;
     }
     cout_green("Passed");
+    // std::cout << program->dump() << std::endl;
     std::cout << std::endl;
 
     cout_pink("  [3/4] Semantic analysis... ");
@@ -63,10 +64,11 @@ void processSourceFile(const std::string& source, const std::string& filename)
     cout_pink("  [4/4] LLVM IR generating... ");
     IRGen irGen(std::move(resolveProgram), semanticAnalyzer.getClassTable());
     auto  llvmIR = irGen.generateIR();
-    // llvmIR->dump();
-    llvmIR->print(llvm::outs(), nullptr);
+    cout_green("Passed");
     std::cout << std::endl;
     cout_blue("✓ Compilation successful");
+    std::cout << std::endl;
+    llvmIR->print(llvm::outs(), nullptr);
     std::cout << std::endl;
 }
 

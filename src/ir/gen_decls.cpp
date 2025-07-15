@@ -16,24 +16,20 @@ void IRGen::generateDeclaration(const Declaration& decl)
 
 void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
 {
-    this->valueTable.enterScope();
+    this->valueTable.enterScope(decl.name);
     this->currClass = &decl;
-    for (const auto& member : decl.members) {
-        if (const auto method = dynamic_cast<const PropertyMember*>(member.get())) {
-
-        }
+    int offset      = 1;
+    for (const auto& [paramName, paramType] : this->classAllParams[decl.name]) {
+        this->valueTable.add(paramName, IRValue(offset++));
     }
     for (const auto& member : decl.members) {
         if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
-            this->currFunc = method->function.get();
-            auto entryBB   = llvm::BasicBlock::Create(*this->context, "entry", this->getCurrFunc());
-
-            this->builder->SetInsertPoint(entryBB);
-
-            this->generateStatement(*method->function->body);
+            generateFunctionDeclaration(*method->function);
         }
         else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
+            // this->valueTable.enterScope(Format("{0}_init", decl.name));
             // this->generateStatement(*init->block);
+            // this->valueTable.exitScope();
         }
     }
     this->currClass = nullptr;
@@ -43,4 +39,59 @@ void IRGen::generateEnumDeclaration(const EnumDeclaration& decl)
 {
     throw "Not yet implemented generateEnumDeclaration";
 }
-void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl) {}
+
+void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
+{
+    this->currFunc = &decl;
+    this->valueTable.enterScope(decl.name);
+
+    llvm::Function* function = this->getCurrFunc();
+    auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
+    this->builder->SetInsertPoint(entryBB);
+
+    llvm::Value* undef = llvm::UndefValue::get(this->int32Ty);
+    this->allocaInsertPoint =
+        new llvm::BitCastInst(undef, undef->getType(), "alloca.point", entryBB);
+
+    bool isVoid = decl.returnType->isVoid();
+    if (!isVoid) {
+        llvm::Type* returnType = this->generateType(*decl.returnType);
+        this->retVal           = this->allocateStackVariable(function, "retval", returnType);
+    }
+
+    this->retBB = llvm::BasicBlock::Create(*this->context, "return");
+
+    int paramOffset = this->currClass == nullptr ? 0 : 1;
+    for (const auto& param : decl.parameters) {
+        llvm::Type*  paramType = this->generateType(*param.type);
+        llvm::Value* paramVar  = allocateStackVariable(function, param.name, paramType);
+        llvm::Value* argValue = function->getArg(paramOffset++);
+        
+        this->builder->CreateStore(argValue, paramVar, false);
+        this->valueTable.add(param.name, IRValue(paramVar));
+    }
+
+    this->generateStatement(*decl.body);
+
+    // if (this->retBB->hasNPredecessorsOrMore(1)) {
+    //     this->builder->CreateBr(this->retBB);
+    //     this->retBB->insertInto(function);
+    //     this->builder->SetInsertPoint(this->retBB);
+    // }
+
+    this->retBB->insertInto(function);
+    this->builder->SetInsertPoint(this->retBB);
+    this->allocaInsertPoint->eraseFromParent();
+    this->allocaInsertPoint = nullptr;
+
+    if (isVoid) {
+        builder->CreateRetVoid();
+    }
+    else {
+        llvm::Type*  returnType  = this->generateType(*decl.returnType);
+        llvm::Value* returnValue = builder->CreateLoad(returnType, retVal, "return_value");
+        builder->CreateRet(returnValue);
+    }
+
+    this->valueTable.exitScope();
+}

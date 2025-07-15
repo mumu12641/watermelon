@@ -3,6 +3,7 @@
 
 void IRGen::generateStatement(const Statement& stmt)
 {
+
     if (auto* blockStmt = dynamic_cast<const BlockStatement*>(&stmt)) {
         generateBlockStatement(*blockStmt);
     }
@@ -28,10 +29,13 @@ void IRGen::generateStatement(const Statement& stmt)
 
 void IRGen::generateBlockStatement(const BlockStatement& blockStmt)
 {
+    this->valueTable.enterScope("block");
     for (const auto& stmt : blockStmt.statements) {
         generateStatement(*stmt);
     }
+    this->valueTable.exitScope();
 }
+
 void IRGen::generateExpressionStatement(const ExpressionStatement& exprStmt)
 {
     generateExpression(*exprStmt.expression);
@@ -41,7 +45,19 @@ void IRGen::generateForStatement(const ForStatement& stmt) {}
 
 void IRGen::generateIfStatement(const IfStatement& stmt) {}
 
-void IRGen::generateReturnStatement(const ReturnStatement& stmt) {}
+void IRGen::generateReturnStatement(const ReturnStatement& stmt)
+{
+    // if (stmt.value) {
+    //     auto value = generateExpression(*stmt.value);
+    //     this->builder->CreateRet(
+    //         this->builder->CreateLoad(this->generateType(stmt.value->getType()), this->retVal));
+    // }
+    // this->builder->CreateRetVoid();
+    if (stmt.value) {
+        builder->CreateStore(generateExpression(*stmt.value), retVal);
+    }
+    builder->CreateBr(retBB);
+}
 
 void IRGen::generateVariableStatement(const VariableStatement& stmt) {}
 
