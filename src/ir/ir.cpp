@@ -78,39 +78,78 @@ void IRGen::declareClasses()
 void IRGen::buildVTables()
 {
     for (const auto& decl : program->declarations) {
-        if (const ClassDeclaration* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
-            std::string                  vTableName         = Format("vTable_{0}", classDecl->name);
-            std::vector<llvm::Type*>     vTableMethods      = {};
-            std::vector<llvm::Constant*> vTableAInitializer = {};
-            for (const auto& member : classDecl->members) {
-                if (const auto* method = dynamic_cast<const MethodMember*>(member.get())) {
-                    std::string classMethodName =
-                        Format("{0}_{1}", classDecl->name, method->getName());
-                    std::vector<llvm::Type*> paramTypes = {
-                        this->generateType(Type::classType(classDecl->name), true)};
-                    for (const auto& param : method->function->parameters) {
-                        paramTypes.emplace_back(this->generateType(*param.type));
-                    }
-                    auto m = llvm::FunctionType::get(
-                        this->generateType(*method->function->returnType), paramTypes, false);
-                    vTableMethods.emplace_back(llvm::PointerType::getUnqual(m));
-                    this->methodMap[classMethodName] = llvm::Function::Create(
-                        m, llvm::Function::ExternalLinkage, classMethodName, this->module.get());
-                    vTableAInitializer.emplace_back(this->methodMap[classMethodName]);
-                }
-            }
-            auto vTableType = llvm::StructType::create(*this->context, vTableMethods, vTableName);
-            auto vTableAConstant = llvm::ConstantStruct::get(vTableType, vTableAInitializer);
-            this->vTableVars[vTableName] =
-                new llvm::GlobalVariable(*this->module,
-                                         vTableType,
-                                         false,
-                                         llvm::GlobalValue::ExternalLinkage,
-                                         vTableAConstant,
-                                         vTableName);
-            this->vTableTypes[vTableName] = vTableType;
+        const ClassDeclaration* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get());
+        if (!classDecl) continue;
+
+        std::string                  className  = classDecl->name;
+        std::string                  vTableName = Format("vTable_{0}", className);
+        std::vector<llvm::Type*>     vTableMethods;
+        std::vector<llvm::Constant*> vTableInitializers;
+
+        this->addVTableMethod(
+            vTableMethods,
+            vTableInitializers,
+            Format("{0}_builtin_init", className),
+            llvm::FunctionType::get(
+                voidTy, {this->generateType(Type::classType(className), true)}, false));
+
+        std::vector<llvm::Type*> constructParamTypes = {
+            this->generateType(Type::classType(className), true)};
+        for (const auto& constructParam : classDecl->constructorParameters) {
+            constructParamTypes.emplace_back(this->generateType(*constructParam.type));
         }
+        this->addVTableMethod(vTableMethods,
+                              vTableInitializers,
+                              Format("{0}_constructor", className),
+                              llvm::FunctionType::get(
+                                  this->generateType(className, true), constructParamTypes, false));
+
+        for (const auto& member : classDecl->members) {
+            if (const auto* method = dynamic_cast<const MethodMember*>(member.get())) {
+                std::string methodName = Format("{0}_{1}", className, method->getName());
+
+                std::vector<llvm::Type*> paramTypes = {
+                    this->generateType(Type::classType(className), true)};
+
+                for (const auto& param : method->function->parameters) {
+                    paramTypes.push_back(this->generateType(*param.type));
+                }
+
+                llvm::FunctionType* funcType = llvm::FunctionType::get(
+                    this->generateType(*method->function->returnType), paramTypes, false);
+
+                this->addVTableMethod(vTableMethods, vTableInitializers, methodName, funcType);
+            }
+            else if (const auto* init = dynamic_cast<const InitBlockMember*>(member.get())) {
+                std::string         initMethodName = Format("{0}_self_defined_init", className);
+                llvm::FunctionType* funcType       = llvm::FunctionType::get(
+                    voidTy, {this->generateType(Type::classType(className), true)}, false);
+
+                this->addVTableMethod(vTableMethods, vTableInitializers, initMethodName, funcType);
+            }
+        }
+
+        auto vTableType     = llvm::StructType::create(*this->context, vTableMethods, vTableName);
+        auto vTableConstant = llvm::ConstantStruct::get(vTableType, vTableInitializers);
+
+        this->vTableVars[vTableName]  = new llvm::GlobalVariable(*this->module,
+                                                                vTableType,
+                                                                false,
+                                                                llvm::GlobalValue::ExternalLinkage,
+                                                                vTableConstant,
+                                                                vTableName);
+        this->vTableTypes[vTableName] = vTableType;
     }
+}
+void IRGen::addVTableMethod(std::vector<llvm::Type*>&     vTableMethods,
+                            std::vector<llvm::Constant*>& vTableInitializers,
+                            const std::string& methodName, llvm::FunctionType* funcType)
+{
+    vTableMethods.push_back(llvm::PointerType::getUnqual(funcType));
+    llvm::Function* function = llvm::Function::Create(
+        funcType, llvm::Function::ExternalLinkage, methodName, this->module.get());
+    this->methodMap[methodName] = function;
+    vTableInitializers.push_back(function);
 }
 
 void IRGen::defineClasses()
@@ -123,33 +162,31 @@ void IRGen::defineClasses()
                 std::string vTableName       = Format("vTable_{0}", classDecl->name);
                 llvm::StructType*        structType = static_cast<llvm::StructType*>(it->second);
                 std::vector<llvm::Type*> fieldTypes = {this->vTableTypes[vTableName]};
-                std::vector<std::pair<std::string, llvm::Type*>> allParams;
+                std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>
+                    allParams;
 
                 for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend();
                      ++cls) {
                     for (const auto& param : (*cls)->constructorParameters) {
-                        allParams.push_back({param.name, this->generateType(*param.type)});
+                        allParams.push_back(&param);
                     }
                     for (const auto& member : (*cls)->members) {
                         if (const auto property =
                                 dynamic_cast<const PropertyMember*>(member.get())) {
-                            allParams.push_back(
-                                {property->getName(), this->generateType(property->getType())});
+                            allParams.push_back(property);
                         }
                     }
                 }
                 for (const auto& constructorParam : classDecl->constructorParameters) {
-                    allParams.push_back(
-                        {constructorParam.name, this->generateType(*constructorParam.type)});
+                    allParams.push_back(&constructorParam);
                 }
                 for (const auto& member : classDecl->members) {
                     if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
-                        allParams.push_back(
-                            {property->getName(), this->generateType(property->getType())});
+                        allParams.push_back(property);
                     }
                 }
-                for (const auto& pair : allParams) {
-                    fieldTypes.emplace_back(pair.second);
+                for (const auto& param : allParams) {
+                    fieldTypes.emplace_back(this->getParamType(param));
                 }
                 if (!fieldTypes.empty() && structType->isOpaque()) {
                     structType->setBody(fieldTypes);
@@ -174,6 +211,7 @@ void IRGen::setupClasses()
     this->buildVTables();
     this->defineClasses();
 }
+
 void IRGen::setupFunctions()
 {
     for (const auto& decl : program->declarations) {
@@ -239,4 +277,37 @@ llvm::AllocaInst* IRGen::allocateStackVariable(const std::string_view identifier
     llvm::IRBuilder<> tmpBuilder(*context);
     tmpBuilder.SetInsertPoint(allocaInsertPoint);
     return tmpBuilder.CreateAlloca(type, nullptr, identifier);
+}
+
+llvm::Type* IRGen::getParamType(
+    const std::variant<const FunctionParameter*, const PropertyMember*>& param)
+{
+    if (auto funcParamPtr = std::get_if<const FunctionParameter*>(&param)) {
+        return this->generateType(*(*funcParamPtr)->type);
+    }
+    else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
+        return this->generateType((*propertyPtr)->getType());
+    }
+}
+
+std::string IRGen::getParamName(
+    const std::variant<const FunctionParameter*, const PropertyMember*>& param)
+{
+    if (auto funcParamPtr = std::get_if<const FunctionParameter*>(&param)) {
+        return (*funcParamPtr)->name;
+    }
+    else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
+        return (*propertyPtr)->getName();
+    }
+}
+
+const Expression* IRGen::getParamInitExpr(
+    const std::variant<const FunctionParameter*, const PropertyMember*>& param)
+{
+    if (auto funcParamPtr = std::get_if<const FunctionParameter*>(&param)) {
+        return (*funcParamPtr)->defaultValue.get();
+    }
+    else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
+        return (*propertyPtr)->initializer.get();
+    }
 }

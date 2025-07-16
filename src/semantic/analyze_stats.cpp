@@ -126,6 +126,7 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(VariableStatemen
     }
     else if (initType) {
         this->symbolTable.add(stmt.name, *initType, stmt.immutable);
+        // move init type to stmt
         stmt.type = std::move(initType);
     }
     return std::nullopt;

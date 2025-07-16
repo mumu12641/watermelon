@@ -189,6 +189,12 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
         if (initErr) return {nullptr, initErr};
         initializer = std::move(initExpr);
     }
+    if (varType == nullptr && initializer == nullptr) {
+        return {nullptr,
+                createError(
+                    previous(),
+                    "Variable declaration must have either a type annotation or an initializer.")};
+    }
     auto [_, semicolonErr] =
         consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
     if (semicolonErr) return {nullptr, semicolonErr};

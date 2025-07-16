@@ -21,6 +21,7 @@
 #include <memory>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 
 enum class IRValueKind
@@ -104,14 +105,15 @@ private:
     std::unique_ptr<Program> program;
     ClassTable               classTable;
 
-    const ClassDeclaration*    currClass;
-    const FunctionDeclaration* currFunc;
-    llvm::Instruction*         allocaInsertPoint = nullptr;
-    llvm::Value*               retVal            = nullptr;
-    llvm::BasicBlock*          retBB             = nullptr;
+    const ClassDeclaration* currClass;
+    std::string             currFuncName;
+    llvm::Instruction*      allocaInsertPoint = nullptr;
+    llvm::Value*            retVal            = nullptr;
+    llvm::BasicBlock*       retBB             = nullptr;
 
     std::unordered_map<Type, llvm::Type*> typeMap;
-    std::unordered_map<std::string, std::vector<std::pair<std::string, llvm::Type*>>>
+    std::unordered_map<std::string,
+                       std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>>
                                                            classAllParams;
     std::unordered_map<std::string, llvm::StructType*>     classTypes;
     std::unordered_map<std::string, llvm::StructType*>     vTableTypes;
@@ -131,7 +133,7 @@ public:
         , module(std::make_unique<llvm::Module>("test_module", *context))
         , builder(std::make_unique<llvm::IRBuilder<>>(*context))
         , valueTable(IRValueTable())
-        , currFunc(nullptr)
+        , currFuncName("")
         , currClass(nullptr)
         , program(std::move(p))
         , classTable(classTable)
@@ -144,24 +146,41 @@ public:
         floatTy   = llvm::Type::getDoubleTy(*context);
     }
 
-    void        declareClasses();
-    void        defineClasses();
-    void        buildVTables();
-    void        setupClasses();
-    void        setupFunctions();
+    /* setup methods */
+    void declareClasses();
+    void defineClasses();
+    void buildVTables();
+    void addVTableMethod(std::vector<llvm::Type*>&     vTableMethods,
+                         std::vector<llvm::Constant*>& vTableInitializers,
+                         const std::string& methodName, llvm::FunctionType* funcType);
+    void setupClasses();
+    void setupFunctions();
+
+    /* utils methods */
     llvm::Type* generateType(const Type& type, bool ptr = false);
     llvm::Type* generateType(const std::string& type, bool ptr = false);
 
     llvm::Function* getCurrFunc()
     {
-        return currClass == nullptr ? methodMap[currFunc->name]
-                                    : methodMap[Format("{0}_{1}", currClass->name, currFunc->name)];
+        return currClass == nullptr
+                   ? this->module->getFunction(currFuncName)
+                   : this->module->getFunction(Format("{0}_{1}", currClass->name, currFuncName));
     }
+    llvm::Type* getParamType(
+        const std::variant<const FunctionParameter*, const PropertyMember*>& param);
+    std::string getParamName(
+        const std::variant<const FunctionParameter*, const PropertyMember*>& param);
+    const Expression* getParamInitExpr(
+        const std::variant<const FunctionParameter*, const PropertyMember*>& param);
 
     llvm::AllocaInst* allocateStackVariable(const std::string_view identifier, llvm::Type* type);
+
+    /* generate methods */
     std::unique_ptr<llvm::Module> generateIR();
     void                          generateDeclaration(const Declaration& decl);
     void                          generateClassDeclaration(const ClassDeclaration& decl);
+    void                          generateClassBuiltinInit(const ClassDeclaration& decl);
+    void                          generateClassConstructor(const ClassDeclaration& decl);
     void                          generateEnumDeclaration(const EnumDeclaration& decl);
     void                          generateFunctionDeclaration(const FunctionDeclaration& decl);
 

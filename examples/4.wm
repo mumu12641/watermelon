@@ -4,11 +4,14 @@ class A(a:int) {
 class B(c:int = 1) inherits A(1){
     var b_s:String;
 }
-class C(c:int, d:int) inherits B(){
+class C(c:String = "c_s", d:int = 2) inherits B(){
     var c_s:String;
+    init {
+        d= 1;
+    }
     fn method(e:int) -> int{
-        e = c;
-        return e+c;
+        e = d;
+        return e+d;
     }
 }
 fn method(a:int,b:int)->int{
