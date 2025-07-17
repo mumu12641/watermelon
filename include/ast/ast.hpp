@@ -89,7 +89,7 @@ template<> struct hash<Type>
         return std::hash<std::string>{}(type.getName());
     }
 };
-}  
+}   // namespace std
 
 class Expression
 {
@@ -966,6 +966,15 @@ public:
             }
         }
         return nullptr;
+    }
+    bool containInitMember() const
+    {
+        for (const auto& m : this->members) {
+            if (const auto _ = dynamic_cast<const InitBlockMember*>(m.get())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     std::string dump(int level = 0) const override

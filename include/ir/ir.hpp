@@ -100,6 +100,7 @@ private:
     std::unique_ptr<llvm::LLVMContext> context;
     std::unique_ptr<llvm::Module>      module;
     std::unique_ptr<llvm::IRBuilder<>> builder;
+    std::unique_ptr<llvm::DataLayout>  dataLayout;
 
     IRValueTable             valueTable;
     std::unique_ptr<Program> program;
@@ -121,6 +122,7 @@ private:
     std::unordered_map<std::string, llvm::GlobalVariable*> vTableVars;
 
     llvm::Type* int32Ty;
+    llvm::Type* int64Ty;
     llvm::Type* voidTy;
     llvm::Type* int8PtrTy;
     llvm::Type* boolTy;
@@ -132,14 +134,15 @@ public:
         : context(std::make_unique<llvm::LLVMContext>())
         , module(std::make_unique<llvm::Module>("test_module", *context))
         , builder(std::make_unique<llvm::IRBuilder<>>(*context))
+        , dataLayout(std::make_unique<llvm::DataLayout>(module.get()))
         , valueTable(IRValueTable())
         , currFuncName("")
-        , currClass(nullptr)
         , program(std::move(p))
         , classTable(classTable)
     {
         module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
         int32Ty   = llvm::Type::getInt32Ty(*context);
+        int64Ty   = llvm::Type::getInt64Ty(*context);
         voidTy    = llvm::Type::getVoidTy(*context);
         int8PtrTy = llvm::Type::getInt8PtrTy(*context);
         boolTy    = llvm::Type::getInt1Ty(*context);

@@ -74,11 +74,22 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
+    // TODO: 这里应该是分配空间，然后把指针返回，所以 constructor 的参数也不需要 self 了
+    llvm::Type*  classType  = this->generateType(decl.name);
+    uint64_t     typeSize   = this->dataLayout->getTypeAllocSize(classType);
+    llvm::Value* sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
+    llvm::Value* mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
+    llvm::Value* mallocResult =
+        builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
+
+    this->builder->CreateCall(this->module->getFunction(Format("{0}_builtin_init", decl.name)),
+                              {mallocResult});
+
     llvm::Value* undef = llvm::UndefValue::get(this->int32Ty);
     this->allocaInsertPoint =
         new llvm::BitCastInst(undef, undef->getType(), "alloca.point", entryBB);
 
-    int paramOffset = 1;
+    int paramOffset = 0;
     for (const auto& param : decl.constructorParameters) {
         llvm::Type*  paramType = this->generateType(*param.type);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
@@ -86,17 +97,22 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         this->builder->CreateStore(argValue, paramVar, false);
         this->valueTable.add(param.name, IRValue(paramVar));
 
-        auto ptr = this->builder->CreateStructGEP(this->generateType(this->currClass->name),
-                                                  this->getCurrFunc()->getArg(0),
-                                                  paramOffset,
-                                                  Format("{0}_ptr", param.name));
+        auto ptr = this->builder->CreateStructGEP(
+            classType, mallocResult, paramOffset, Format("{0}_ptr", param.name));
         this->builder->CreateStore(ptr, argValue);
         paramOffset++;
     }
 
     this->allocaInsertPoint->eraseFromParent();
     this->allocaInsertPoint = nullptr;
-    
+
+    auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
+    if (this->methodMap.count(selfDefinedInitName)) {
+        this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {mallocResult});
+    }
+
+
+    this->builder->CreateRet(mallocResult);
     this->valueTable.exitScope();
 }
 
