@@ -184,6 +184,7 @@ public:
     void                          generateClassDeclaration(const ClassDeclaration& decl);
     void                          generateClassBuiltinInit(const ClassDeclaration& decl);
     void                          generateClassConstructor(const ClassDeclaration& decl);
+    void                          generateClassMallocInit(const ClassDeclaration& decl);
     void                          generateEnumDeclaration(const EnumDeclaration& decl);
     void                          generateFunctionDeclaration(const FunctionDeclaration& decl);
 

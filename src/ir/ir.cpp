@@ -93,16 +93,22 @@ void IRGen::buildVTables()
             llvm::FunctionType::get(
                 voidTy, {this->generateType(Type::classType(className), true)}, false));
 
-        std::vector<llvm::Type*> constructParamTypes = {};
+        std::vector<llvm::Type*> constructParamTypes = {
+            this->generateType(Type::classType(className), true)};
         for (const auto& constructParam : classDecl->constructorParameters) {
             constructParamTypes.emplace_back(this->generateType(*constructParam.type));
         }
-        this->addVTableMethod(
-            vTableMethods,
-            vTableInitializers,
-            Format("{0}_constructor", className),
-            llvm::FunctionType::get(
-                this->generateType(className, true), {constructParamTypes}, false));
+        this->addVTableMethod(vTableMethods,
+                              vTableInitializers,
+                              Format("{0}_constructor", className),
+                              llvm::FunctionType::get(
+                                  this->generateType(className, true), constructParamTypes, false));
+        constructParamTypes.erase(constructParamTypes.begin());
+        this->addVTableMethod(vTableMethods,
+                              vTableInitializers,
+                              Format("{0}_malloc_init", className),
+                              llvm::FunctionType::get(
+                                  this->generateType(className, true), constructParamTypes, false));
 
         for (const auto& member : classDecl->members) {
             if (const auto* method = dynamic_cast<const MethodMember*>(member.get())) {
@@ -228,8 +234,8 @@ void IRGen::setupFunctions()
         }
     }
     auto m = llvm::FunctionType::get(int8PtrTy, {int64Ty}, false);
-    this->methodMap["malloc"]      = llvm::Function::Create(
-        m, llvm::Function::ExternalLinkage, "malloc", *this->module);
+    this->methodMap["malloc"] =
+        llvm::Function::Create(m, llvm::Function::ExternalLinkage, "malloc", *this->module);
 }
 
 llvm::Type* IRGen::generateType(const Type& type, bool ptr)

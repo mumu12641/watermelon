@@ -19,13 +19,11 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
     this->valueTable.enterScope(decl.name);
     this->currClass = &decl;
     int offset      = 1;
-    cout_blue(decl.name + "    ");
     for (const auto& param : this->classAllParams[decl.name]) {
         std::string paramName = this->getParamName(param);
-        cout_blue(paramName + "    ");
         this->valueTable.add(paramName, IRValue(offset++));
     }
-    cout_blue("\n");
+    this->generateClassMallocInit(decl);
     this->generateClassConstructor(decl);
     this->generateClassBuiltinInit(decl);
     for (const auto& member : decl.members) {
@@ -75,21 +73,38 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     this->builder->SetInsertPoint(entryBB);
 
     // TODO: 这里应该是分配空间，然后把指针返回，所以 constructor 的参数也不需要 self 了
-    llvm::Type*  classType  = this->generateType(decl.name);
-    uint64_t     typeSize   = this->dataLayout->getTypeAllocSize(classType);
-    llvm::Value* sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
-    llvm::Value* mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
-    llvm::Value* mallocResult =
-        builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
+    llvm::Type*  classType = this->generateType(decl.name);
+    llvm::Value* self      = this->getCurrFunc()->getArg(0);
+    // uint64_t    typeSize   = this->dataLayout->getTypeAllocSize(classType);
+    // auto        sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
+    // auto        mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
+    // auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
 
-    this->builder->CreateCall(this->module->getFunction(Format("{0}_builtin_init", decl.name)),
-                              {mallocResult});
+    // this->builder->CreateCall(this->module->getFunction(Format("{0}_builtin_init", decl.name)),
+    //                           {mallocResult});
+
+    if (!decl.baseClass.empty()) {
+        // TODO: 如果你根据上面那样做了，那你调用 baseclass 的 constructor 的时候又要 malloc 一次？
+        auto baseClassName   = this->classTable.find(decl.baseClass)->name;
+        auto castToBaseClass = this->builder->CreateBitCast(
+            self, llvm::PointerType::get(this->generateType(baseClassName), 0));
+
+        std::vector<llvm::Value*> constructorArgs = {castToBaseClass};
+        for (const auto& param : decl.baseConstructorArgs) {
+            auto value = generateExpression(*param);
+            constructorArgs.push_back(value);
+        }
+        auto callBaseConstructor = this->builder->CreateCall(
+            this->module->getFunction(Format("{0}_constructor", baseClassName)), constructorArgs);
+        self =
+            this->builder->CreateBitCast(callBaseConstructor, llvm::PointerType::get(classType, 0));
+    }
 
     llvm::Value* undef = llvm::UndefValue::get(this->int32Ty);
     this->allocaInsertPoint =
         new llvm::BitCastInst(undef, undef->getType(), "alloca.point", entryBB);
 
-    int paramOffset = 0;
+    int paramOffset = 1;
     for (const auto& param : decl.constructorParameters) {
         llvm::Type*  paramType = this->generateType(*param.type);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
@@ -98,7 +113,7 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         this->valueTable.add(param.name, IRValue(paramVar));
 
         auto ptr = this->builder->CreateStructGEP(
-            classType, mallocResult, paramOffset, Format("{0}_ptr", param.name));
+            classType, self, paramOffset, Format("{0}_ptr", param.name));
         this->builder->CreateStore(ptr, argValue);
         paramOffset++;
     }
@@ -108,11 +123,39 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
 
     auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
     if (this->methodMap.count(selfDefinedInitName)) {
-        this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {mallocResult});
+        this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {self});
     }
 
 
-    this->builder->CreateRet(mallocResult);
+    this->builder->CreateRet(self);
+    this->valueTable.exitScope();
+}
+
+void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
+{
+    this->currFuncName = "malloc_init";
+    this->valueTable.enterScope(Format("{0}_{1}", decl.name, this->currFuncName));
+    llvm::Function* function = this->getCurrFunc();
+    auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
+    this->builder->SetInsertPoint(entryBB);
+
+    llvm::Type* classType  = this->generateType(decl.name);
+    uint64_t    typeSize   = this->dataLayout->getTypeAllocSize(classType);
+    auto        sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
+    auto        mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
+    auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
+
+    std::vector<llvm::Value*> constructorArgs;
+    constructorArgs.push_back(mallocResult);
+
+    for (unsigned i = 0; i < function->arg_size(); ++i) {
+        constructorArgs.push_back(function->getArg(i));
+    }
+
+    auto constructorFunc = this->module->getFunction(Format("{0}_constructor", decl.name));
+    auto self            = this->builder->CreateCall(constructorFunc, constructorArgs);
+
+    this->builder->CreateRet(self);
     this->valueTable.exitScope();
 }
 
