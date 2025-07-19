@@ -181,12 +181,15 @@ public:
     /* generate methods */
     std::unique_ptr<llvm::Module> generateIR();
     void                          generateDeclaration(const Declaration& decl);
-    void                          generateClassDeclaration(const ClassDeclaration& decl);
-    void                          generateClassBuiltinInit(const ClassDeclaration& decl);
-    void                          generateClassConstructor(const ClassDeclaration& decl);
-    void                          generateClassMallocInit(const ClassDeclaration& decl);
-    void                          generateEnumDeclaration(const EnumDeclaration& decl);
-    void                          generateFunctionDeclaration(const FunctionDeclaration& decl);
+
+    void generateClassDeclaration(const ClassDeclaration& decl);
+    void generateClassBuiltinInit(const ClassDeclaration& decl);
+    void generateClassConstructor(const ClassDeclaration& decl);
+    void generateClassMallocInit(const ClassDeclaration& decl);
+    void generateClassSelfDefinedInit(const InitBlockMember& init, const std::string& className);
+
+    void generateEnumDeclaration(const EnumDeclaration& decl);
+    void generateFunctionDeclaration(const FunctionDeclaration& decl);
 
     void generateStatement(const Statement& stmt);
     void generateBlockStatement(const BlockStatement& stmt);

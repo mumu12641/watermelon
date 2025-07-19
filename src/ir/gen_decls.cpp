@@ -31,7 +31,7 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
             generateFunctionDeclaration(*method->function);
         }
         else if (const auto init = dynamic_cast<const InitBlockMember*>(member.get())) {
-            // TODO include all params, parents' property, baseClassConstructor
+            this->generateClassSelfDefinedInit(*init, decl.name);
         }
     }
     this->currClass = nullptr;
@@ -72,20 +72,12 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    // TODO: 这里应该是分配空间，然后把指针返回，所以 constructor 的参数也不需要 self 了
     llvm::Type*  classType = this->generateType(decl.name);
     llvm::Value* self      = this->getCurrFunc()->getArg(0);
-    // uint64_t    typeSize   = this->dataLayout->getTypeAllocSize(classType);
-    // auto        sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
-    // auto        mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
-    // auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
-
-    // this->builder->CreateCall(this->module->getFunction(Format("{0}_builtin_init", decl.name)),
-    //                           {mallocResult});
 
     if (!decl.baseClass.empty()) {
-        // TODO: 如果你根据上面那样做了，那你调用 baseclass 的 constructor 的时候又要 malloc 一次？
-        auto baseClassName   = this->classTable.find(decl.baseClass)->name;
+        auto baseClass       = this->classTable.find(decl.baseClass);
+        auto baseClassName   = baseClass->name;
         auto castToBaseClass = this->builder->CreateBitCast(
             self, llvm::PointerType::get(this->generateType(baseClassName), 0));
 
@@ -94,32 +86,32 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
             auto value = generateExpression(*param);
             constructorArgs.push_back(value);
         }
+
+        auto diff = baseClass->constructorParameters.size() - (constructorArgs.size() - 1);
+        if (diff > 0) {
+            for (int i = 0; i < diff; i++) {
+                auto value = generateExpression(
+                    *baseClass->constructorParameters[i + (constructorArgs.size() - 1)]
+                         .defaultValue);
+                constructorArgs.push_back(value);
+            }
+        }
         auto callBaseConstructor = this->builder->CreateCall(
             this->module->getFunction(Format("{0}_constructor", baseClassName)), constructorArgs);
         self =
             this->builder->CreateBitCast(callBaseConstructor, llvm::PointerType::get(classType, 0));
     }
 
-    llvm::Value* undef = llvm::UndefValue::get(this->int32Ty);
-    this->allocaInsertPoint =
-        new llvm::BitCastInst(undef, undef->getType(), "alloca.point", entryBB);
-
     int paramOffset = 1;
     for (const auto& param : decl.constructorParameters) {
-        llvm::Type*  paramType = this->generateType(*param.type);
-        llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
-        llvm::Value* argValue  = function->getArg(paramOffset);
-        this->builder->CreateStore(argValue, paramVar, false);
-        this->valueTable.add(param.name, IRValue(paramVar));
-
-        auto ptr = this->builder->CreateStructGEP(
-            classType, self, paramOffset, Format("{0}_ptr", param.name));
-        this->builder->CreateStore(ptr, argValue);
+        auto         ptr      = this->builder->CreateStructGEP(classType,
+                                                  self,
+                                                  this->valueTable.find(param.name)->getOffset(),
+                                                  Format("{0}_ptr", param.name));
+        llvm::Value* argValue = function->getArg(paramOffset);
+        this->builder->CreateStore(argValue, ptr);
         paramOffset++;
     }
-
-    this->allocaInsertPoint->eraseFromParent();
-    this->allocaInsertPoint = nullptr;
 
     auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
     if (this->methodMap.count(selfDefinedInitName)) {
@@ -156,6 +148,23 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     auto self            = this->builder->CreateCall(constructorFunc, constructorArgs);
 
     this->builder->CreateRet(self);
+    this->valueTable.exitScope();
+}
+
+void IRGen::generateClassSelfDefinedInit(const InitBlockMember& init, const std::string& className)
+{
+    this->currFuncName = "self_defined_init";
+    this->valueTable.enterScope(Format("{0}_{1}", className, this->currFuncName));
+    llvm::Function* function = this->getCurrFunc();
+    auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
+    this->builder->SetInsertPoint(entryBB);
+
+    llvm::Type*  classType = this->generateType(className);
+    llvm::Value* self      = this->getCurrFunc()->getArg(0);
+
+    generateBlockStatement(*init.block);
+
+    this->builder->CreateRetVoid();
     this->valueTable.exitScope();
 }
 

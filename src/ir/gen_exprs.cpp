@@ -41,12 +41,18 @@ llvm::Value* IRGen::generateArrayExpression(const ArrayExpression& expr)
 
 llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 {
-    auto leftptr  = generateExpression(*expr.left);
-    auto rightptr = generateExpression(*expr.right);
-    auto leftValue =
-        this->builder->CreateLoad(this->generateType(expr.left->getType()), leftptr, "left");
-    auto rightValue =
-        this->builder->CreateLoad(this->generateType(expr.right->getType()), rightptr, "right");
+
+    auto         leftResult  = generateExpression(*expr.left);
+    auto         rightResult = generateExpression(*expr.right);
+    llvm::Value* leftValue   = leftResult->getType()->isPointerTy()
+                                   ? this->builder->CreateLoad(
+                                       this->generateType(expr.left->getType()), leftResult, "left")
+                                   : leftResult;
+    llvm::Value* rightValue =
+        rightResult->getType()->isPointerTy()
+            ? this->builder->CreateLoad(
+                  this->generateType(expr.right->getType()), rightResult, "left")
+            : rightResult;
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||
                             expr.right->getType() == Type::builtinFloat();
@@ -95,10 +101,10 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             return this->builder->CreateAnd(leftValue, rightValue, "and");
         case BinaryExpression::Operator::OR:
             return this->builder->CreateOr(leftValue, rightValue, "or");
-
         case BinaryExpression::Operator::ASSIGN:
         {
-            this->builder->CreateStore(rightValue, leftptr);
+            this->builder->CreateStore(rightValue, leftResult);
+            return rightValue;   
         }
     }
 }

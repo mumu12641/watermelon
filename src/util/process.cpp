@@ -70,6 +70,23 @@ void processSourceFile(const std::string& source, const std::string& filename)
     std::cout << std::endl;
     llvmIR->print(llvm::outs(), nullptr);
     std::cout << std::endl;
+
+    std::filesystem::path inputPath(filename);
+    std::string           outputFilename =
+        "/home/pbb/code/watermelon/examples/" + inputPath.stem().string() + ".ll";
+    std::error_code      EC;
+    llvm::raw_fd_ostream outFile(outputFilename, EC);
+
+    if (EC) {
+        cout_red("Error opening output file: " + EC.message());
+        std::cout << std::endl;
+    }
+    else {
+        llvmIR->print(outFile, nullptr);
+        outFile.close();
+        cout_green("LLVM IR has been written to: " + outputFilename);
+        std::cout << std::endl;
+    }
 }
 
 
