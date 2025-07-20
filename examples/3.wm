@@ -1,13 +1,11 @@
 class A(){
     var b:B;
     fn method1() -> void{
-        
         return;
     }
 }
 class B(){
     var index:int = 0;
-    var a:A;
     init{
         index = 1 + 0;
     }
@@ -17,5 +15,6 @@ class B(){
     }
 }
 fn main(){
+    var b = B();
     return;
 }

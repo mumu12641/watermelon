@@ -22,6 +22,7 @@
 - [ ] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
 - [ ] 初始化类的时候调用 constructor， constructor中先调用 builtin_init ，然后运行 constructor，最后调用 self_defined_init
 - [ ] 空指针异常
+- [ ] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态
 
 ## TODO
 - [x] 子类和父类的初始化函数(done)，init 块(done)

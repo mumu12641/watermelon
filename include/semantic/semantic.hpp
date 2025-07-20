@@ -101,7 +101,8 @@ public:
         , functionTable(FunctionTable())
     {
     }
-    ClassTable getClassTable() { return classTable; }
+    ClassTable    getClassTable() { return classTable; }
+    FunctionTable getFunctionTable() { return functionTable; }
 
     std::optional<Error> validateMethodOverride(const MethodMember*     method,
                                                 const ClassMember*      parentMember,

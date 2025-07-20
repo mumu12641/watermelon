@@ -96,7 +96,7 @@ void IRGen::buildVTables()
         std::vector<llvm::Type*> constructParamTypes = {
             this->generateType(Type::classType(className), true)};
         for (const auto& constructParam : classDecl->constructorParameters) {
-            constructParamTypes.emplace_back(this->generateType(*constructParam.type));
+            constructParamTypes.emplace_back(this->generateType(*constructParam.type, false));
         }
         this->addVTableMethod(vTableMethods,
                               vTableInitializers,
@@ -118,11 +118,11 @@ void IRGen::buildVTables()
                     this->generateType(Type::classType(className), true)};
 
                 for (const auto& param : method->function->parameters) {
-                    paramTypes.push_back(this->generateType(*param.type));
+                    paramTypes.push_back(this->generateType(*param.type, false));
                 }
 
                 llvm::FunctionType* funcType = llvm::FunctionType::get(
-                    this->generateType(*method->function->returnType), paramTypes, false);
+                    this->generateType(*method->function->returnType, false), paramTypes, false);
 
                 this->addVTableMethod(vTableMethods, vTableInitializers, methodName, funcType);
             }
@@ -198,14 +198,6 @@ void IRGen::defineClasses()
                     structType->setBody(fieldTypes);
                 }
                 this->classAllParams[classDecl->name] = std::move(allParams);
-
-                llvm::GlobalVariable* globalVar =
-                    new llvm::GlobalVariable(*this->module,
-                                             structType,
-                                             false,
-                                             llvm::GlobalValue::ExternalLinkage,
-                                             nullptr,
-                                             "globalTest");
             }
         }
     }
@@ -225,10 +217,10 @@ void IRGen::setupFunctions()
             auto                     funcName   = funcDecl->name;
             std::vector<llvm::Type*> paramTypes = {};
             for (const auto& param : funcDecl->parameters) {
-                paramTypes.emplace_back(this->generateType(*param.type));
+                paramTypes.emplace_back(this->generateType(*param.type, false));
             }
             auto m = llvm::FunctionType::get(
-                this->generateType(*funcDecl->returnType), paramTypes, false);
+                this->generateType(*funcDecl->returnType, false), paramTypes, false);
             this->methodMap[funcName] = llvm::Function::Create(
                 m, llvm::Function::ExternalLinkage, funcName, this->module.get());
         }
@@ -253,6 +245,7 @@ llvm::Type* IRGen::generateType(const Type& type, bool ptr)
                 return nullptr;
             }
             return ptr ? llvm::PointerType::getUnqual(it->second) : it->second;
+            // return llvm::PointerType::getUnqual(it->second);
         }
         default: break;
     }
@@ -278,6 +271,7 @@ llvm::Type* IRGen::generateType(const std::string& type, bool ptr)
             return nullptr;
         }
         return ptr ? llvm::PointerType::getUnqual(it->second) : it->second;
+        // return llvm::PointerType::getUnqual(it->second);
     }
 }
 
@@ -292,11 +286,12 @@ llvm::Type* IRGen::getParamType(
     const std::variant<const FunctionParameter*, const PropertyMember*>& param)
 {
     if (auto funcParamPtr = std::get_if<const FunctionParameter*>(&param)) {
-        return this->generateType(*(*funcParamPtr)->type);
+        return this->generateType(*(*funcParamPtr)->type, false);
     }
     else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
-        return this->generateType((*propertyPtr)->getType());
+        return this->generateType((*propertyPtr)->getType(), false);
     }
+    return nullptr;
 }
 
 std::string IRGen::getParamName(
@@ -308,6 +303,7 @@ std::string IRGen::getParamName(
     else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
         return (*propertyPtr)->getName();
     }
+    return "";
 }
 
 const Expression* IRGen::getParamInitExpr(
@@ -319,4 +315,5 @@ const Expression* IRGen::getParamInitExpr(
     else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
         return (*propertyPtr)->initializer.get();
     }
+    return nullptr;
 }

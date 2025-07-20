@@ -149,6 +149,12 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeCallExpression(
     CallExpression& expr)
 {
+    if (dynamic_cast<IdentifierExpression*>(expr.callee.get()) == nullptr) {
+        return {nullptr,
+                Error("The callee in a call expression must be an identifier",
+                      expr.callee->getLocation())};
+    }
+
     auto [calleeType, errorCallee] = analyzeExpression(*expr.callee);
     if (errorCallee) return {nullptr, errorCallee};
 
@@ -249,7 +255,6 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
 std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyzeMemberExpression(
     MemberExpression& expr)
 {
-
     auto [objectType, errorObject] = analyzeExpression(*expr.object);
     if (errorObject) return {nullptr, errorObject};
 
@@ -298,6 +303,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
             }
         }
 
+        // property return directly
         return {std::make_unique<Type>(classMember->getType()), std::nullopt};
     }
     else {

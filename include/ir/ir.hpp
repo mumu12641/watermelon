@@ -105,6 +105,7 @@ private:
     IRValueTable             valueTable;
     std::unique_ptr<Program> program;
     ClassTable               classTable;
+    FunctionTable            functionTable;
 
     const ClassDeclaration* currClass;
     std::string             currFuncName;
@@ -128,9 +129,8 @@ private:
     llvm::Type* boolTy;
     llvm::Type* floatTy;
 
-
 public:
-    IRGen(std::unique_ptr<Program> p, ClassTable classTable)
+    IRGen(std::unique_ptr<Program> p, ClassTable&& classTable, FunctionTable&& functionTable)
         : context(std::make_unique<llvm::LLVMContext>())
         , module(std::make_unique<llvm::Module>("test_module", *context))
         , builder(std::make_unique<llvm::IRBuilder<>>(*context))
@@ -139,6 +139,7 @@ public:
         , currFuncName("")
         , program(std::move(p))
         , classTable(classTable)
+        , functionTable(functionTable)
     {
         module->setTargetTriple(llvm::sys::getDefaultTargetTriple());
         int32Ty   = llvm::Type::getInt32Ty(*context);
@@ -160,8 +161,8 @@ public:
     void setupFunctions();
 
     /* utils methods */
-    llvm::Type* generateType(const Type& type, bool ptr = false);
-    llvm::Type* generateType(const std::string& type, bool ptr = false);
+    llvm::Type* generateType(const Type& type, bool ptr);
+    llvm::Type* generateType(const std::string& type, bool ptr);
 
     llvm::Function* getCurrFunc()
     {
@@ -183,6 +184,8 @@ public:
     void                          generateDeclaration(const Declaration& decl);
 
     void generateClassDeclaration(const ClassDeclaration& decl);
+
+    /* generate class init methods  */
     void generateClassBuiltinInit(const ClassDeclaration& decl);
     void generateClassConstructor(const ClassDeclaration& decl);
     void generateClassMallocInit(const ClassDeclaration& decl);

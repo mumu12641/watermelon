@@ -55,8 +55,9 @@ void IRGen::generateReturnStatement(const ReturnStatement& stmt)
 
 void IRGen::generateVariableStatement(const VariableStatement& stmt)
 {
-    llvm::Value* value = this->allocateStackVariable(stmt.name, this->generateType(*stmt.type));
-    llvm::Value* init  = generateExpression(*stmt.initializer);
+    llvm::Value* value =
+        this->allocateStackVariable(stmt.name, this->generateType(*stmt.type, true));
+    llvm::Value* init = generateExpression(*stmt.initializer);
     this->builder->CreateStore(init, value);
     this->valueTable.add(stmt.name, IRValue(value));
 }

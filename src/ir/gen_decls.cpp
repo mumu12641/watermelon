@@ -52,10 +52,11 @@ void IRGen::generateClassBuiltinInit(const ClassDeclaration& decl)
         std::string       paramName = this->getParamName(param);
         if (initExpr != nullptr) {
             auto initValue = generateExpression(*initExpr);
-            auto ptr = this->builder->CreateStructGEP(this->generateType(this->currClass->name),
-                                                      this->getCurrFunc()->getArg(0),
-                                                      offset,
-                                                      Format("{0}_ptr", paramName));
+            auto ptr =
+                this->builder->CreateStructGEP(this->generateType(this->currClass->name, false),
+                                               this->getCurrFunc()->getArg(0),
+                                               offset,
+                                               Format("{0}_ptr", paramName));
             this->builder->CreateStore(initValue, ptr);
         }
         offset++;
@@ -72,14 +73,14 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    llvm::Type*  classType = this->generateType(decl.name);
+    llvm::Type*  classType = this->generateType(decl.name, false);
     llvm::Value* self      = this->getCurrFunc()->getArg(0);
 
     if (!decl.baseClass.empty()) {
         auto baseClass       = this->classTable.find(decl.baseClass);
         auto baseClassName   = baseClass->name;
         auto castToBaseClass = this->builder->CreateBitCast(
-            self, llvm::PointerType::get(this->generateType(baseClassName), 0));
+            self, llvm::PointerType::get(this->generateType(baseClassName, false), 0));
 
         std::vector<llvm::Value*> constructorArgs = {castToBaseClass};
         for (const auto& param : decl.baseConstructorArgs) {
@@ -104,7 +105,7 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
 
     int paramOffset = 1;
     for (const auto& param : decl.constructorParameters) {
-        auto         ptr      = this->builder->CreateStructGEP(classType,
+        auto         ptr      = this->builder->CreateStructGEP(this->generateType(decl.name, false),
                                                   self,
                                                   this->valueTable.find(param.name)->getOffset(),
                                                   Format("{0}_ptr", param.name));
@@ -131,11 +132,17 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    llvm::Type* classType  = this->generateType(decl.name);
+    llvm::Type* classType  = this->generateType(decl.name, false);
     uint64_t    typeSize   = this->dataLayout->getTypeAllocSize(classType);
     auto        sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
     auto        mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
     auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
+
+    std::string vTableName = Format("vTable_{0}", decl.name);
+    auto        ptr    = this->builder->CreateStructGEP(classType, mallocResult, 0, "vtable_ptr");
+    auto        vTable = this->builder->CreateLoad(
+        this->vTableTypes[vTableName], this->vTableVars[vTableName], "vtable_load");
+    this->builder->CreateStore(vTable, ptr);
 
     std::vector<llvm::Value*> constructorArgs;
     constructorArgs.push_back(mallocResult);
@@ -159,7 +166,7 @@ void IRGen::generateClassSelfDefinedInit(const InitBlockMember& init, const std:
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    llvm::Type*  classType = this->generateType(className);
+    llvm::Type*  classType = this->generateType(className, false);
     llvm::Value* self      = this->getCurrFunc()->getArg(0);
 
     generateBlockStatement(*init.block);
@@ -189,7 +196,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 
     bool isVoid = decl.returnType->isVoid();
     if (!isVoid) {
-        llvm::Type* returnType = this->generateType(*decl.returnType);
+        llvm::Type* returnType = this->generateType(*decl.returnType, false);
         this->retVal           = this->allocateStackVariable("retval", returnType);
     }
 
@@ -197,7 +204,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 
     int paramOffset = this->currClass == nullptr ? 0 : 1;
     for (const auto& param : decl.parameters) {
-        llvm::Type*  paramType = this->generateType(*param.type);
+        llvm::Type*  paramType = this->generateType(*param.type, false);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
         llvm::Value* argValue  = function->getArg(paramOffset++);
         this->builder->CreateStore(argValue, paramVar, false);
@@ -205,12 +212,6 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
     }
 
     this->generateStatement(*decl.body);
-
-    // if (this->retBB->hasNPredecessorsOrMore(1)) {
-    //     this->builder->CreateBr(this->retBB);
-    //     this->retBB->insertInto(function);
-    //     this->builder->SetInsertPoint(this->retBB);
-    // }
 
     this->retBB->insertInto(function);
     this->builder->SetInsertPoint(this->retBB);
@@ -221,7 +222,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
         builder->CreateRetVoid();
     }
     else {
-        llvm::Type*  returnType  = this->generateType(*decl.returnType);
+        llvm::Type*  returnType  = this->generateType(*decl.returnType, false);
         llvm::Value* returnValue = builder->CreateLoad(returnType, retVal, "return_value");
         builder->CreateRet(returnValue);
     }

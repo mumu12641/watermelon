@@ -44,14 +44,15 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 
     auto         leftResult  = generateExpression(*expr.left);
     auto         rightResult = generateExpression(*expr.right);
-    llvm::Value* leftValue   = leftResult->getType()->isPointerTy()
-                                   ? this->builder->CreateLoad(
-                                       this->generateType(expr.left->getType()), leftResult, "left")
-                                   : leftResult;
+    llvm::Value* leftValue =
+        leftResult->getType()->isPointerTy()
+            ? this->builder->CreateLoad(
+                  this->generateType(expr.left->getType(), false), leftResult, "left")
+            : leftResult;
     llvm::Value* rightValue =
         rightResult->getType()->isPointerTy()
             ? this->builder->CreateLoad(
-                  this->generateType(expr.right->getType()), rightResult, "left")
+                  this->generateType(expr.right->getType(), false), rightResult, "left")
             : rightResult;
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||
@@ -104,12 +105,31 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
         case BinaryExpression::Operator::ASSIGN:
         {
             this->builder->CreateStore(rightValue, leftResult);
-            return rightValue;   
+            return rightValue;
         }
     }
+    return nullptr;
 }
 
-llvm::Value* IRGen::generateCallExpression(const CallExpression& expr) {}
+llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
+{
+    auto* idExpr = dynamic_cast<IdentifierExpression*>(expr.callee.get());
+
+    const auto*               cls  = this->classTable.find(idExpr->name);
+    const auto*               func = this->functionTable.find(idExpr->name);
+    std::vector<llvm::Value*> callArgs;
+    for (const auto& argExpr : expr.arguments) {
+        callArgs.push_back(generateExpression(*argExpr));
+    }
+    if (cls) {
+        return this->builder->CreateCall(
+            this->module->getFunction(Format("{0}_malloc_init", cls->name)), callArgs);
+    }
+    if (func) {
+        return this->builder->CreateCall(this->module->getFunction(func->name), callArgs);
+    }
+    return nullptr;
+}
 
 llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& expr)
 {
@@ -117,7 +137,7 @@ llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& exp
     switch (value->getKind()) {
         case IRValueKind::PROPERTY:
         {
-            return this->builder->CreateStructGEP(this->generateType(this->currClass->name),
+            return this->builder->CreateStructGEP(this->generateType(this->currClass->name, false),
                                                   this->getCurrFunc()->getArg(0),
                                                   value->getOffset(),
                                                   Format("{0}_ptr", expr.name));
@@ -127,6 +147,7 @@ llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& exp
             return this->valueTable.find(expr.name)->getValue();
         }
     }
+    return nullptr;
 }
 
 llvm::Value* IRGen::generateLambdaExpression(const LambdaExpression& expr)
@@ -145,13 +166,35 @@ llvm::Value* IRGen::generateLiteralExpression(const LiteralExpression& expr)
         case Type::Kind::STRING:
             return builder->CreateGlobalStringPtr(std::get<std::string>(expr.value));
     }
+    return nullptr;
 }
 
-llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr) {}
+llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
+{
+    auto object    = generateExpression(*expr.object);
+    auto objectVal = this->builder->CreateLoad(
+        this->generateType(expr.object->getType(), true), object, "objectVal");
+    const auto* objectClass = this->classTable.find(expr.object->getType().getName());
+
+    if (expr.kind == MemberExpression::Kind::METHOD) {
+        std::vector<llvm::Value*> callArgs = {objectVal};
+        for (const auto& argExpr : expr.arguments) {
+            callArgs.push_back(generateExpression(*argExpr));
+        }
+        return this->builder->CreateCall(
+            this->module->getFunction(Format("{0}_{1}", objectClass->name, expr.methodName)),
+            callArgs);
+    }
+    if (expr.kind == MemberExpression::Kind::PROPERTY) {}
+    return nullptr;
+}
 
 llvm::Value* IRGen::generateTypeCheckExpression(const TypeCheckExpression& expr)
 {
     throw "Not yet implemented IRGen::generateTypeCheckExpression";
 }
 
-llvm::Value* IRGen::generateUnaryExpression(const UnaryExpression& expr) {}
+llvm::Value* IRGen::generateUnaryExpression(const UnaryExpression& expr)
+{
+    throw "Not yet implemented IRGen::generateUnaryExpression";
+}

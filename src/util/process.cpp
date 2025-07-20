@@ -62,13 +62,15 @@ void processSourceFile(const std::string& source, const std::string& filename)
     std::cout << std::endl;
 
     cout_pink("  [4/4] LLVM IR generating... ");
-    IRGen irGen(std::move(resolveProgram), semanticAnalyzer.getClassTable());
+    IRGen irGen(std::move(resolveProgram),
+                std::move(semanticAnalyzer.getClassTable()),
+                std::move(semanticAnalyzer.getFunctionTable()));
     auto  llvmIR = irGen.generateIR();
     cout_green("Passed");
     std::cout << std::endl;
     cout_blue("✓ Compilation successful");
     std::cout << std::endl;
-    llvmIR->print(llvm::outs(), nullptr);
+    // llvmIR->print(llvm::outs(), nullptr);
     std::cout << std::endl;
 
     std::filesystem::path inputPath(filename);

@@ -19,5 +19,6 @@ fn method(a:int,b:int)->int{
     return  a+ 1;
 }
 fn main() -> int{
-    return 0;
+    var c = C("c_s",2);
+    return c.method(1);
 }
