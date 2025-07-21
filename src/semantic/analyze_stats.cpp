@@ -112,23 +112,24 @@ std::optional<Error> SemanticAnalyzer::analyzeVariableStatement(VariableStatemen
         initType = std::move(analyzedType);
     }
 
-    if (stmt.type) {
+    if (stmt.declType) {
         if (initType != nullptr &&
-            !this->classTable.checkInherit(initType->getName(), stmt.type->getName())) {
+            !this->classTable.checkInherit(initType->getName(), stmt.declType->getName())) {
             return Error(
                 Format("Cannot initialize variable '{0}' of type '{1}' with value of type '{2}'",
                        stmt.name,
-                       stmt.type->getName(),
+                       stmt.declType->getName(),
                        initType->getName()),
                 stmt.getLocation());
         }
-        this->symbolTable.add(stmt.name, *stmt.type, stmt.immutable);
+        this->symbolTable.add(stmt.name, *stmt.declType, stmt.immutable);
     }
     else if (initType) {
         this->symbolTable.add(stmt.name, *initType, stmt.immutable);
         // move init type to stmt
-        stmt.type = std::move(initType);
+        stmt.declType = std::move(initType);
     }
+    stmt.initType = std::move(initType);
     return std::nullopt;
 }
 

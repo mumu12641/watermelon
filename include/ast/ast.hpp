@@ -643,14 +643,17 @@ class VariableStatement : public Statement
 public:
     bool                        immutable;
     std::string                 name;
-    std::unique_ptr<Type>       type;
+    std::unique_ptr<Type>       declType;
+    std::unique_ptr<Type>       initType;
     std::unique_ptr<Expression> initializer;
 
     VariableStatement(Location location, bool immutable, std::string name,
-                      std::unique_ptr<Type> type, std::unique_ptr<Expression> initializer)
+                      std::unique_ptr<Type> declType, std::unique_ptr<Type> initType,
+                      std::unique_ptr<Expression> initializer)
         : immutable(immutable)
         , name(std::move(name))
-        , type(std::move(type))
+        , initType(std::move(initType))
+        , declType(std::move(declType))
         , initializer(std::move(initializer))
         , Statement(location)
     {
@@ -666,9 +669,9 @@ public:
         }
 
         std::string result = indent(level) + "VariableStatement (" + kindStr + "): " + name;
-        if (type) {
+        if (declType) {
             result += "\n" + indent(level + 1) + "Type:\n";
-            result += type->dump(level + 2);
+            result += declType->dump(level + 2);
         }
         if (initializer) {
             result += "\n" + indent(level + 1) + "Initializer:\n";

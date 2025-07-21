@@ -176,11 +176,11 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
     auto [name, nameErr] = consume(TokenType::IDENTIFIER, "Expect variable name.");
     if (nameErr) return {nullptr, nameErr};
 
-    std::unique_ptr<Type> varType = nullptr;
+    std::unique_ptr<Type> declType = nullptr;
     if (match(TokenType::COLON)) {
         auto [typeVal, typeErr] = type();
         if (typeErr) return {nullptr, typeErr};
-        varType = std::move(typeVal);
+        declType = std::move(typeVal);
     }
 
     std::unique_ptr<Expression> initializer = nullptr;
@@ -189,7 +189,7 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
         if (initErr) return {nullptr, initErr};
         initializer = std::move(initExpr);
     }
-    if (varType == nullptr && initializer == nullptr) {
+    if (declType == nullptr && initializer == nullptr) {
         return {nullptr,
                 createError(
                     previous(),
@@ -201,7 +201,8 @@ std::pair<std::unique_ptr<Statement>, std::optional<Error>> Parser::variableStat
     return {std::make_unique<VariableStatement>(l,
                                                 immutable,
                                                 std::get<std::string>(name.value),
-                                                std::move(varType),
+                                                std::move(declType),
+                                                nullptr,
                                                 std::move(initializer)),
             std::nullopt};
 }

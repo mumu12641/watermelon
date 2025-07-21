@@ -166,9 +166,6 @@ void IRGen::generateClassSelfDefinedInit(const InitBlockMember& init, const std:
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    llvm::Type*  classType = this->generateType(className, false);
-    llvm::Value* self      = this->getCurrFunc()->getArg(0);
-
     generateBlockStatement(*init.block);
 
     this->builder->CreateRetVoid();
@@ -196,7 +193,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 
     bool isVoid = decl.returnType->isVoid();
     if (!isVoid) {
-        llvm::Type* returnType = this->generateType(*decl.returnType, false);
+        llvm::Type* returnType = this->generateType(*decl.returnType, true);
         this->retVal           = this->allocateStackVariable("retval", returnType);
     }
 
@@ -204,7 +201,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 
     int paramOffset = this->currClass == nullptr ? 0 : 1;
     for (const auto& param : decl.parameters) {
-        llvm::Type*  paramType = this->generateType(*param.type, false);
+        llvm::Type*  paramType = this->generateType(*param.type, true);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
         llvm::Value* argValue  = function->getArg(paramOffset++);
         this->builder->CreateStore(argValue, paramVar, false);
@@ -222,7 +219,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
         builder->CreateRetVoid();
     }
     else {
-        llvm::Type*  returnType  = this->generateType(*decl.returnType, false);
+        llvm::Type*  returnType  = this->generateType(*decl.returnType, true);
         llvm::Value* returnValue = builder->CreateLoad(returnType, retVal, "return_value");
         builder->CreateRet(returnValue);
     }

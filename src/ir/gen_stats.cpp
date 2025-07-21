@@ -55,9 +55,12 @@ void IRGen::generateReturnStatement(const ReturnStatement& stmt)
 
 void IRGen::generateVariableStatement(const VariableStatement& stmt)
 {
-    llvm::Value* value =
-        this->allocateStackVariable(stmt.name, this->generateType(*stmt.type, true));
+    auto         declType = this->generateType(*stmt.declType, true);
+    llvm::Value* value    = this->allocateStackVariable(stmt.name, declType);
     llvm::Value* init = generateExpression(*stmt.initializer);
+    if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
+        init = this->builder->CreateBitCast(init, declType);
+    }
     this->builder->CreateStore(init, value);
     this->valueTable.add(stmt.name, IRValue(value));
 }

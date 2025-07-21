@@ -217,10 +217,10 @@ void IRGen::setupFunctions()
             auto                     funcName   = funcDecl->name;
             std::vector<llvm::Type*> paramTypes = {};
             for (const auto& param : funcDecl->parameters) {
-                paramTypes.emplace_back(this->generateType(*param.type, false));
+                paramTypes.emplace_back(this->generateType(*param.type, true));
             }
             auto m = llvm::FunctionType::get(
-                this->generateType(*funcDecl->returnType, false), paramTypes, false);
+                this->generateType(*funcDecl->returnType, true), paramTypes, false);
             this->methodMap[funcName] = llvm::Function::Create(
                 m, llvm::Function::ExternalLinkage, funcName, this->module.get());
         }

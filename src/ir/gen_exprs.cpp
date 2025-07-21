@@ -104,8 +104,18 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             return this->builder->CreateOr(leftValue, rightValue, "or");
         case BinaryExpression::Operator::ASSIGN:
         {
-            this->builder->CreateStore(rightValue, leftResult);
-            return rightValue;
+            auto leftType  = expr.left->getType();
+            auto rightType = expr.right->getType();
+            if (leftType != rightType) {
+                auto s =
+                    this->builder->CreateBitCast(rightValue, this->generateType(leftType, true));
+                this->builder->CreateStore(s, leftResult);
+                return s;
+            }
+            else {
+                this->builder->CreateStore(rightValue, leftResult);
+                return rightValue;
+            }
         }
     }
     return nullptr;
@@ -113,13 +123,29 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 
 llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
 {
-    auto* idExpr = dynamic_cast<IdentifierExpression*>(expr.callee.get());
-
-    const auto*               cls  = this->classTable.find(idExpr->name);
-    const auto*               func = this->functionTable.find(idExpr->name);
+    auto                      idExpr = dynamic_cast<IdentifierExpression*>(expr.callee.get());
+    const auto                cls    = this->classTable.find(idExpr->name);
+    const auto                func   = this->functionTable.find(idExpr->name);
     std::vector<llvm::Value*> callArgs;
     for (const auto& argExpr : expr.arguments) {
-        callArgs.push_back(generateExpression(*argExpr));
+        auto argPtr = generateExpression(*argExpr);
+        // if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
+        //     init = this->builder->CreateBitCast(init, declType);
+        // }
+        // for (const auto& declParam : func->parameters) {
+        //     // auto declType =
+        //     if (*declParam.type != argExpr->getType()) {
+        //         auto s =
+        //             this->builder->CreateBitCast(argPtr, this->generateType(*declParam.type, true));
+            
+        //         }
+        // }
+        auto argValue = argPtr->getType()->isPointerTy() &&
+                                !argPtr->getType()->getPointerElementType()->isIntegerTy(8)
+                            ? this->builder->CreateLoad(
+                                  this->generateType(argExpr->getType(), true), argPtr, "argVal")
+                            : argPtr;
+        callArgs.push_back(argValue);
     }
     if (cls) {
         return this->builder->CreateCall(
@@ -133,6 +159,7 @@ llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
 
 llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& expr)
 {
+    // return ptr
     auto value = this->valueTable.find(expr.name);
     switch (value->getKind()) {
         case IRValueKind::PROPERTY:

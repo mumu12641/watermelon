@@ -52,7 +52,6 @@ void processSourceFile(const std::string& source, const std::string& filename)
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
 
     if (semanticError) {
-        std::cout << std::endl;
         cout_red("Failed");
         std::cout << std::endl;
         semanticError->print();
@@ -147,7 +146,8 @@ void printUsage(const char* programName)
 
 void printLogo()
 {
-    cout_green("A Q C                       A\n");
+    // cout_green("A Q C                       A\n");
+    cout_green("F G U A Z Y N Q J P W E E U K\n");
     cout_green("D M");
     cout_cyan(" D ");
     cout_red("C");

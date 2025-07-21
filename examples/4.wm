@@ -1,24 +1,48 @@
 class A(a:int) {
     var a_s:String;
+    fn method() -> int{
+        return 1;
+    }
 }
 class B(c:int = 1) inherits A(1){
     var b_s:String;
+    fn method() -> int{
+        return 2;
+    }
 }
 class C(c:String = "c_s", d:int = 2) inherits B(){
     var c_s:String;
     init {
-        d= a + 1;
+        d = a + 1;
     }
-    fn method(e:int) -> int{
-        e = d;
-        return e+d;
+    fn method() -> int{
+        return 3;
     }
 }
 fn method(a:int,b:int)->int{
     var a = 1;
     return  a+ 1;
 }
-fn main() -> int{
-    var c = C("c_s",2);
-    return c.method(1);
+fn callMethod(a:A)->int{
+    return a.method();
 }
+fn main() -> int{
+    var c:C = C("c_s",2);
+    return callMethod(c);
+}
+/*
+define i32 @main() { 
+entry: 
+  %retval = alloca i32, align 4 
+  %c = alloca %A*, align 8 
+  %0 = call %C* @C_malloc_init(i8* getelementptr inbounds([4 x i8], [4 x i8]* @1, i32 0, i32 0), i32 2) 
+  %1 = bitcast %C* %0 to %A* 
+  store %A* %1, %A** %c, align 8 
+  %2 = load %A*, %A** %c, align 8 
+  %3 = call i32 @callMethod(%A* %2) 
+  store i32 %3, i32* %retval, align 4 
+  br label %return return: 
+  %return_value = load i32, i32* %retval, align 4 
+  ret i32 %return_value 
+}
+*/
