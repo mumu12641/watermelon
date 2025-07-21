@@ -1,20 +1,32 @@
-class A(){
-    var b:B;
-    fn method1() -> void{
+
+class C(){
+    var index:int = 0;
+    operator fn _first() -> void{
+        index = 0;
         return;
     }
-}
-class B(){
-    var index:int = 0;
-    init{
-        index = 1 + 0;
+    operator fn _next() -> void{
+        index = index + 1;
+        return;
+
     }
-    fn method2(a:int=1) -> int{
-        index = 2 + 1;
-        return index+a ;
+    operator fn _current() -> int{
+        return index;
+    }
+    operator fn _end() -> bool {
+        return index == 5;  
     }
 }
-fn main(){
-    var b = B();
-    return;
+
+fn method() -> C{
+    return C();
+}
+
+fn main()->int{
+    for(c in C()){
+        if(c == 4){
+            return 4;
+        }
+    }
+    return 0;
 }

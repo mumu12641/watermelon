@@ -18,12 +18,17 @@ class B(name:String) inherits A(1){
     fn get_name() -> String{
         return "asd";
     }
-    operator fn _first() -> int{
-        return age;
+    operator fn _first() -> void{
+        index = 0;
     }
-    operator fn _next() -> int{
+    operator fn _next() -> void{
         index = index + 1;
+    }
+    operator fn _current() -> int{
         return index;
+    }
+    operator fn _end() -> bool {
+        return index == 5;  
     }
 }
 

@@ -26,9 +26,13 @@ fn method(a:int,b:int)->int{
 fn callMethod(a:A)->int{
     return a.method();
 }
+
 fn main() -> int{
     var c:C = C("c_s",2);
-    return callMethod(c);
+    if(callMethod(c) > 0){
+        return 2;
+    }
+    return 0;
 }
 /*
 define i32 @main() { 

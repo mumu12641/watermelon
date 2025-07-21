@@ -223,7 +223,8 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
                     }
                 }
             }
-            checkClassOperator(classDecl);
+            auto checkOpErr = checkClassOperator(classDecl);
+            if (checkOpErr) return {nullptr, checkOpErr};
             auto parents = this->classTable.getInheritMap(classDecl->name);
             if (!parents || parents->empty()) {
                 continue;
@@ -332,12 +333,16 @@ std::optional<Error> SemanticAnalyzer::validatePropertyOverride(const PropertyMe
     return std::nullopt;
 }
 
-void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
+std::optional<Error> SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
 {
-    bool hasFirst = false;
-    bool hasNext  = false;
+    bool hasFirst   = false;
+    bool hasNext    = false;
+    bool hasEnd     = false;
+    bool hasCurrent = false;
     Type firstReturnType;
     Type nextReturnType;
+    Type endReturnType;
+    Type currentReturnType;
 
     for (const auto& member : classDecl->members) {
         if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
@@ -350,32 +355,63 @@ void SemanticAnalyzer::checkClassOperator(const ClassDeclaration* classDecl)
                     hasNext        = true;
                     nextReturnType = *method->function->returnType;
                 }
+                else if (method->function->name == "_end") {
+                    hasEnd        = true;
+                    endReturnType = *method->function->returnType;
+                }
+                else if (method->function->name == "_current") {
+                    hasCurrent        = true;
+                    currentReturnType = *method->function->returnType;
+                }
             }
         }
     }
-    if (hasFirst && !hasNext) {
-        throw Error(
-            Format(
-                "Class '{0}' has '_first' operator but is missing '_next' operator for iteration",
-                classDecl->name),
+
+    if (!hasFirst && !hasNext && !hasEnd && !hasCurrent) {
+        return std::nullopt;
+    }
+
+    if (!hasEnd) {
+        return Error(
+            Format("Class '{0}' implements iterator operators but is missing '_end' operator",
+                   classDecl->name),
             classDecl->getLocation());
     }
-    else if (!hasFirst && hasNext) {
-        throw Error(
-            Format(
-                "Class '{0}' has '_next' operator but is missing '_first' operator for iteration",
-                classDecl->name),
+
+    if (!hasFirst) {
+        return Error(
+            Format("Class '{0}' implements iterator operators but is missing '_first' operator",
+                   classDecl->name),
             classDecl->getLocation());
     }
-    else if (hasFirst && hasNext) {
-        if (!(firstReturnType == nextReturnType)) {
-            throw Error(Format("Iterator operators '_first' and '_next' in class '{0}' must have "
-                               "the same return type",
-                               classDecl->name),
-                        classDecl->getLocation());
-        }
-        this->classTable.setClassIterableMap(classDecl->name, true, firstReturnType);
+
+    if (!hasNext) {
+        return Error(
+            Format("Class '{0}' implements iterator operators but is missing '_next' operator",
+                   classDecl->name),
+            classDecl->getLocation());
     }
+    if (!hasCurrent) {
+        return Error(
+            Format("Class '{0}' implements iterator operators but is missing '_current' operator",
+                   classDecl->name),
+            classDecl->getLocation());
+    }
+    if (!firstReturnType.isVoid() || !nextReturnType.isVoid()) {
+        return Error(Format("Iterator operators '_first' and '_next' in class '{0}' must have "
+                            "'void' return type",
+                            classDecl->name),
+                     classDecl->getLocation());
+    }
+    if (!endReturnType.isBool()) {
+        return Error(
+            Format("Iterator operator '_end' in class '{0}' must return bool, but returns '{1}'",
+                   classDecl->name,
+                   endReturnType.getName()),
+            classDecl->getLocation());
+    }
+    this->classTable.setClassIterableMap(classDecl->name, true, currentReturnType);
+    return std::nullopt;
 }
 
 std::optional<Error> SemanticAnalyzer::checkPropertyConstructorConflict(

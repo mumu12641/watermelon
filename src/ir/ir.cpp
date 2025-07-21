@@ -235,7 +235,7 @@ llvm::Type* IRGen::generateType(const Type& type, bool ptr)
     switch (type.kind) {
         case Type::Kind::INT: return builder->getInt32Ty();
         case Type::Kind::STRING: return builder->getInt8PtrTy();
-        case Type::Kind::BOOL: throw builder->getInt1Ty();
+        case Type::Kind::BOOL: return builder->getInt1Ty();
         case Type::Kind::FLOAT: return builder->getDoubleTy();
         case Type::Kind::VOID: return builder->getVoidTy();
         case Type::Kind::CLASS:

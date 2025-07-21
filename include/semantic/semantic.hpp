@@ -114,7 +114,7 @@ public:
                                                   const ClassDeclaration* parentClass);
     std::optional<Error> checkPropertyConstructorConflict(const PropertyMember*   property,
                                                           const ClassDeclaration* classDecl);
-    void                 checkClassOperator(const ClassDeclaration* classDecl);
+    std::optional<Error> checkClassOperator(const ClassDeclaration* classDecl);
 
     std::pair<std::unique_ptr<Program>, std::optional<Error>> analyze();
     std::optional<Error>                                      analyzeDeclaration(Declaration& decl);

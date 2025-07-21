@@ -123,37 +123,48 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 
 llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
 {
-    auto                      idExpr = dynamic_cast<IdentifierExpression*>(expr.callee.get());
-    const auto                cls    = this->classTable.find(idExpr->name);
-    const auto                func   = this->functionTable.find(idExpr->name);
+
+    auto       idExpr = dynamic_cast<IdentifierExpression*>(expr.callee.get());
+    const auto cls    = this->classTable.find(idExpr->name);
+    const auto func   = this->functionTable.find(idExpr->name);
+
     std::vector<llvm::Value*> callArgs;
-    for (const auto& argExpr : expr.arguments) {
-        auto argPtr = generateExpression(*argExpr);
-        // if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
-        //     init = this->builder->CreateBitCast(init, declType);
-        // }
-        // for (const auto& declParam : func->parameters) {
-        //     // auto declType =
-        //     if (*declParam.type != argExpr->getType()) {
-        //         auto s =
-        //             this->builder->CreateBitCast(argPtr, this->generateType(*declParam.type, true));
-            
-        //         }
-        // }
-        auto argValue = argPtr->getType()->isPointerTy() &&
-                                !argPtr->getType()->getPointerElementType()->isIntegerTy(8)
-                            ? this->builder->CreateLoad(
-                                  this->generateType(argExpr->getType(), true), argPtr, "argVal")
-                            : argPtr;
-        callArgs.push_back(argValue);
-    }
+
+    auto processArguments = [this, &callArgs](const auto& declParams, const auto& arguments) {
+        for (size_t i = 0; i < arguments.size(); ++i) {
+            auto argPtr = generateExpression(*arguments[i]);
+            auto argValue =
+                argPtr->getType()->isPointerTy() &&
+                        !argPtr->getType()->getPointerElementType()->isIntegerTy(8)
+                    ? this->builder->CreateLoad(
+                          this->generateType(arguments[i]->getType(), true), argPtr, "argVal")
+                    : argPtr;
+
+            const auto& declParamType = declParams[i].type;
+            const auto& argType       = arguments[i]->getType();
+
+            if (*declParamType != argType) {
+                argValue = this->builder->CreateBitCast(
+                    argValue,
+                    this->generateType(*declParamType, true),
+                    Format("{0}_cast_to_{1}", argType.getName(), declParamType->getName()));
+            }
+
+            callArgs.push_back(argValue);
+        }
+    };
+
     if (cls) {
+        processArguments(cls->constructorParameters, expr.arguments);
         return this->builder->CreateCall(
             this->module->getFunction(Format("{0}_malloc_init", cls->name)), callArgs);
     }
+
     if (func) {
+        processArguments(func->parameters, expr.arguments);
         return this->builder->CreateCall(this->module->getFunction(func->name), callArgs);
     }
+
     return nullptr;
 }
 

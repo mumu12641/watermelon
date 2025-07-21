@@ -41,9 +41,77 @@ void IRGen::generateExpressionStatement(const ExpressionStatement& exprStmt)
     generateExpression(*exprStmt.expression);
 }
 
-void IRGen::generateForStatement(const ForStatement& stmt) {}
+void IRGen::generateForStatement(const ForStatement& stmt)
+{
+    // std::string                 variable;
+    // std::unique_ptr<Expression> iterable;
+    // std::unique_ptr<Statement>  body;
+    auto iterable = generateExpression(*stmt.iterable);
+    auto iterType = stmt.iterable->getType();
+    this->builder->CreateCall(this->module->getFunction(Format("{0}__first", iterType.getName())),
+                              {iterable});
 
-void IRGen::generateIfStatement(const IfStatement& stmt) {}
+    auto iterablePair = this->classTable.isClassIterable(iterType.getName());
+    auto variable     = this->allocateStackVariable(
+        stmt.variable, this->generateType(iterablePair->second.getName(), false));
+
+    auto              currFunc = this->getCurrFunc();
+    llvm::BasicBlock* condBB   = llvm::BasicBlock::Create(*context, "while.cond", currFunc);
+    llvm::BasicBlock* bodyBB   = llvm::BasicBlock::Create(*context, "while.body", currFunc);
+    llvm::BasicBlock* endBB    = llvm::BasicBlock::Create(*context, "while.end", currFunc);
+
+
+    //   obj._first();
+    //   while (obj._has_next()) {
+    //       auto current = obj._current();
+    //       // 处理当前元素
+    //       obj._next();
+    //   }
+    this->builder->CreateBr(condBB);
+    this->builder->SetInsertPoint(condBB);
+    auto cond = this->builder->CreateCall(
+        this->module->getFunction(Format("{0}__end", iterType.getName())), {iterable});
+    this->builder->CreateCondBr(cond, endBB, bodyBB);
+
+    this->builder->SetInsertPoint(bodyBB);
+    auto current = this->builder->CreateCall(
+        this->module->getFunction(Format("{0}__current", iterType.getName())), {iterable});
+    this->builder->CreateStore(current, variable);
+    this->valueTable.add(stmt.variable, IRValue(variable));
+
+    generateStatement(*stmt.body);
+
+    this->builder->CreateCall(this->module->getFunction(Format("{0}__next", iterType.getName())),
+                              {iterable});
+    this->builder->CreateBr(condBB);
+
+    this->builder->SetInsertPoint(endBB);
+}
+
+void IRGen::generateIfStatement(const IfStatement& stmt)
+{
+    auto currFunc = this->getCurrFunc();
+    auto trueBB   = llvm::BasicBlock::Create(*context, "if.true");
+    auto exitBB   = llvm::BasicBlock::Create(*context, "if.exit");
+    auto elseBB   = stmt.elseBranch ? llvm::BasicBlock::Create(*context, "if.false") : exitBB;
+
+    auto cond = generateExpression(*stmt.condition);
+    this->builder->CreateCondBr(cond, trueBB, elseBB);
+
+    trueBB->insertInto(currFunc);
+    this->builder->SetInsertPoint(trueBB);
+    generateStatement(*stmt.thenBranch);
+    this->builder->CreateBr(exitBB);
+
+    if (stmt.elseBranch) {
+        elseBB->insertInto(currFunc);
+        this->builder->SetInsertPoint(elseBB);
+        generateStatement(*stmt.elseBranch);
+        this->builder->CreateBr(exitBB);
+    }
+    exitBB->insertInto(currFunc);
+    this->builder->SetInsertPoint(exitBB);
+}
 
 void IRGen::generateReturnStatement(const ReturnStatement& stmt)
 {
@@ -57,7 +125,7 @@ void IRGen::generateVariableStatement(const VariableStatement& stmt)
 {
     auto         declType = this->generateType(*stmt.declType, true);
     llvm::Value* value    = this->allocateStackVariable(stmt.name, declType);
-    llvm::Value* init = generateExpression(*stmt.initializer);
+    llvm::Value* init     = generateExpression(*stmt.initializer);
     if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
         init = this->builder->CreateBitCast(init, declType);
     }

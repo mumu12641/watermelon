@@ -19,11 +19,14 @@
 - [x] 先把所有的function都decl出来
 - [x] 每个类应该有自己的function table
 
-- [ ] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
-- [ ] 初始化类的时候调用 constructor， constructor中先调用 builtin_init ，然后运行 constructor，最后调用 self_defined_init
-- [ ] 空指针异常
+- [x] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
+- [x] 初始化类的时候调用 constructor， constructor中先调用 builtin_init ，然后运行 constructor，最后调用 self_defined_init
+- [x] 空指针异常
+- [ ] 究竟什么时候要load？？？？？？？？？？？？？？？
 - [ ] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态
 - [ ] 在 generateCallExpression 要处理默认参数
+- [ ] 在各个 identifierexpr 的时候要处理好 self 
+
 
 ## TODO
 - [x] 子类和父类的初始化函数(done)，init 块(done)
