@@ -27,7 +27,7 @@
 enum class IRValueKind
 {
     PROPERTY,
-    FUNCTIONPARAM,
+    PARAM,
 };
 
 class IRValue
@@ -44,7 +44,7 @@ public:
     }
 
     IRValue(llvm::Value* value)
-        : kind(IRValueKind::FUNCTIONPARAM)
+        : kind(IRValueKind::PARAM)
         , data(value)
     {
     }
@@ -59,7 +59,7 @@ public:
 
     llvm::Value* getValue() const
     {
-        assert(kind == IRValueKind::FUNCTIONPARAM);
+        assert(kind == IRValueKind::PARAM);
         return std::get<llvm::Value*>(data);
     }
 };
@@ -212,6 +212,7 @@ public:
     llvm::Value* generateLambdaExpression(const LambdaExpression& expr);
     llvm::Value* generateLiteralExpression(const LiteralExpression& expr);
     llvm::Value* generateMemberExpression(const MemberExpression& expr);
+    llvm::Value* generateMemberExpressionPtr(const MemberExpression& expr);
     llvm::Value* generateTypeCheckExpression(const TypeCheckExpression& expr);
     llvm::Value* generateUnaryExpression(const UnaryExpression& expr);
 };

@@ -26,6 +26,8 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
         for (auto it = parents->rbegin(); it != parents->rend(); ++it) {
             for (const auto& constructorParam : (*it)->constructorParameters) {
                 this->symbolTable.add(constructorParam.name, *constructorParam.type);
+                this->symbolTable.add(Format("self_{1}", constructorParam.name),
+                                      *constructorParam.type);
             }
         }
     }
@@ -42,8 +44,8 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
         if (constructorParam.defaultValue != nullptr) {
             hasDefaultParam = true;
         }
-
         this->symbolTable.add(constructorParam.name, *constructorParam.type);
+        this->symbolTable.add(Format("self_{1}", constructorParam.name), *constructorParam.type);
     }
     if (!classDecl.baseClass.empty()) {
         auto parent             = this->classTable.find(classDecl.baseClass);
@@ -91,12 +93,16 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
         for (const auto& parentMember : parentClass->members) {
             if (const auto property = dynamic_cast<const PropertyMember*>(parentMember.get())) {
                 this->symbolTable.add(property->getName(), *property->type, property->immutable);
+                this->symbolTable.add(
+                    Format("self_{0}", property->getName()), *property->type, property->immutable);
             }
         }
     }
     for (const auto& member : classDecl.members) {
         if (const auto property = dynamic_cast<const PropertyMember*>(member.get())) {
             this->symbolTable.add(property->getName(), *property->type, property->immutable);
+            this->symbolTable.add(
+                Format("self_{0}", property->getName()), *property->type, property->immutable);
         }
         else if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
             auto functionDeclErr = analyzeFunctionDeclaration(*method->function);

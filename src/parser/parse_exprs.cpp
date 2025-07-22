@@ -24,6 +24,14 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::assignment(
                         l, BinaryExpression::Operator::ASSIGN, std::move(expr), std::move(value)),
                     std::nullopt};
         }
+        else if (auto* memberExpr = dynamic_cast<MemberExpression*>(expr.get())) {
+            if (memberExpr->kind == MemberExpression::Kind::METHOD) {
+                return {nullptr, createError(previous(), "Cannot assign method.")};
+            }
+            return {std::make_unique<BinaryExpression>(
+                        l, BinaryExpression::Operator::ASSIGN, std::move(expr), std::move(value)),
+                    std::nullopt};
+        }
 
         return {nullptr, createError(previous(), "Invalid assignment target.")};
     }
@@ -167,7 +175,8 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::unary()
         auto [right, rightErr] = unary();
         if (rightErr) return {nullptr, rightErr};
 
-        return {std::make_unique<UnaryExpression>(right->getLocation(), op, std::move(right)), std::nullopt};
+        return {std::make_unique<UnaryExpression>(right->getLocation(), op, std::move(right)),
+                std::nullopt};
     }
 
     return call();
@@ -220,7 +229,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::finishCall(
     std::unique_ptr<Expression> callee)
 {
     std::vector<std::unique_ptr<Expression>> arguments;
-    Location                                 l=callee->getLocation();
+    Location                                 l = callee->getLocation();
 
     if (!check(TokenType::RPAREN)) {
         do {

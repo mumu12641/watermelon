@@ -125,13 +125,26 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
             // TODO: 检查右侧类型是否可以赋值给左侧
             // TODO: 左侧的变量是否可以可变
             // directly cast
-            const IdentifierExpression* leftExpr =
-                dynamic_cast<const IdentifierExpression*>(expr.left.get());
-            if (*(this->symbolTable.findKind(leftExpr->name)) == SymbolKind::VAL) {
-                return {nullptr,
+            if (const auto* leftExpr = dynamic_cast<const IdentifierExpression*>(expr.left.get())) {
+                if (*(this->symbolTable.findKind(leftExpr->name)) == SymbolKind::VAL) {
+                    return {
+                        nullptr,
                         Error(Format("Cannot assign to immutable variable '{0}'", leftExpr->name),
                               expr.getLocation())};
+                }
             }
+            else if (const auto* memberExpr =
+                         dynamic_cast<const MemberExpression*>(expr.left.get())) {
+                if (*(this->symbolTable.findKind(Format("self_{0}", memberExpr->property))) ==
+                    SymbolKind::VAL) {
+                    return {
+                        nullptr,
+                        Error(Format("Cannot assign to immutable variable '{0}'", leftExpr->name),
+                              expr.getLocation())};
+                }
+            }
+
+
             if (!this->classTable.checkInherit(rightType->getName(), leftType->getName())) {
                 return {nullptr,
                         Error(Format("Cannot assign value of type '{0}' to variable of type '{1}'",

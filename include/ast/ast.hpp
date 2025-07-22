@@ -936,7 +936,6 @@ public:
     std::string                               baseClass;
     std::vector<std::unique_ptr<Expression>>  baseConstructorArgs;
     std::vector<std::unique_ptr<ClassMember>> members;
-    bool                                      iter;
 
     ClassDeclaration(Location location, Kind kind, std::string name,
                      std::vector<FunctionParameter> constructorParameters, std::string baseClass,

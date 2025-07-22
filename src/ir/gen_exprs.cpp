@@ -42,7 +42,8 @@ llvm::Value* IRGen::generateArrayExpression(const ArrayExpression& expr)
 llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 {
 
-    auto leftValue  = generateExpression(*expr.left);
+    // llvm::Value* leftValue  ;
+    auto leftValue  = generateExpression(*expr.right);
     auto rightValue = generateExpression(*expr.right);
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||
@@ -94,10 +95,15 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             return this->builder->CreateOr(leftValue, rightValue, "or");
         case BinaryExpression::Operator::ASSIGN:
         {
-            auto leftType  = expr.left->getType();
-            auto rightType = expr.right->getType();
-            auto leftPtr   = generateIdentifierExpressionPtr(
-                *dynamic_cast<IdentifierExpression*>(expr.left.get()));
+            auto         leftType  = expr.left->getType();
+            auto         rightType = expr.right->getType();
+            llvm::Value* leftPtr;
+            if (auto* identExpr = dynamic_cast<IdentifierExpression*>(expr.left.get())) {
+                leftPtr = generateIdentifierExpressionPtr(*identExpr);
+            }
+            else if (auto* memberExpr = dynamic_cast<MemberExpression*>(expr.left.get())) {
+                leftPtr = generateMemberExpressionPtr(*memberExpr);
+            }
             if (leftType != rightType) {
                 auto s =
                     this->builder->CreateBitCast(rightValue, this->generateType(leftType, true));
@@ -156,27 +162,8 @@ llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
 
 llvm::Value* IRGen::generateIdentifierExpression(const IdentifierExpression& expr)
 {
-    // return ptr
-    auto value = this->valueTable.find(expr.name);
-    switch (value->getKind()) {
-        case IRValueKind::PROPERTY:
-        {
-            auto ptr =
-                this->builder->CreateStructGEP(this->generateType(this->currClass->name, false),
-                                               this->getCurrFunc()->getArg(0),
-                                               value->getOffset(),
-                                               Format("{0}_ptr", expr.name));
-            return this->builder->CreateLoad(
-                this->generateType(expr.getType(), true), ptr, "idVal");
-        }
-        case IRValueKind::FUNCTIONPARAM:
-        {
-            auto ptr = this->valueTable.find(expr.name)->getValue();
-            return this->builder->CreateLoad(
-                this->generateType(expr.getType(), true), ptr, "idVal");
-        }
-    }
-    return nullptr;
+    auto ptr = generateIdentifierExpressionPtr(expr);
+    return this->builder->CreateLoad(this->generateType(expr.getType(), true), ptr, "idVal");
 }
 
 llvm::Value* IRGen::generateIdentifierExpressionPtr(const IdentifierExpression& expr)
@@ -191,7 +178,7 @@ llvm::Value* IRGen::generateIdentifierExpressionPtr(const IdentifierExpression& 
                                                   value->getOffset(),
                                                   Format("{0}_ptr", expr.name));
         }
-        case IRValueKind::FUNCTIONPARAM:
+        case IRValueKind::PARAM:
         {
             return this->valueTable.find(expr.name)->getValue();
         }
@@ -220,7 +207,7 @@ llvm::Value* IRGen::generateLiteralExpression(const LiteralExpression& expr)
 
 llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
 {
-    auto objectVal    = generateExpression(*expr.object);
+    auto        objectVal   = generateExpression(*expr.object);
     const auto* objectClass = this->classTable.find(expr.object->getType().getName());
 
     if (expr.kind == MemberExpression::Kind::METHOD) {
@@ -232,7 +219,26 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
             this->module->getFunction(Format("{0}_{1}", objectClass->name, expr.methodName)),
             callArgs);
     }
-    if (expr.kind == MemberExpression::Kind::PROPERTY) {}
+    if (expr.kind == MemberExpression::Kind::PROPERTY) {
+        auto property = Format("{0}_{1}", objectClass->name, expr.property);
+        auto ptr      = generateMemberExpressionPtr(expr);
+        return this->builder->CreateLoad(this->generateType(expr.getType(), true), ptr, property);
+    }
+    return nullptr;
+}
+
+llvm::Value* IRGen::generateMemberExpressionPtr(const MemberExpression& expr)
+{
+    auto        objectVal   = generateExpression(*expr.object);
+    const auto* objectClass = this->classTable.find(expr.object->getType().getName());
+
+    if (expr.kind == MemberExpression::Kind::PROPERTY) {
+        auto        property   = Format("{0}_{1}", objectClass->name, expr.property);
+        auto        value      = this->valueTable.find(property);
+        llvm::Type* structType = this->generateType(objectClass->name, false);
+        return this->builder->CreateStructGEP(
+            structType, objectVal, value->getOffset(), Format("{0}_ptr", property));
+    }
     return nullptr;
 }
 

@@ -2,7 +2,7 @@
 class C(){
     var index:int = 0;
     operator fn _first() -> void{
-        index = 0;
+        self.index = 0;
         return;
     }
     operator fn _next() -> void{

@@ -21,8 +21,11 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
     int offset      = 1;
     for (const auto& param : this->classAllParams[decl.name]) {
         std::string paramName = this->getParamName(param);
-        this->valueTable.add(paramName, IRValue(offset++));
+        this->valueTable.add(paramName, IRValue(offset));
+        this->valueTable.add(Format("{0}_{1}", decl.name, paramName), IRValue(offset));
+        offset++;
     }
+
     this->generateClassMallocInit(decl);
     this->generateClassConstructor(decl);
     this->generateClassBuiltinInit(decl);
@@ -199,11 +202,18 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 
     this->retBB = llvm::BasicBlock::Create(*this->context, "return");
 
-    int paramOffset = this->currClass == nullptr ? 0 : 1;
+    int paramOffset = 0;
+    if (this->currClass) {
+        llvm::Type*  selfType = this->generateType(this->currClass->name, true);
+        llvm::Value* selfVar  = allocateStackVariable("self", selfType);
+        llvm::Value* selfArg  = function->getArg(paramOffset++);
+        this->builder->CreateStore(selfArg, selfVar, false);
+        this->valueTable.add("self", IRValue(selfVar));
+    }
     for (const auto& param : decl.parameters) {
         llvm::Type*  paramType = this->generateType(*param.type, true);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
-        llvm::Value* argValue  = function->getArg(paramOffset++);
+        llvm::Value* argValue = function->getArg(paramOffset++);
         this->builder->CreateStore(argValue, paramVar, false);
         this->valueTable.add(param.name, IRValue(paramVar));
     }
