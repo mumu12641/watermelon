@@ -41,9 +41,7 @@ llvm::Value* IRGen::generateArrayExpression(const ArrayExpression& expr)
 
 llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 {
-
-    // llvm::Value* leftValue  ;
-    auto leftValue  = generateExpression(*expr.right);
+    auto leftValue  = generateExpression(*expr.left);
     auto rightValue = generateExpression(*expr.right);
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||

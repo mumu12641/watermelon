@@ -43,9 +43,6 @@ void IRGen::generateExpressionStatement(const ExpressionStatement& exprStmt)
 
 void IRGen::generateForStatement(const ForStatement& stmt)
 {
-    // std::string                 variable;
-    // std::unique_ptr<Expression> iterable;
-    // std::unique_ptr<Statement>  body;
     auto iterable = generateExpression(*stmt.iterable);
     auto iterType = stmt.iterable->getType();
     this->builder->CreateCall(this->module->getFunction(Format("{0}__first", iterType.getName())),
@@ -60,13 +57,6 @@ void IRGen::generateForStatement(const ForStatement& stmt)
     llvm::BasicBlock* bodyBB   = llvm::BasicBlock::Create(*context, "while.body", currFunc);
     llvm::BasicBlock* endBB    = llvm::BasicBlock::Create(*context, "while.end", currFunc);
 
-
-    //   obj._first();
-    //   while (obj._has_next()) {
-    //       auto current = obj._current();
-    //       // 处理当前元素
-    //       obj._next();
-    //   }
     this->builder->CreateBr(condBB);
     this->builder->SetInsertPoint(condBB);
     auto cond = this->builder->CreateCall(

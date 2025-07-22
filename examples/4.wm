@@ -32,21 +32,5 @@ fn main() -> int{
     if(callMethod(c) > 0){
         return 2;
     }
-    return 0;
+    return 1;
 }
-/*
-define i32 @main() { 
-entry: 
-  %retval = alloca i32, align 4 
-  %c = alloca %A*, align 8 
-  %0 = call %C* @C_malloc_init(i8* getelementptr inbounds([4 x i8], [4 x i8]* @1, i32 0, i32 0), i32 2) 
-  %1 = bitcast %C* %0 to %A* 
-  store %A* %1, %A** %c, align 8 
-  %2 = load %A*, %A** %c, align 8 
-  %3 = call i32 @callMethod(%A* %2) 
-  store i32 %3, i32* %retval, align 4 
-  br label %return return: 
-  %return_value = load i32, i32* %retval, align 4 
-  ret i32 %return_value 
-}
-*/
