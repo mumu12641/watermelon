@@ -69,7 +69,6 @@ class IRValueScope
 private:
     std::string                                   name;
     std::unordered_map<std::string, IRValue>      map;
-    std::unordered_map<std::string, llvm::Value*> ptrMap;
 
 public:
     IRValueScope(const std::string& s)
@@ -80,9 +79,6 @@ public:
     const IRValue*                                  find(const std::string& key);
     const std::unordered_map<std::string, IRValue>& getMap() const { return map; }
     const std::string&                              getName() const { return name; }
-
-    void         addPtr(const std::string& key, llvm::Value* value);
-    llvm::Value* findPtr(const std::string& key);
 };
 
 class IRValueTable
@@ -96,9 +92,6 @@ public:
     void           add(const std::string& key, IRValue value);
     const IRValue* find(const std::string& key);
     void           debug() const;
-
-    void         addPtr(const std::string& key, llvm::Value* value);
-    llvm::Value* findPtr(const std::string& key);
 };
 
 class IRGen
