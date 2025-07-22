@@ -206,6 +206,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
         llvm::Value* argValue  = function->getArg(paramOffset++);
         this->builder->CreateStore(argValue, paramVar, false);
         this->valueTable.add(param.name, IRValue(paramVar));
+        this->valueTable.addPtr(param.name, paramVar);
     }
 
     this->generateStatement(*decl.body);

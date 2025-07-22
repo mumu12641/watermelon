@@ -13,6 +13,17 @@ const IRValue* IRValueScope::find(const std::string& key)
 
     return nullptr;
 }
+void IRValueScope::addPtr(const std::string& key, llvm::Value* value)
+{
+    ptrMap.insert_or_assign(key, value);
+}
+llvm::Value* IRValueScope::findPtr(const std::string& key)
+{
+    auto it = ptrMap.find(key);
+    if (it != ptrMap.end()) return it->second;
+    return nullptr;
+}
+
 
 void IRValueTable::enterScope(const std::string& name)
 {
@@ -34,6 +45,18 @@ const IRValue* IRValueTable::find(const std::string& key)
     for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
         const auto* info = it->find(key);
         if (info) return info;
+    }
+    return nullptr;
+}
+void IRValueTable::addPtr(const std::string& key, llvm::Value* value)
+{
+    if (!scopes.empty()) scopes.back().addPtr(key, value);
+}
+llvm::Value* IRValueTable::findPtr(const std::string& key)
+{
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+        auto* ptr = it->findPtr(key);
+        if (ptr) return ptr;
     }
     return nullptr;
 }
