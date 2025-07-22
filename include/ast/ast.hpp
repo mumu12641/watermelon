@@ -9,6 +9,16 @@
 #include <variant>
 #include <vector>
 
+static std::string getTreePrefix(const std::string& prefix, bool isLast)
+{
+    return prefix + (isLast ? "'---" : "|---");
+}
+
+static std::string getChildPrefix(const std::string& prefix, bool isLast)
+{
+    return prefix + (isLast ? "    " : "|   ");
+}
+
 static std::string indent(int level)
 {
     return std::string(level * 2, ' ');
@@ -51,7 +61,10 @@ public:
     bool operator==(const Type& other) const { return kind == other.kind && name == other.name; }
     bool operator!=(const Type& other) const { return !(*this == other); }
 
-    std::string dump(int level = 0) const { return indent(level) + "Type: " + name; }
+    std::string dump(const std::string& prefix = "", bool isLast = true) const
+    {
+        return prefix + (prefix.empty() ? "" : (isLast ? "'---" : "|---")) + "Type: " + name;
+    }
     std::string getName() const { return name; }
 
     Type(Kind kind, std::string name)
@@ -110,8 +123,9 @@ public:
     Location getLocation() const { return location; }
     Type     getType() const { return type; }
     void     setType(Type t) { type = t; }
-    virtual ~Expression()                         = default;
-    virtual std::string dump(int level = 0) const = 0;
+    virtual ~Expression() = default;
+    // virtual std::string dump(int level = 0) const = 0;
+    virtual std::string dump(const std::string& prefix = "", bool isLast = true) const = 0;
 };
 
 class LiteralExpression : public Expression
@@ -126,7 +140,7 @@ public:
     {
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
         std::string kindStr, s;
         switch (type.kind) {
@@ -151,7 +165,7 @@ public:
                 s       = "UNKNOWN";
                 break;
         }
-        return indent(level) + "LiteralExpression (" + kindStr + "): " + s;
+        return getTreePrefix(prefix, isLast) + "LiteralExpression (" + kindStr + "): " + s;
     }
 };
 
@@ -167,9 +181,10 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        return indent(level) + "IdentifierExpression: " + name + " type: " + type.getName();
+        return getTreePrefix(prefix, isLast) + "IdentifierExpression: " + name +
+               " type: " + type.getName();
     }
 };
 
@@ -208,7 +223,7 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
         std::string opStr;
         switch (op) {
@@ -227,10 +242,12 @@ public:
             case Operator::OR: opStr = "||"; break;
             case Operator::ASSIGN: opStr = "="; break;
         }
-        std::string result =
-            indent(level) + "BinaryExpression: " + opStr + " type: " + type.getName() + "\n";
-        result += left->dump(level + 1) + "\n";
-        result += right->dump(level + 1);
+
+        std::string result = getTreePrefix(prefix, isLast) + "BinaryExpression: " + opStr +
+                             " type: " + type.getName() + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+        result += left->dump(childPrefix, false) + "\n";
+        result += right->dump(childPrefix, true);
         return result;
     }
 };
@@ -255,11 +272,12 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
         std::string opStr  = (op == Operator::NEG) ? "-" : "!";
-        std::string result = indent(level) + "UnaryExpression: " + opStr + "\n";
-        result += operand->dump(level + 1);
+        std::string result = getTreePrefix(prefix, isLast) + "UnaryExpression: " + opStr + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+        result += operand->dump(childPrefix, true);
         return result;
     }
 };
@@ -280,15 +298,23 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "CallExpression:" + " type: " + type.getName() + "\n";
-        result += indent(level + 1) + "Callee:\n";
-        result += callee->dump(level + 2) + "\n";
+        std::string result =
+            getTreePrefix(prefix, isLast) + "CallExpression: type: " + type.getName() + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + (arguments.empty() ? "'---" : "|---") + "Callee:\n";
+        std::string calleePrefix = childPrefix + (arguments.empty() ? "    " : "|   ");
+        result += callee->dump(calleePrefix, true) + "\n";
+
         if (!arguments.empty()) {
-            result += indent(level + 1) + "Arguments:\n";
-            for (const auto& arg : arguments) {
-                result += arg->dump(level + 2) + "\n";
+            result += childPrefix + "'---Arguments:\n";
+            std::string argsPrefix = childPrefix + "    ";
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                bool isLastArg = (i == arguments.size() - 1);
+                result += arguments[i]->dump(argsPrefix, isLastArg);
+                if (!isLastArg) result += "\n";
             }
         }
         return result;
@@ -328,14 +354,28 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result =
-            indent(level) + "MemberExpression: " +
-            (kind == Kind::METHOD ? "method " + methodName : "property " + property) +
-            " type: " + type.getName() + "\n";
-        result += indent(level + 1) + "Object:\n";
-        result += object->dump(level + 2);
+        std::string kindStr    = (kind == Kind::PROPERTY) ? "PROPERTY" : "METHOD";
+        std::string memberName = (kind == Kind::PROPERTY) ? property : methodName;
+
+        std::string result = getTreePrefix(prefix, isLast) + "MemberExpression (" + kindStr +
+                             "): " + memberName + " type: " + type.getName() + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + (arguments.empty() ? "'---" : "|---") + "Object:\n";
+        std::string objectPrefix = childPrefix + (arguments.empty() ? "    " : "|   ");
+        result += object->dump(objectPrefix, true) + "\n";
+
+        if (kind == Kind::METHOD && !arguments.empty()) {
+            result += childPrefix + "'---Arguments:\n";
+            std::string argsPrefix = childPrefix + "    ";
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                bool isLastArg = (i == arguments.size() - 1);
+                result += arguments[i]->dump(argsPrefix, isLastArg);
+                if (!isLastArg) result += "\n";
+            }
+        }
         return result;
     }
 };
@@ -356,16 +396,23 @@ public:
     {
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "MethodCallExpression: " + methodName +
+        std::string result = getTreePrefix(prefix, isLast) + "MethodCallExpression: " + methodName +
                              " type: " + type.getName() + "\n";
-        result += indent(level + 1) + "Object:\n";
-        result += object->dump(level + 2) + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + (arguments.empty() ? "'---" : "|---") + "Object:\n";
+        std::string objectPrefix = childPrefix + (arguments.empty() ? "    " : "|   ");
+        result += object->dump(objectPrefix, true) + "\n";
+
         if (!arguments.empty()) {
-            result += indent(level + 1) + "Arguments:\n";
-            for (const auto& arg : arguments) {
-                result += arg->dump(level + 2) + "\n";
+            result += childPrefix + "'---Arguments:\n";
+            std::string argsPrefix = childPrefix + "    ";
+            for (size_t i = 0; i < arguments.size(); ++i) {
+                bool isLastArg = (i == arguments.size() - 1);
+                result += arguments[i]->dump(argsPrefix, isLastArg);
+                if (!isLastArg) result += "\n";
             }
         }
         return result;
@@ -383,13 +430,9 @@ public:
     {
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "ArrayExpression:" + " type: " + type.getName() + "\n";
-        for (const auto& elem : elements) {
-            result += elem->dump(level + 1) + "\n";
-        }
-        return result;
+        throw "ArrayExpression::dump()";
     }
 };
 
@@ -414,23 +457,9 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result =
-            indent(level) + "LambdaExpression:" + " type: " + type.getName() + "\n";
-        if (!parameters.empty()) {
-            result += indent(level + 1) + "Parameters:\n";
-            for (const auto& param : parameters) {
-                result += indent(level + 2) + param.name;
-                if (param.type) {
-                    result += ":\n" + param.type->dump(level + 3);
-                }
-                result += "\n";
-            }
-        }
-        result += indent(level + 1) + "Body:\n";
-        result += body->dump(level + 2);
-        return result;
+        throw "LambdaExpression::dump()";
     }
 };
 
@@ -448,14 +477,9 @@ public:
     {
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "TypeCheckExpression:\n";
-        result += indent(level + 1) + "Expression:\n";
-        result += expression->dump(level + 2) + "\n";
-        result += indent(level + 1) + "Type:\n";
-        result += type->dump(level + 2);
-        return result;
+        throw "TypeCheckExpression::dump()";
     }
 };
 
@@ -471,8 +495,8 @@ public:
     {
     }
     Location getLocation() const { return location; }
-    virtual ~Statement()                          = default;
-    virtual std::string dump(int level = 0) const = 0;
+    virtual ~Statement()                                                               = default;
+    virtual std::string dump(const std::string& prefix = "", bool isLast = true) const = 0;
 };
 
 class ExpressionStatement : public Statement
@@ -487,10 +511,11 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "ExpressionStatement:\n";
-        result += expression->dump(level + 1);
+        std::string result      = getTreePrefix(prefix, isLast) + "ExpressionStatement:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+        result += expression->dump(childPrefix, true);
         return result;
     }
 };
@@ -507,11 +532,15 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "BlockStatement:\n";
-        for (const auto& stmt : statements) {
-            result += stmt->dump(level + 1) + "\n";
+        std::string result      = getTreePrefix(prefix, isLast) + "BlockStatement:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        for (size_t i = 0; i < statements.size(); ++i) {
+            bool isLastStmt = (i == statements.size() - 1);
+            result += statements[i]->dump(childPrefix, isLastStmt);
+            if (!isLastStmt) result += "\n";
         }
         return result;
     }
@@ -535,17 +564,25 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "IfStatement:\n";
-        result += indent(level + 1) + "Condition:\n";
-        result += condition->dump(level + 2) + "\n";
-        result += indent(level + 1) + "Then:\n";
-        result += thenBranch->dump(level + 2);
+        std::string result      = getTreePrefix(prefix, isLast) + "IfStatement:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + (elseBranch ? "|---" : "|---") + "Condition:\n";
+        std::string conditionPrefix = childPrefix + (elseBranch ? "|   " : "|   ");
+        result += condition->dump(conditionPrefix, true) + "\n";
+
+        result += childPrefix + (elseBranch ? "|---" : "'---") + "Then:\n";
+        std::string thenPrefix = childPrefix + (elseBranch ? "|   " : "    ");
+        result += thenBranch->dump(thenPrefix, true);
+
         if (elseBranch) {
-            result += "\n" + indent(level + 1) + "Else:\n";
-            result += elseBranch->dump(level + 2);
+            result += "\n" + childPrefix + "'---Else:\n";
+            std::string elsePrefix = childPrefix + "    ";
+            result += elseBranch->dump(elsePrefix, true);
         }
+
         return result;
     }
 };
@@ -570,19 +607,36 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "WhenStatement:\n";
-        result += indent(level + 1) + "Subject:\n";
-        result += subject->dump(level + 2) + "\n";
-        result += indent(level + 1) + "Cases:\n";
-        for (const auto& c : cases) {
-            result += indent(level + 2) + "Case:\n";
-            result += indent(level + 3) + "Value:\n";
-            result += c.value->dump(level + 4) + "\n";
-            result += indent(level + 3) + "Body:\n";
-            result += c.body->dump(level + 4) + "\n";
+        std::string result      = getTreePrefix(prefix, isLast) + "WhenStatement:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + "|---Subject:\n";
+        std::string subjectPrefix = childPrefix + "|   ";
+        result += subject->dump(subjectPrefix, true) + "\n";
+
+        result += childPrefix + "'---Cases:\n";
+        std::string casesPrefix = childPrefix + "    ";
+
+        for (size_t i = 0; i < cases.size(); ++i) {
+            bool        isLastCase = (i == cases.size() - 1);
+            const auto& c          = cases[i];
+
+            result += casesPrefix + (isLastCase ? "'---" : "|---") + "Case:\n";
+            std::string casePrefix = casesPrefix + (isLastCase ? "    " : "|   ");
+
+            result += casePrefix + "|---Value:\n";
+            std::string valuePrefix = casePrefix + "|   ";
+            result += c.value->dump(valuePrefix, true) + "\n";
+
+            result += casePrefix + "'---Body:\n";
+            std::string bodyPrefix = casePrefix + "    ";
+            result += c.body->dump(bodyPrefix, true);
+
+            if (!isLastCase) result += "\n";
         }
+
         return result;
     }
 };
@@ -604,14 +658,21 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "ForStatement:\n";
-        result += indent(level + 1) + "Variable: " + variable + "\n";
-        result += indent(level + 1) + "Iterable:\n";
-        result += iterable->dump(level + 2) + "\n";
-        result += indent(level + 1) + "Body:\n";
-        result += body->dump(level + 2);
+        std::string result      = getTreePrefix(prefix, isLast) + "ForStatement:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + "|---Variable: " + variable + "\n";
+
+        result += childPrefix + "|---Iterable:\n";
+        std::string iterablePrefix = childPrefix + "|   ";
+        result += iterable->dump(iterablePrefix, true) + "\n";
+
+        result += childPrefix + "'---Body:\n";
+        std::string bodyPrefix = childPrefix + "    ";
+        result += body->dump(bodyPrefix, true);
+
         return result;
     }
 };
@@ -628,11 +689,13 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "ReturnStatement:";
+        std::string result = getTreePrefix(prefix, isLast) + "ReturnStatement:";
         if (value) {
-            result += "\n" + value->dump(level + 1);
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
+            result += value->dump(childPrefix, true);
         }
         return result;
     }
@@ -660,23 +723,33 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string kindStr;
-        switch (immutable) {
-            case false: kindStr = "var"; break;
-            case true: kindStr = "val"; break;
+        std::string kindStr = immutable ? "val" : "var";
+        std::string result =
+            getTreePrefix(prefix, isLast) + "VariableStatement (" + kindStr + "): " + name;
+
+        bool hasType = (declType != nullptr);
+        bool hasInit = (initializer != nullptr);
+
+        if (hasType || hasInit) {
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
+
+            if (hasType) {
+                result += childPrefix + (hasInit ? "|---" : "'---") + "Type:\n";
+                std::string typePrefix = childPrefix + (hasInit ? "|   " : "    ");
+                result += declType->dump(typePrefix, true);
+                if (hasInit) result += "\n";
+            }
+
+            if (hasInit) {
+                result += childPrefix + "'---Initializer:\n";
+                std::string initPrefix = childPrefix + "    ";
+                result += initializer->dump(initPrefix, true);
+            }
         }
 
-        std::string result = indent(level) + "VariableStatement (" + kindStr + "): " + name;
-        if (declType) {
-            result += "\n" + indent(level + 1) + "Type:\n";
-            result += declType->dump(level + 2);
-        }
-        if (initializer) {
-            result += "\n" + indent(level + 1) + "Initializer:\n";
-            result += initializer->dump(level + 2);
-        }
         return result;
     }
 };
@@ -708,17 +781,31 @@ public:
     }
 
 
-    std::string dump(int level = 0) const
+    std::string dump(const std::string& prefix = "", bool isLast = true) const
     {
-        std::string result = indent(level) + "Parameter: " + name;
-        if (type) {
-            result += "\n" + indent(level + 1) + "Type:\n";
-            result += type->dump(level + 2);
+        std::string result = getTreePrefix(prefix, isLast) + "Parameter: " + name;
+
+        bool hasType    = (type != nullptr);
+        bool hasDefault = (defaultValue != nullptr);
+
+        if (hasType || hasDefault) {
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
+
+            if (hasType) {
+                result += childPrefix + (hasDefault ? "|---" : "'---") + "Type:\n";
+                std::string typePrefix = childPrefix + (hasDefault ? "|   " : "    ");
+                result += type->dump(typePrefix, true);
+                if (hasDefault) result += "\n";
+            }
+
+            if (hasDefault) {
+                result += childPrefix + "'---DefaultValue:\n";
+                std::string defaultPrefix = childPrefix + "    ";
+                result += defaultValue->dump(defaultPrefix, true);
+            }
         }
-        if (defaultValue) {
-            result += "\n" + indent(level + 1) + "DefaultValue:\n";
-            result += defaultValue->dump(level + 2);
-        }
+
         return result;
     }
 };
@@ -768,29 +855,44 @@ public:
         return *returnType == *func->returnType;
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "FunctionDeclaration: " + name;
+        std::string result = getTreePrefix(prefix, isLast) + "FunctionDeclaration: " + name;
         if (isOperator) {
             result += " (operator)";
         }
-        result += "\n";
 
-        if (!parameters.empty()) {
-            result += indent(level + 1) + "Parameters:\n";
-            for (const auto& param : parameters) {
-                result += param.dump(level + 2) + "\n";
+        bool hasParams = !parameters.empty();
+        bool hasReturn = (returnType != nullptr);
+        bool hasBody   = (body != nullptr);
+
+        if (hasParams || hasReturn || hasBody) {
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
+
+            if (hasParams) {
+                result += childPrefix + (hasReturn || hasBody ? "|---" : "'---") + "Parameters:\n";
+                std::string paramsPrefix = childPrefix + (hasReturn || hasBody ? "|   " : "    ");
+                for (size_t i = 0; i < parameters.size(); ++i) {
+                    bool isLastParam = (i == parameters.size() - 1);
+                    result += parameters[i].dump(paramsPrefix, isLastParam);
+                    if (!isLastParam) result += "\n";
+                }
+                if (hasReturn || hasBody) result += "\n";
             }
-        }
 
-        if (returnType) {
-            result += indent(level + 1) + "ReturnType:\n";
-            result += returnType->dump(level + 2) + "\n";
-        }
+            if (hasReturn) {
+                result += childPrefix + (hasBody ? "|---" : "'---") + "ReturnType:\n";
+                std::string returnPrefix = childPrefix + (hasBody ? "|   " : "    ");
+                result += returnType->dump(returnPrefix, true);
+                if (hasBody) result += "\n";
+            }
 
-        if (body) {
-            result += indent(level + 1) + "Body:\n";
-            result += body->dump(level + 2);
+            if (hasBody) {
+                result += childPrefix + "'---Body:\n";
+                std::string bodyPrefix = childPrefix + "    ";
+                result += body->dump(bodyPrefix, true);
+            }
         }
 
         return result;
@@ -812,13 +914,20 @@ public:
     }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "EnumDeclaration: " + name + "\n";
-        result += indent(level + 1) + "Values:\n";
-        for (const auto& value : values) {
-            result += indent(level + 2) + value + "\n";
+        std::string result      = getTreePrefix(prefix, isLast) + "EnumDeclaration: " + name + "\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+
+        result += childPrefix + "'---Values:\n";
+        std::string valuesPrefix = childPrefix + "    ";
+
+        for (size_t i = 0; i < values.size(); ++i) {
+            bool isLastValue = (i == values.size() - 1);
+            result += valuesPrefix + (isLastValue ? "'---" : "|---") + values[i];
+            if (!isLastValue) result += "\n";
         }
+
         return result;
     }
 };
@@ -835,10 +944,10 @@ public:
     }
     Location getLocation() const { return location; }
 
-    virtual ~ClassMember()                        = default;
-    virtual std::string dump(int level = 0) const = 0;
-    virtual std::string getName() const           = 0;
-    virtual Type        getType() const           = 0;
+    virtual ~ClassMember()                                                             = default;
+    virtual std::string dump(const std::string& prefix = "", bool isLast = true) const = 0;
+    virtual std::string getName() const                                                = 0;
+    virtual Type        getType() const                                                = 0;
 };
 
 class PropertyMember : public ClassMember
@@ -862,15 +971,31 @@ public:
     std::string getName() const override { return name; }
     Type        getType() const override { return *type; }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "PropertyMember: " + name + "\n";
-        result += indent(level + 1) + "Type:\n";
-        if (type) result += type->dump(level + 2);
-        if (initializer) {
-            result += "\n" + indent(level + 1) + "Initializer:\n";
-            result += initializer->dump(level + 2);
+        std::string result = getTreePrefix(prefix, isLast) + "PropertyMember: " + name;
+
+        bool hasType = (type != nullptr);
+        bool hasInit = (initializer != nullptr);
+
+        if (hasType || hasInit) {
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
+
+            if (hasType) {
+                result += childPrefix + (hasInit ? "|---" : "'---") + "Type:\n";
+                std::string typePrefix = childPrefix + (hasInit ? "|   " : "    ");
+                result += type->dump(typePrefix, true);
+                if (hasInit) result += "\n";
+            }
+
+            if (hasInit) {
+                result += childPrefix + "'---Initializer:\n";
+                std::string initPrefix = childPrefix + "    ";
+                result += initializer->dump(initPrefix, true);
+            }
         }
+
         return result;
     }
 };
@@ -889,10 +1014,11 @@ public:
     std::string getName() const override { return function.get()->name; }
     Type        getType() const override { return *function->returnType; }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "MethodMember:\n";
-        result += function->dump(level + 1);
+        std::string result      = getTreePrefix(prefix, isLast) + "MethodMember:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+        result += function->dump(childPrefix, true);
         return result;
     }
 };
@@ -912,10 +1038,11 @@ public:
     Type        getType() const override { return Type(); }
 
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
-        std::string result = indent(level) + "InitBlockMember:\n";
-        result += block->dump(level + 1);
+        std::string result      = getTreePrefix(prefix, isLast) + "InitBlockMember:\n";
+        std::string childPrefix = getChildPrefix(prefix, isLast);
+        result += block->dump(childPrefix, true);
         return result;
     }
 };
@@ -979,7 +1106,7 @@ public:
         return false;
     }
 
-    std::string dump(int level = 0) const override
+    std::string dump(const std::string& prefix = "", bool isLast = true) const override
     {
         std::string kindStr;
         switch (kind) {
@@ -988,31 +1115,54 @@ public:
             case Kind::BASE: kindStr = "base class"; break;
         }
 
-        std::string result = indent(level) + "ClassDeclaration (" + kindStr + "): " + name + "\n";
+        std::string result =
+            getTreePrefix(prefix, isLast) + "ClassDeclaration (" + kindStr + "): " + name;
 
+        bool hasParams   = !constructorParameters.empty();
+        bool hasBase     = !baseClass.empty();
+        bool hasBaseArgs = !baseConstructorArgs.empty();
+        bool hasMembers  = !members.empty();
 
-        if (!constructorParameters.empty()) {
-            result += indent(level + 1) + "ConstructorParameters:\n";
-            for (const auto& param : constructorParameters) {
-                result += param.dump(level + 2) + "\n";
-            }
-        }
+        if (hasParams || hasBase || hasMembers) {
+            result += "\n";
+            std::string childPrefix = getChildPrefix(prefix, isLast);
 
-        if (!baseClass.empty()) {
-            result += indent(level + 1) + "BaseClass: " + baseClass + "\n";
-
-            if (!baseConstructorArgs.empty()) {
-                result += indent(level + 1) + "BaseConstructorArgs:\n";
-                for (const auto& arg : baseConstructorArgs) {
-                    result += arg->dump(level + 2) + "\n";
+            if (hasParams) {
+                result += childPrefix + (hasBase || hasMembers ? "|---" : "'---") +
+                          "ConstructorParameters:\n";
+                std::string paramsPrefix = childPrefix + (hasBase || hasMembers ? "|   " : "    ");
+                for (size_t i = 0; i < constructorParameters.size(); ++i) {
+                    bool isLastParam = (i == constructorParameters.size() - 1);
+                    result += constructorParameters[i].dump(paramsPrefix, isLastParam);
+                    if (!isLastParam) result += "\n";
                 }
+                if (hasBase || hasMembers) result += "\n";
             }
-        }
 
-        if (!members.empty()) {
-            result += indent(level + 1) + "Members:\n";
-            for (const auto& member : members) {
-                result += member->dump(level + 2) + "\n";
+            if (hasBase) {
+                result += childPrefix + (hasMembers ? "|---" : "'---") + "BaseClass: " + baseClass;
+                if (hasBaseArgs) {
+                    result += "\n";
+                    std::string basePrefix = childPrefix + (hasMembers ? "|   " : "    ");
+                    result += basePrefix + "'---BaseConstructorArgs:\n";
+                    std::string argsPrefix = basePrefix + "    ";
+                    for (size_t i = 0; i < baseConstructorArgs.size(); ++i) {
+                        bool isLastArg = (i == baseConstructorArgs.size() - 1);
+                        result += baseConstructorArgs[i]->dump(argsPrefix, isLastArg);
+                        if (!isLastArg) result += "\n";
+                    }
+                }
+                if (hasMembers) result += "\n";
+            }
+
+            if (hasMembers) {
+                result += childPrefix + "'---Members:\n";
+                std::string membersPrefix = childPrefix + "    ";
+                for (size_t i = 0; i < members.size(); ++i) {
+                    bool isLastMember = (i == members.size() - 1);
+                    result += members[i]->dump(membersPrefix, isLastMember);
+                    if (!isLastMember) result += "\n";
+                }
             }
         }
 
@@ -1033,8 +1183,10 @@ public:
     std::string dump() const
     {
         std::string result = "Program:\n";
-        for (const auto& decl : declarations) {
-            result += decl->dump(1) + "\n";
+        for (size_t i = 0; i < declarations.size(); ++i) {
+            bool isLastDecl = (i == declarations.size() - 1);
+            result += declarations[i]->dump("", isLastDecl);
+            if (!isLastDecl) result += "\n";
         }
         return result;
     }

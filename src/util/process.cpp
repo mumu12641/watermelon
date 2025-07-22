@@ -58,7 +58,7 @@ void processSourceFile(const std::string& source, const std::string& filename)
         return;
     }
     cout_green("Passed");
-    // std::cout << resolveProgram->dump() << std::endl;
+    std::cout << resolveProgram->dump() << std::endl;
     std::cout << std::endl;
 
     cout_pink("  [4/4] LLVM IR generating... ");
