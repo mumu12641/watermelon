@@ -90,6 +90,7 @@ private:
     SymbolTable                           symbolTable;
     ClassTable                            classTable;
     FunctionTable                         functionTable;
+    std::unordered_map<std::string, bool> varDefinedMap;
     std::unique_ptr<Program>              program;
     std::stack<std::pair<Type, Location>> currentFunctionReturnTypes;
 

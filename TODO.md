@@ -20,7 +20,7 @@
 - [x] 每个类应该有自己的function table
 
 - [x] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
-- [x] 初始化类的时候调用 constructor， constructor中先调用 builtin_init ，然后运行 constructor，最后调用 self_defined_init
+- [x] 初始化类的时候调用 C_malloc_init,然后调用 constructor， constructor 先constructor 再 builtin_init 最后 self_defined_init
 - [x] 空指针异常
 - [ ] 究竟什么时候要load？？？？？？？？？？？？？？？
 - [ ] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态

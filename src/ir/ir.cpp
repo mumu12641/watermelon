@@ -208,6 +208,17 @@ void IRGen::setupClasses()
     this->declareClasses();
     this->buildVTables();
     this->defineClasses();
+    for (const auto& decl : program->declarations) {
+        if (const auto* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
+            int offset = 1;
+            for (const auto& param : this->classAllParams[classDecl->name]) {
+                std::string paramName = this->getParamName(param);
+                this->valueTable.add(Format("{0}_{1}", classDecl->name, paramName),
+                                     IRValue(offset));
+                offset++;
+            }
+        }
+    }
 }
 
 void IRGen::setupFunctions()
@@ -286,10 +297,10 @@ llvm::Type* IRGen::getParamType(
     const std::variant<const FunctionParameter*, const PropertyMember*>& param)
 {
     if (auto funcParamPtr = std::get_if<const FunctionParameter*>(&param)) {
-        return this->generateType(*(*funcParamPtr)->type, false);
+        return this->generateType(*(*funcParamPtr)->type, true);
     }
     else if (auto propertyPtr = std::get_if<const PropertyMember*>(&param)) {
-        return this->generateType((*propertyPtr)->getType(), false);
+        return this->generateType((*propertyPtr)->getType(), true);
     }
     return nullptr;
 }

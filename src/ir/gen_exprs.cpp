@@ -41,8 +41,28 @@ llvm::Value* IRGen::generateArrayExpression(const ArrayExpression& expr)
 
 llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 {
-    auto leftValue  = generateExpression(*expr.left);
     auto rightValue = generateExpression(*expr.right);
+    if (expr.op == BinaryExpression::Operator::ASSIGN) {
+        auto         leftType  = expr.left->getType();
+        auto         rightType = expr.right->getType();
+        llvm::Value* leftPtr;
+        if (auto* identExpr = dynamic_cast<IdentifierExpression*>(expr.left.get())) {
+            leftPtr = generateIdentifierExpressionPtr(*identExpr);
+        }
+        else if (auto* memberExpr = dynamic_cast<MemberExpression*>(expr.left.get())) {
+            leftPtr = generateMemberExpressionPtr(*memberExpr);
+        }
+        if (leftType != rightType) {
+            auto s = this->builder->CreateBitCast(rightValue, this->generateType(leftType, true));
+            this->builder->CreateStore(s, leftPtr);
+            return s;
+        }
+        else {
+            this->builder->CreateStore(rightValue, leftPtr);
+            return rightValue;
+        }
+    }
+    auto leftValue = generateExpression(*expr.left);
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||
                             expr.right->getType() == Type::builtinFloat();
@@ -91,28 +111,6 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             return this->builder->CreateAnd(leftValue, rightValue, "and");
         case BinaryExpression::Operator::OR:
             return this->builder->CreateOr(leftValue, rightValue, "or");
-        case BinaryExpression::Operator::ASSIGN:
-        {
-            auto         leftType  = expr.left->getType();
-            auto         rightType = expr.right->getType();
-            llvm::Value* leftPtr;
-            if (auto* identExpr = dynamic_cast<IdentifierExpression*>(expr.left.get())) {
-                leftPtr = generateIdentifierExpressionPtr(*identExpr);
-            }
-            else if (auto* memberExpr = dynamic_cast<MemberExpression*>(expr.left.get())) {
-                leftPtr = generateMemberExpressionPtr(*memberExpr);
-            }
-            if (leftType != rightType) {
-                auto s =
-                    this->builder->CreateBitCast(rightValue, this->generateType(leftType, true));
-                this->builder->CreateStore(s, leftPtr);
-                return s;
-            }
-            else {
-                this->builder->CreateStore(rightValue, leftPtr);
-                return rightValue;
-            }
-        }
     }
     return nullptr;
 }

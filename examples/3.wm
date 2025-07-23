@@ -1,6 +1,17 @@
 
+class A(a_:int){
+    var a:int = 0;
+    init{
+        a = a_;
+    }
+}
 class C(){
     var index:int = 0;
+    var a:A = A(0);
+    fn test()->int{
+        a.a = 22;
+        return self.a.a;
+    }
     operator fn _first() -> void{
         self.index = 0;
         return;
@@ -23,9 +34,10 @@ fn method() -> C{
 }
 
 fn main()->int{
+    var c1 = C();
     for(c in C()){
         if(c == 4){
-            return 4;
+            return c1.test();
         }
     }
     return 0;

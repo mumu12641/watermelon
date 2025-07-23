@@ -22,13 +22,12 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
     for (const auto& param : this->classAllParams[decl.name]) {
         std::string paramName = this->getParamName(param);
         this->valueTable.add(paramName, IRValue(offset));
-        this->valueTable.add(Format("{0}_{1}", decl.name, paramName), IRValue(offset));
         offset++;
     }
 
     this->generateClassMallocInit(decl);
-    this->generateClassConstructor(decl);
     this->generateClassBuiltinInit(decl);
+    this->generateClassConstructor(decl);
     for (const auto& member : decl.members) {
         if (const auto method = dynamic_cast<const MethodMember*>(member.get())) {
             generateFunctionDeclaration(*method->function);
@@ -116,7 +115,10 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         this->builder->CreateStore(argValue, ptr);
         paramOffset++;
     }
-
+    auto builtinInitName = Format("{0}_builtin_init", decl.name);
+    if (this->methodMap.count(builtinInitName)) {
+        this->builder->CreateCall(this->module->getFunction(builtinInitName), {self});
+    }
     auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
     if (this->methodMap.count(selfDefinedInitName)) {
         this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {self});

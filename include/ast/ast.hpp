@@ -19,11 +19,6 @@ static std::string getChildPrefix(const std::string& prefix, bool isLast)
     return prefix + (isLast ? "    " : "|   ");
 }
 
-static std::string indent(int level)
-{
-    return std::string(level * 2, ' ');
-}
-
 class Type;
 class Expression;
 class Statement;
@@ -124,7 +119,6 @@ public:
     Type     getType() const { return type; }
     void     setType(Type t) { type = t; }
     virtual ~Expression() = default;
-    // virtual std::string dump(int level = 0) const = 0;
     virtual std::string dump(const std::string& prefix = "", bool isLast = true) const = 0;
 };
 
