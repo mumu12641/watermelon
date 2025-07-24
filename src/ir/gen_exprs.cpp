@@ -250,5 +250,18 @@ llvm::Value* IRGen::generateTypeCheckExpression(const TypeCheckExpression& expr)
 
 llvm::Value* IRGen::generateUnaryExpression(const UnaryExpression& expr)
 {
-    throw "Not yet implemented IRGen::generateUnaryExpression";
+    auto operand          = generateExpression(*expr.operand);
+    bool isFloatOperation = expr.operand->getType() == Type::builtinFloat();
+    switch (expr.op) {
+        case UnaryExpression::Operator::NEG:
+        {
+            return isFloatOperation ? this->builder->CreateFNeg(operand, "neg_val")
+                                    : this->builder->CreateNeg(operand, "neg_val");
+        }
+        case UnaryExpression::Operator::NOT:
+        {
+            return this->builder->CreateNot(operand, "not_val");
+        }
+    }
+    return nullptr;
 }

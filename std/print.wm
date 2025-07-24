@@ -1,0 +1,22 @@
+fn println() -> void{
+    return;
+}
+
+fn print_int(a:int) -> void{
+    return;
+}
+
+fn print_string() -> void{
+    return;
+
+}
+
+fn print_double() -> void{
+    return;
+
+}
+
+fn print_bool() -> void{
+    return;
+
+}

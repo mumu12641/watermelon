@@ -86,15 +86,13 @@ void IRGen::buildVTables()
         std::vector<llvm::Type*>     vTableMethods;
         std::vector<llvm::Constant*> vTableInitializers;
 
-        this->addVTableMethod(
-            vTableMethods,
-            vTableInitializers,
-            Format("{0}_builtin_init", className),
-            llvm::FunctionType::get(
-                voidTy, {this->generateType(Type::classType(className), true)}, false));
+        this->addVTableMethod(vTableMethods,
+                              vTableInitializers,
+                              Format("{0}_builtin_init", className),
+                              llvm::FunctionType::get(voidTy, {int8PtrTy}, false));
 
-        std::vector<llvm::Type*> constructParamTypes = {
-            this->generateType(Type::classType(className), true)};
+        std::vector<llvm::Type*> constructParamTypes = {int8PtrTy};
+        // this->generateType(Type::classType(className), true)};
         for (const auto& constructParam : classDecl->constructorParameters) {
             constructParamTypes.emplace_back(this->generateType(*constructParam.type, false));
         }
@@ -129,7 +127,9 @@ void IRGen::buildVTables()
             else if (const auto* init = dynamic_cast<const InitBlockMember*>(member.get())) {
                 std::string         initMethodName = Format("{0}_self_defined_init", className);
                 llvm::FunctionType* funcType       = llvm::FunctionType::get(
-                    voidTy, {this->generateType(Type::classType(className), true)}, false);
+                    voidTy, {int8PtrTy}, false);
+
+                    // voidTy, {this->generateType(Type::classType(className), true)}, false);
 
                 this->addVTableMethod(vTableMethods, vTableInitializers, initMethodName, funcType);
             }
@@ -239,6 +239,121 @@ void IRGen::setupFunctions()
     auto m = llvm::FunctionType::get(int8PtrTy, {int64Ty}, false);
     this->methodMap["malloc"] =
         llvm::Function::Create(m, llvm::Function::ExternalLinkage, "malloc", *this->module);
+
+    // print
+    std::vector<llvm::Type*> printfArgs;
+    printfArgs.push_back(llvm::Type::getInt8PtrTy(*context));
+    llvm::FunctionType* printfType =
+        llvm::FunctionType::get(llvm::Type::getInt32Ty(*context), printfArgs, true);
+    llvm::Function* printfFunc = llvm::Function::Create(
+        printfType, llvm::Function::ExternalLinkage, "printf", *this->module);
+
+    auto createGlobalString = [this](const std::string& str,
+                                     const std::string& name) -> llvm::GlobalVariable* {
+        llvm::Constant* strConstant = llvm::ConstantDataArray::getString(*context, str, true);
+        return new llvm::GlobalVariable(*module,
+                                        strConstant->getType(),
+                                        true,
+                                        llvm::GlobalValue::PrivateLinkage,
+                                        strConstant,
+                                        name);
+    };
+    auto printlnFormat     = createGlobalString("\n", "println_format");
+    auto printIntFormat    = createGlobalString("%d", "print_int_format");
+    auto printStringFormat = createGlobalString("%s", "print_string_format");
+    auto printDoubleFormat = createGlobalString("%f", "print_double_format");
+    auto printBoolTrue     = createGlobalString("true", "print_bool_true");
+    auto printBoolFalse    = createGlobalString("false", "print_bool_false");
+
+    // llvm::FunctionType* funcType =
+    //     llvm::FunctionType::get(llvm::Type::getVoidTy(*context), {}, false);
+    // llvm::Function* func =
+    //     llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "println", *module);
+
+    // llvm::BasicBlock* entryBB = llvm::BasicBlock::Create(*context, "entry", func);
+    // llvm::IRBuilder<> builder(*context);
+    // builder.SetInsertPoint(entryBB);
+
+    // llvm::Value* formatPtr = getStringPtr(printlnFormat);
+    // builder.CreateCall(printfFunc, {formatPtr});
+    // builder.CreateRetVoid();
+
+    std::string irCode = R"(
+           ; 格式字符串常量
+            @println_format = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+            @print_int_format = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+            @print_string_format = private unnamed_addr constant [3 x i8] c"%s\00", align 1
+            @print_double_format = private unnamed_addr constant [3 x i8] c"%f\00", align 1
+            @print_bool_true = private unnamed_addr constant [5 x i8] c"true\00", align 1
+            @print_bool_false = private unnamed_addr constant [6 x i8] c"false\00", align 1
+
+            ; 声明printf函数
+            declare i32 @printf(i8*, ...)
+
+            ; println函数 - 只打印换行符
+            define void @println() {
+            entry:
+                %0 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @println_format, i32 0, i32 0))
+                ret void
+            }
+
+            ; _print_int函数 - 打印整数
+            define void @_print_int(i32 %n) {
+            entry:
+                %n1 = alloca i32, align 4
+                store i32 %n, i32* %n1, align 4
+                %0 = load i32, i32* %n1, align 4
+                %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @print_int_format, i32 0, i32 0), i32 %0)
+                ret void
+            }
+
+            ; _print_string函数 - 打印字符串
+            define void @_print_string(i8* %str) {
+            entry:
+                %str1 = alloca i8*, align 8
+                store i8* %str, i8** %str1, align 8
+                %0 = load i8*, i8** %str1, align 8
+                %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @print_string_format, i32 0, i32 0), i8* %0)
+                ret void
+            }
+
+            ; _print_double函数 - 打印双精度浮点数
+            define void @_print_double(double %n) {
+            entry:
+                %n1 = alloca double, align 8
+                store double %n, double* %n1, align 8
+                %0 = load double, double* %n1, align 8
+                %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @print_double_format, i32 0, i32 0), double %0)
+                ret void
+            }
+
+            ; _print_bool函数 - 打印布尔值
+            define void @_print_bool(i1 %b) {
+            entry:
+                %b1 = alloca i1, align 1
+                store i1 %b, i1* %b1, align 1
+                %0 = load i1, i1* %b1, align 1
+                br i1 %0, label %true_branch, label %false_branch
+
+            true_branch:
+                %1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([5 x i8], [5 x i8]* @print_bool_true, i32 0, i32 0))
+                br label %end
+
+            false_branch:
+                %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @print_bool_false, i32 0, i32 0))
+                br label %end
+
+            end:
+                ret void
+            }
+        )";
+
+    llvm::SMDiagnostic                  error;
+    std::unique_ptr<llvm::MemoryBuffer> buffer   = llvm::MemoryBuffer::getMemBuffer(irCode);
+    std::unique_ptr<llvm::Module>       irModule = llvm::parseIR(*buffer, error, *this->context);
+
+    llvm::Linker linker(*this->module);
+    linker.linkInModule(std::move(irModule));
 }
 
 llvm::Type* IRGen::generateType(const Type& type, bool ptr)

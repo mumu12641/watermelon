@@ -16,7 +16,12 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/raw_ostream.h>
 #include <map>
 #include <memory>
 #include <string_view>
@@ -67,8 +72,8 @@ public:
 class IRValueScope
 {
 private:
-    std::string                                   name;
-    std::unordered_map<std::string, IRValue>      map;
+    std::string                              name;
+    std::unordered_map<std::string, IRValue> map;
 
 public:
     IRValueScope(const std::string& s)
@@ -215,5 +220,6 @@ public:
     llvm::Value* generateMemberExpressionPtr(const MemberExpression& expr);
     llvm::Value* generateTypeCheckExpression(const TypeCheckExpression& expr);
     llvm::Value* generateUnaryExpression(const UnaryExpression& expr);
+
 };
 #endif

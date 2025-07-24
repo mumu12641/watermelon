@@ -29,8 +29,8 @@ fn callMethod(a:A)->int{
 
 fn main() -> int{
     var c:C = C("c_s",2);
-    if(callMethod(c) > 0){
-        return 2;
+    if(!(callMethod(c) < 0)){
+        return callMethod(c);
     }
     return 1;
 }
