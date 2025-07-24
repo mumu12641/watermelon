@@ -48,6 +48,10 @@ void IRGen::generateClassBuiltinInit(const ClassDeclaration& decl)
     llvm::Function* function = this->getCurrFunc();
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
+
+    auto self = this->builder->CreateBitCast(
+        this->getCurrFunc()->getArg(0), this->generateType(decl.name, true), "self");
+
     int offset = 1;
     for (const auto& param : this->classAllParams[decl.name]) {
         const Expression* initExpr  = this->getParamInitExpr(param);
@@ -56,7 +60,7 @@ void IRGen::generateClassBuiltinInit(const ClassDeclaration& decl)
             auto initValue = generateExpression(*initExpr);
             auto ptr =
                 this->builder->CreateStructGEP(this->generateType(this->currClass->name, false),
-                                               this->getCurrFunc()->getArg(0),
+                                               self,
                                                offset,
                                                Format("{0}_ptr", paramName));
             this->builder->CreateStore(initValue, ptr);
@@ -76,7 +80,9 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     this->builder->SetInsertPoint(entryBB);
 
     llvm::Type*  classType = this->generateType(decl.name, false);
-    llvm::Value* self      = this->getCurrFunc()->getArg(0);
+    llvm::Value* selfI8    = this->getCurrFunc()->getArg(0);
+    llvm::Value* self =
+        this->builder->CreateBitCast(selfI8, this->generateType(decl.name, true), "self");
 
     if (!decl.baseClass.empty()) {
         auto baseClass       = this->classTable.find(decl.baseClass);
@@ -84,7 +90,7 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         auto castToBaseClass = this->builder->CreateBitCast(
             self, llvm::PointerType::get(this->generateType(baseClassName, false), 0));
 
-        std::vector<llvm::Value*> constructorArgs = {castToBaseClass};
+        std::vector<llvm::Value*> constructorArgs = {selfI8};
         for (const auto& param : decl.baseConstructorArgs) {
             auto value = generateExpression(*param);
             constructorArgs.push_back(value);
@@ -117,11 +123,11 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     }
     auto builtinInitName = Format("{0}_builtin_init", decl.name);
     if (this->methodMap.count(builtinInitName)) {
-        this->builder->CreateCall(this->module->getFunction(builtinInitName), {self});
+        this->builder->CreateCall(this->module->getFunction(builtinInitName), {selfI8});
     }
     auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
     if (this->methodMap.count(selfDefinedInitName)) {
-        this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {self});
+        this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {selfI8});
     }
 
 
@@ -150,7 +156,7 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     this->builder->CreateStore(vTable, ptr);
 
     std::vector<llvm::Value*> constructorArgs;
-    constructorArgs.push_back(mallocResult);
+    constructorArgs.push_back(mallocCall);
 
     for (unsigned i = 0; i < function->arg_size(); ++i) {
         constructorArgs.push_back(function->getArg(i));
@@ -170,6 +176,10 @@ void IRGen::generateClassSelfDefinedInit(const InitBlockMember& init, const std:
     llvm::Function* function = this->getCurrFunc();
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
+
+    auto selfVal = this->builder->CreateBitCast(
+        function->getArg(0), this->generateType(className, true), "self");
+    this->valueTable.add("self", IRValue(selfVal));
 
     generateBlockStatement(*init.block);
 
@@ -208,14 +218,15 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
     if (this->currClass) {
         llvm::Type*  selfType = this->generateType(this->currClass->name, true);
         llvm::Value* selfVar  = allocateStackVariable("self", selfType);
-        llvm::Value* selfArg  = function->getArg(paramOffset++);
+        llvm::Value* selfArg =
+            this->builder->CreateBitCast(function->getArg(paramOffset++), selfType, "self");
         this->builder->CreateStore(selfArg, selfVar, false);
         this->valueTable.add("self", IRValue(selfVar));
     }
     for (const auto& param : decl.parameters) {
         llvm::Type*  paramType = this->generateType(*param.type, true);
         llvm::Value* paramVar  = allocateStackVariable(param.name, paramType);
-        llvm::Value* argValue = function->getArg(paramOffset++);
+        llvm::Value* argValue  = function->getArg(paramOffset++);
         this->builder->CreateStore(argValue, paramVar, false);
         this->valueTable.add(param.name, IRValue(paramVar));
     }

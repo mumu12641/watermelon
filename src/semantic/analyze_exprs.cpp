@@ -286,14 +286,35 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
     if (errorObject) return {nullptr, errorObject};
 
     if (const auto* objectClass = this->classTable.find(objectType->getName())) {
-        auto* classMember = objectClass->containMember(
+        const Type*        paramTypePtr = nullptr;
+        const ClassMember* classMember  = nullptr;
+        for (const auto& param : objectClass->constructorParameters) {
+            if (expr.kind == MemberExpression::Kind::PROPERTY && param.name == expr.property) {
+                paramTypePtr = param.type.get();
+            }
+        }
+        const auto* inheritanceChain = this->classTable.getInheritMap(objectType->getName());
+        for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend(); ++cls) {
+            for (const auto& param : (*cls)->constructorParameters) {
+                if (expr.kind == MemberExpression::Kind::PROPERTY && expr.property == param.name) {
+                    paramTypePtr = param.type.get();
+                }
+            }
+            classMember = (*cls)->containMember(
+                expr.kind == MemberExpression::Kind::PROPERTY ? expr.property : expr.methodName);
+        }
+
+        classMember = objectClass->containMember(
             expr.kind == MemberExpression::Kind::PROPERTY ? expr.property : expr.methodName);
-        if (classMember == nullptr) {
+        if (classMember == nullptr && paramTypePtr == nullptr) {
             return {nullptr,
                     Error(Format("This class {0} does not have a member named {1}",
                                  objectClass->name,
                                  expr.property),
                           expr.getLocation())};
+        }
+        if (paramTypePtr != nullptr) {
+            return {std::make_unique<Type>(*paramTypePtr), std::nullopt};
         }
         if (expr.kind == MemberExpression::Kind::METHOD) {
             const auto* classMethod = dynamic_cast<const MethodMember*>(classMember);

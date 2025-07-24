@@ -212,7 +212,27 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
     const auto* objectClass = this->classTable.find(expr.object->getType().getName());
 
     if (expr.kind == MemberExpression::Kind::METHOD) {
-        std::vector<llvm::Value*> callArgs = {objectVal};
+        auto className  = objectClass->name;
+        auto vTableName = Format("vTable_{0}", className);
+
+        auto vtablePtr = this->builder->CreateStructGEP(this->generateType(className, false),
+                                                        objectVal,
+                                                        0,
+                                                        Format("{0}_vtable_ptr", className));
+
+        auto vtable = this->builder->CreateLoad(
+            this->vTableTypes[vTableName], vtablePtr, Format("{0}_vtable", className));
+        
+            // 这里的offset
+        auto methodPtr = this->builder->CreateStructGEP(this->generateType(className, false),
+                                                        objectVal,
+                                                        0,
+                                                        Format("{0}_vtable_ptr", className));
+
+
+        auto objectI8Ptr = this->builder->CreateBitCast(objectVal, int8PtrTy, "objectI8Ptr");
+        std::vector<llvm::Value*> callArgs = {objectI8Ptr};
+
         for (const auto& argExpr : expr.arguments) {
             callArgs.push_back(generateExpression(*argExpr));
         }

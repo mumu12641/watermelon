@@ -118,7 +118,7 @@ public:
     Location getLocation() const { return location; }
     Type     getType() const { return type; }
     void     setType(Type t) { type = t; }
-    virtual ~Expression() = default;
+    virtual ~Expression()                                                              = default;
     virtual std::string dump(const std::string& prefix = "", bool isLast = true) const = 0;
 };
 
@@ -1086,6 +1086,15 @@ public:
         for (const auto& m : this->members) {
             if (m->getName() == member) {
                 return m.get();
+            }
+        }
+        return nullptr;
+    }
+    const Type* containParam(const std::string paramName) const
+    {
+        for (const auto& param : constructorParameters) {
+            if(param.name == paramName){
+                return param.type.get();
             }
         }
         return nullptr;

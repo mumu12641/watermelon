@@ -1,36 +1,26 @@
-class A(a:int) {
-    var a_s:String;
+class A(a:int=0) {
     fn method() -> int{
-        return 1;
+        return self.a;
+    }
+    fn a_method() -> int{
+        return self.a;
     }
 }
-class B(c:int = 1) inherits A(1){
-    var b_s:String;
+class B(b:int=1) inherits A(){
     fn method() -> int{
-        return 2;
+        return self.b;
     }
 }
-class C(c:String = "c_s", d:int = 2) inherits B(){
-    var c_s:String;
-    init {
-        d = a + 1;
-    }
+class C(c:int = 2) inherits B(){
     fn method() -> int{
-        return 3;
+        return self.c;
     }
-}
-fn method(a:int)->int{
-    var c = 1;
-    return  c + 1;
 }
 fn callMethod(a:A)->int{
     return a.method();
 }
 
 fn main() -> int{
-    var c:C = C("c_s",2);
-    if(!(callMethod(c) < 0)){
-        return callMethod(c);
-    }
-    return 1;
+    var c:C = C();
+    return callMethod(c);
 }

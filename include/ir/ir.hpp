@@ -126,6 +126,7 @@ private:
     std::unordered_map<std::string, llvm::StructType*>     vTableTypes;
     std::unordered_map<std::string, llvm::Function*>       methodMap;
     std::unordered_map<std::string, llvm::GlobalVariable*> vTableVars;
+    std::unordered_map<std::string, int>                   vTableOffsetMap;
 
     llvm::Type* int32Ty;
     llvm::Type* int64Ty;
@@ -220,6 +221,5 @@ public:
     llvm::Value* generateMemberExpressionPtr(const MemberExpression& expr);
     llvm::Value* generateTypeCheckExpression(const TypeCheckExpression& expr);
     llvm::Value* generateUnaryExpression(const UnaryExpression& expr);
-
 };
 #endif
