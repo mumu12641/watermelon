@@ -195,8 +195,8 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
                                 expr.arguments.size()),
                          expr.getLocation());
         }
-
-        for (size_t i = 0; i < params.size(); i++) {
+        size_t i = 0;
+        for (; i < expr.arguments.size(); i++) {
             auto [argType, errorArg] = analyzeExpression(*(expr.arguments[i]));
             if (errorArg) return errorArg;
             const std::string& expectedType = params[i].type->getName();
@@ -211,7 +211,21 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
                              expr.arguments[i]->getLocation());
             }
         }
-
+        while (i < params.size()) {
+            auto [defaultType, errorDefault] = analyzeExpression(*(params[i].defaultValue));
+            if (errorDefault) return errorDefault;
+            const std::string& declDefaultValType = params[i].type->getName();
+            if (!this->classTable.checkInherit(defaultType->getName(), declDefaultValType)) {
+                return Error(Format("Argument {0}: cannot convert from '{1}' to '{2}' in {3} '{4}'",
+                                    i + 1,
+                                    defaultType->getName(),
+                                    declDefaultValType,
+                                    callType,
+                                    name),
+                             params[i].defaultValue->getLocation());
+            }
+            i++;
+        }
         return std::nullopt;
     };
 

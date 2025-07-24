@@ -125,7 +125,8 @@ llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
     std::vector<llvm::Value*> callArgs;
 
     auto processArguments = [this, &callArgs](const auto& declParams, const auto& arguments) {
-        for (size_t i = 0; i < arguments.size(); ++i) {
+        size_t i = 0;
+        for (; i < arguments.size(); ++i) {
             auto argValue = generateExpression(*arguments[i]);
 
             const auto& declParamType = declParams[i].type;
@@ -137,8 +138,12 @@ llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
                     this->generateType(*declParamType, true),
                     Format("{0}_cast_to_{1}", argType.getName(), declParamType->getName()));
             }
-
             callArgs.push_back(argValue);
+        }
+        while (i < declParams.size()) {
+            auto defaultVal = generateExpression(*declParams[i].defaultValue);
+            callArgs.push_back(defaultVal);
+            i++;
         }
     };
 

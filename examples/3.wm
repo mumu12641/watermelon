@@ -1,5 +1,5 @@
 
-class A(a_:int){
+class A(a_:int = 111){
     var a:int = 0;
     init{
         a = a_;
@@ -7,9 +7,8 @@ class A(a_:int){
 }
 class C(){
     var index:int = 0;
-    var a:A = A(0);
+    var a:A = A();
     fn test()->int{
-        a.a = 22;
         return self.a.a;
     }
     operator fn _first() -> void{
@@ -31,6 +30,10 @@ class C(){
 
 fn method() -> C{
     return C();
+}
+
+fn testDefult(a :int,b:int ="asd")->int{
+    return a+ b;
 }
 
 fn main()->int{
