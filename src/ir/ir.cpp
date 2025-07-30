@@ -92,7 +92,6 @@ void IRGen::buildVTables()
                               llvm::FunctionType::get(voidTy, {int8PtrTy}, false));
 
         std::vector<llvm::Type*> constructParamTypes = {int8PtrTy};
-        // this->generateType(Type::classType(className), true)};
         for (const auto& constructParam : classDecl->constructorParameters) {
             constructParamTypes.emplace_back(this->generateType(*constructParam.type, false));
         }
@@ -109,32 +108,35 @@ void IRGen::buildVTables()
                                   this->generateType(className, true), constructParamTypes, false));
 
 
-        const auto* inheritanceChain = this->classTable.getInheritMap(classDecl->name);
+        std::map<std::string, std::pair<std::string, llvm::FunctionType*>> inheritMethodMap;
 
+        const auto* inheritanceChain = this->classTable.getInheritMap(classDecl->name);
         for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend(); ++cls) {
             for (const auto& member : (*cls)->members) {
                 if (const auto* method = dynamic_cast<const MethodMember*>(member.get())) {
-                    // this->vTableOffsetMap[]
-                    std::string methodName = Format("{0}_{1}", (*cls)->name, method->getName());
+                    std::string methodKey      = method->getName();
+                    std::string fullMethodName = Format("{0}_{1}", (*cls)->name, method->getName());
+
                     std::vector<llvm::Type*> paramTypes = {int8PtrTy};
 
-                for (const auto& param : method->function->parameters) {
-                    paramTypes.push_back(this->generateType(*param.type, false));
-                }
+                    for (const auto& param : method->function->parameters) {
+                        paramTypes.push_back(this->generateType(*param.type, false));
+                    }
 
-                llvm::FunctionType* funcType = llvm::FunctionType::get(
-                    this->generateType(*method->function->returnType, false), paramTypes, false);
-
-                this->addVTableMethod(vTableMethods, vTableInitializers, methodName, funcType);
+                    llvm::FunctionType* funcType = llvm::FunctionType::get(
+                        this->generateType(*method->function->returnType, false),
+                        paramTypes,
+                        false);
+                    inheritMethodMap[methodKey] = {fullMethodName, funcType};
                 }
             }
         }
         for (const auto& member : classDecl->members) {
             if (const auto* method = dynamic_cast<const MethodMember*>(member.get())) {
-                std::string methodName = Format("{0}_{1}", className, method->getName());
+                std::string methodKey      = method->getName();
+                std::string fullMethodName = Format("{0}_{1}", className, method->getName());
 
                 std::vector<llvm::Type*> paramTypes = {int8PtrTy};
-                // this->generateType(Type::classType(className), true)};
 
                 for (const auto& param : method->function->parameters) {
                     paramTypes.push_back(this->generateType(*param.type, false));
@@ -142,15 +144,20 @@ void IRGen::buildVTables()
 
                 llvm::FunctionType* funcType = llvm::FunctionType::get(
                     this->generateType(*method->function->returnType, false), paramTypes, false);
-
-                this->addVTableMethod(vTableMethods, vTableInitializers, methodName, funcType);
+                inheritMethodMap[methodKey] = {fullMethodName, funcType};
             }
             else if (const auto* init = dynamic_cast<const InitBlockMember*>(member.get())) {
                 std::string         initMethodName = Format("{0}_self_defined_init", className);
                 llvm::FunctionType* funcType = llvm::FunctionType::get(voidTy, {int8PtrTy}, false);
-                // voidTy, {this->generateType(Type::classType(className), true)}, false);
                 this->addVTableMethod(vTableMethods, vTableInitializers, initMethodName, funcType);
             }
+        }
+        size_t vTableOffset = 3;
+        for (const auto& [methodKey, methodInfo] : inheritMethodMap) {
+            const auto& [fullMethodName, funcType]             = methodInfo;
+            this->vTableOffsetMap[classDecl->name + methodKey] = vTableOffset;
+            this->addVTableMethod(vTableMethods, vTableInitializers, fullMethodName, funcType);
+            vTableOffset++;
         }
 
         auto vTableType     = llvm::StructType::create(*this->context, vTableMethods, vTableName);
@@ -167,12 +174,19 @@ void IRGen::buildVTables()
 }
 void IRGen::addVTableMethod(std::vector<llvm::Type*>&     vTableMethods,
                             std::vector<llvm::Constant*>& vTableInitializers,
-                            const std::string& methodName, llvm::FunctionType* funcType)
+                            const std::string& methodName, llvm::FunctionType* funcType,
+                            const std::string& className)
 {
-     .push_back(llvm::PointerType::getUnqual(funcType));
-    llvm::Function* function = llvm::Function::Create(
-        funcType, llvm::Function::ExternalLinkage, methodName, this->module.get());
-    this->methodMap[methodName] = function;
+    llvm::Function* function;
+    vTableMethods.push_back(llvm::PointerType::getUnqual(funcType));
+    if (!this->methodMap.count(methodName)) {
+        function = llvm::Function::Create(
+            funcType, llvm::Function::ExternalLinkage, methodName, this->module.get());
+        this->methodMap[methodName] = function;
+    }
+    else {
+        function = this->methodMap[methodName];
+    }
     vTableInitializers.push_back(function);
 }
 
@@ -185,7 +199,7 @@ void IRGen::defineClasses()
                 const auto* inheritanceChain = this->classTable.getInheritMap(classDecl->name);
                 std::string vTableName       = Format("vTable_{0}", classDecl->name);
                 llvm::StructType*        structType = static_cast<llvm::StructType*>(it->second);
-                std::vector<llvm::Type*> fieldTypes = {this->vTableTypes[vTableName]};
+                std::vector<llvm::Type*> fieldTypes = {llvm::PointerType::getUnqual(this->vTableTypes[vTableName])};
                 std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>
                     allParams;
 

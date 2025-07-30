@@ -220,15 +220,19 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
                                                         0,
                                                         Format("{0}_vtable_ptr", className));
 
-        auto vtable = this->builder->CreateLoad(
-            this->vTableTypes[vTableName], vtablePtr, Format("{0}_vtable", className));
-        
-            // 这里的offset
-        auto methodPtr = this->builder->CreateStructGEP(this->generateType(className, false),
-                                                        objectVal,
-                                                        0,
-                                                        Format("{0}_vtable_ptr", className));
+        // auto vtable = this->builder->CreateLoad(
+        //     this->vTableTypes[vTableName], vtablePtr, Format("{0}_vtable", className));
 
+        // auto methodPtr =
+        //     this->builder->CreateStructGEP(this->generateType(className, false),
+        //                                    objectVal,
+        //                                    this->vTableOffsetMap[className + expr.methodName],
+        //                                    Format("{0}_vtable_ptr", className));
+        auto methodPtr =
+            this->builder->CreateStructGEP(this->vTableTypes[vTableName],
+                                           vtablePtr,
+                                           this->vTableOffsetMap[className + expr.methodName],
+                                           Format("{0}_method_ptr", expr.methodName))
 
         auto objectI8Ptr = this->builder->CreateBitCast(objectVal, int8PtrTy, "objectI8Ptr");
         std::vector<llvm::Value*> callArgs = {objectI8Ptr};

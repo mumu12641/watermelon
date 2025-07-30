@@ -21,6 +21,8 @@ fn callMethod(a:A)->int{
 }
 
 fn main() -> int{
-    var c:C = C();
-    return callMethod(c);
+  //  var c:C = C();
+   // return callMethod(c);
+     var b:B = B();
+   return b.method();
 }

@@ -150,10 +150,8 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
 
     std::string vTableName = Format("vTable_{0}", decl.name);
-    auto        ptr    = this->builder->CreateStructGEP(classType, mallocResult, 0, "vtable_ptr");
-    auto        vTable = this->builder->CreateLoad(
-        this->vTableTypes[vTableName], this->vTableVars[vTableName], "vtable_load");
-    this->builder->CreateStore(vTable, ptr);
+    auto        ptr = this->builder->CreateStructGEP(classType, mallocResult, 0, "vtable_ptr");
+    this->builder->CreateStore(this->vTableVars[vTableName], ptr);
 
     std::vector<llvm::Value*> constructorArgs;
     constructorArgs.push_back(mallocCall);

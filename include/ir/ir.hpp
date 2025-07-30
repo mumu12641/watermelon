@@ -121,12 +121,12 @@ private:
     std::unordered_map<Type, llvm::Type*> typeMap;
     std::unordered_map<std::string,
                        std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>>
-                                                           classAllParams;
-    std::unordered_map<std::string, llvm::StructType*>     classTypes;
-    std::unordered_map<std::string, llvm::StructType*>     vTableTypes;
-    std::unordered_map<std::string, llvm::Function*>       methodMap;
-    std::unordered_map<std::string, llvm::GlobalVariable*> vTableVars;
-    std::unordered_map<std::string, int>                   vTableOffsetMap;
+                                                                    classAllParams;
+    std::unordered_map<std::string, llvm::StructType*>              classTypes;
+    std::unordered_map<std::string, llvm::Type*>                    vTableTypes;
+    std::unordered_map<std::string, llvm::Function*>                methodMap;
+    std::unordered_map<std::string, llvm::GlobalVariable*>          vTableVars;
+    std::unordered_map<std::string, size_t> vTableOffsetMap;
 
     llvm::Type* int32Ty;
     llvm::Type* int64Ty;
@@ -162,7 +162,8 @@ public:
     void buildVTables();
     void addVTableMethod(std::vector<llvm::Type*>&     vTableMethods,
                          std::vector<llvm::Constant*>& vTableInitializers,
-                         const std::string& methodName, llvm::FunctionType* funcType);
+                         const std::string& methodName, llvm::FunctionType* funcType,
+                         const std::string& className = "");
     void setupClasses();
     void setupFunctions();
 
