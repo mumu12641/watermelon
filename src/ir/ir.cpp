@@ -174,15 +174,15 @@ void IRGen::buildVTables()
 }
 void IRGen::addVTableMethod(std::vector<llvm::Type*>&     vTableMethods,
                             std::vector<llvm::Constant*>& vTableInitializers,
-                            const std::string& methodName, llvm::FunctionType* funcType,
-                            const std::string& className)
+                            const std::string& methodName, llvm::FunctionType* funcType)
 {
     llvm::Function* function;
     vTableMethods.push_back(llvm::PointerType::getUnqual(funcType));
     if (!this->methodMap.count(methodName)) {
         function = llvm::Function::Create(
             funcType, llvm::Function::ExternalLinkage, methodName, this->module.get());
-        this->methodMap[methodName] = function;
+        this->methodMap[methodName]     = function;
+        this->methodTypeMap[methodName] = funcType;
     }
     else {
         function = this->methodMap[methodName];
@@ -199,7 +199,8 @@ void IRGen::defineClasses()
                 const auto* inheritanceChain = this->classTable.getInheritMap(classDecl->name);
                 std::string vTableName       = Format("vTable_{0}", classDecl->name);
                 llvm::StructType*        structType = static_cast<llvm::StructType*>(it->second);
-                std::vector<llvm::Type*> fieldTypes = {llvm::PointerType::getUnqual(this->vTableTypes[vTableName])};
+                std::vector<llvm::Type*> fieldTypes = {
+                    llvm::PointerType::getUnqual(this->vTableTypes[vTableName])};
                 std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>
                     allParams;
 

@@ -212,27 +212,33 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
     const auto* objectClass = this->classTable.find(expr.object->getType().getName());
 
     if (expr.kind == MemberExpression::Kind::METHOD) {
-        auto className  = objectClass->name;
-        auto vTableName = Format("vTable_{0}", className);
+        auto className      = objectClass->name;
+        auto vTableName     = Format("vTable_{0}", className);
+        auto fullMethodName = Format("{0}_{1}", className, expr.methodName);
 
-        auto vtablePtr = this->builder->CreateStructGEP(this->generateType(className, false),
+        auto vTablePtr = this->builder->CreateStructGEP(this->generateType(className, false),
                                                         objectVal,
                                                         0,
-                                                        Format("{0}_vtable_ptr", className));
+                                                        Format("{0}_vtable_ptr_ptr", className));
 
-        // auto vtable = this->builder->CreateLoad(
-        //     this->vTableTypes[vTableName], vtablePtr, Format("{0}_vtable", className));
+        auto vTable =
+            this->builder->CreateLoad(llvm::PointerType::getUnqual(this->vTableTypes[vTableName]),
+                                      vTablePtr,
+                                      Format("{0}_vtable_ptr", className));
 
-        // auto methodPtr =
-        //     this->builder->CreateStructGEP(this->generateType(className, false),
-        //                                    objectVal,
-        //                                    this->vTableOffsetMap[className + expr.methodName],
-        //                                    Format("{0}_vtable_ptr", className));
-        auto methodPtr =
-            this->builder->CreateStructGEP(this->vTableTypes[vTableName],
-                                           vtablePtr,
-                                           this->vTableOffsetMap[className + expr.methodName],
-                                           Format("{0}_method_ptr", expr.methodName))
+
+        auto methodPtr = this->builder->CreateStructGEP(
+            this->vTableTypes[vTableName],
+            vTable,
+            this->vTableOffsetMap[className + expr.methodName],
+            Format("{0}_{1}_method_ptr_ptr", className, expr.methodName));
+
+
+        llvm::FunctionType* methodFuncType = this->methodTypeMap[fullMethodName];
+        llvm::Type*         methodPtrType  = llvm::PointerType::get(methodFuncType, 0);
+
+        auto method = this->builder->CreateLoad(
+            methodPtrType, methodPtr, Format("{0}_{1}_method_ptr", className, expr.methodName));
 
         auto objectI8Ptr = this->builder->CreateBitCast(objectVal, int8PtrTy, "objectI8Ptr");
         std::vector<llvm::Value*> callArgs = {objectI8Ptr};
@@ -240,10 +246,9 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
         for (const auto& argExpr : expr.arguments) {
             callArgs.push_back(generateExpression(*argExpr));
         }
-        return this->builder->CreateCall(
-            this->module->getFunction(Format("{0}_{1}", objectClass->name, expr.methodName)),
-            callArgs);
+        return this->builder->CreateCall(methodFuncType, method, callArgs);
     }
+
     if (expr.kind == MemberExpression::Kind::PROPERTY) {
         auto property = Format("{0}_{1}", objectClass->name, expr.property);
         auto ptr      = generateMemberExpressionPtr(expr);
