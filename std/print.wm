@@ -6,17 +6,14 @@ fn print_int(a:int) -> void{
     return;
 }
 
-fn print_string() -> void{
+fn print_string(s:String) -> void{
     return;
-
 }
 
-fn print_double() -> void{
+fn print_float(f:float) -> void{
     return;
-
 }
 
-fn print_bool() -> void{
+fn print_bool(b:bool) -> void{
     return;
-
 }

@@ -9,8 +9,8 @@ bin/
 a.txt
 a.cpp
 examples/*.cpp
+examples/*.ll
 cmake-build-debug/
 .idea/
-*.ll
 *.bc
 *.s

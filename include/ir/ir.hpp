@@ -112,7 +112,7 @@ private:
     ClassTable               classTable;
     FunctionTable            functionTable;
 
-    const ClassDeclaration* currClass;
+    const ClassDeclaration* currClass = nullptr;
     std::string             currFuncName;
     llvm::Instruction*      allocaInsertPoint = nullptr;
     llvm::Value*            retVal            = nullptr;

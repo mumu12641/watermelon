@@ -115,6 +115,88 @@ void processFile(const std::string& filepath)
     processSourceFile(source, filepath);
 }
 
+void processFiles(std::vector<std::string>& filepaths)
+{
+    std::vector<Token> tokens;
+    cout_pink("  [1/4] Lexical analysis... ");
+
+    for (int i = 0; i < filepaths.size(); i++) {
+        auto filename = filepaths[i];
+
+
+        std::string source = readFile(filename);
+        // std::string s =
+        //     "Processing " + (filename.empty() ? "source code" : "'" + filename + "'") + ":\n";
+        // cout_yellow(s);
+
+        Lexer lexer(source, filename);
+        auto [currTokens, lexerError] = lexer.tokenize();
+        if (i != filepaths.size() - 1) {
+            currTokens.pop_back();
+        }
+        if (lexerError) {
+            cout_red("Failed");
+            std::cout << std::endl;
+            lexerError->print();
+            return;
+        }
+        tokens.insert(tokens.end(), currTokens.begin(), currTokens.end());
+    }
+    cout_green("Passed");
+    std::cout << std::endl;
+    cout_pink("  [2/4] Syntax analysis...  ");
+    Parser parser(tokens);
+    auto [program, parserError] = parser.parse();
+
+    if (parserError) {
+        cout_red("Failed");
+        std::cout << std::endl;
+        parserError->print();
+        return;
+    }
+    cout_green("Passed");
+    std::cout << std::endl;
+
+    cout_pink("  [3/4] Semantic analysis... ");
+    SemanticAnalyzer semanticAnalyzer(std::move(program));
+    auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
+
+    if (semanticError) {
+        cout_red("Failed");
+        std::cout << std::endl;
+        semanticError->print();
+        return;
+    }
+    cout_green("Passed");
+    std::cout << std::endl;
+
+    cout_pink("  [4/4] LLVM IR generating... ");
+    IRGen irGen(std::move(resolveProgram),
+                std::move(semanticAnalyzer.getClassTable()),
+                std::move(semanticAnalyzer.getFunctionTable()));
+    auto  llvmIR = irGen.generateIR();
+    cout_green("Passed");
+    std::cout << std::endl;
+    cout_blue("✓ Compilation successful");
+    std::cout << std::endl;
+    // llvmIR->print(llvm::outs(), nullptr);
+    std::cout << std::endl;
+    std::string          outputFilename = "/home/pbb/code/watermelon/examples/output.ll";
+    std::error_code      EC;
+    llvm::raw_fd_ostream outFile(outputFilename, EC);
+
+    if (EC) {
+        cout_red("Error opening output file: " + EC.message());
+        std::cout << std::endl;
+    }
+    else {
+        llvmIR->print(outFile, nullptr);
+        outFile.close();
+        cout_green("LLVM IR has been written to: " + outputFilename);
+        std::cout << std::endl;
+    }
+}
+
 void processDirectory(const std::string& dirPath, const std::string& extension)
 {
     try {

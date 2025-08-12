@@ -21,8 +21,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::string firstArg  = argv[1];
-    std::string extension = ".wm";
+    std::string              firstArg  = argv[1];
+    std::string              extension = ".wm";
+    std::vector<std::string> filepaths = {"/home/pbb/code/watermelon/std/print.wm"};
 
     if (firstArg == "--dir") {
         if (argc < 3) {
@@ -53,7 +54,8 @@ int main(int argc, char* argv[])
         }
     }
     else {
-        processFile(firstArg);
+        filepaths.push_back(firstArg);
+        processFiles(filepaths);
     }
 
     return 0;
