@@ -1,0 +1,3 @@
+# Watermelon compiler configuration
+stdlib_path=@STDLIB_INSTALL_DIR@/std
+version=@PROJECT_VERSION@

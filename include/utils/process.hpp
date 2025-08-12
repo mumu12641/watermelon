@@ -3,19 +3,20 @@
 
 #include "../lexer/token.hpp"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
-void printTokens(const std::vector<Token>& tokens);
 
-void processSourceFile(const std::string& source, const std::string& filename = "");
-
+void        collectStdLibFiles(const std::string& stdLibPath, const std::string& extension,
+                               std::vector<std::string>& stdLibFiles);
+void        collectDirectoryFiles(const std::string& dirPath, const std::string& extension,
+                                  std::vector<std::string>& files);
+std::string getStdLibPath();
 std::string readFile(const std::string& filepath);
+void        processFiles(const std::vector<std::string>& stdLibFiles,
+                         const std::vector<std::string>& userFiles);
+void        printUsage(const char* programName);
+void        printLogo();
 
-void processFile(const std::string& filepath);
-void processFiles(std::vector<std::string>& filepaths);
-void processDirectory(const std::string& dirPath, const std::string& extension = ".wm");
-
-void printUsage(const char* programName);
-void printLogo();
 #endif

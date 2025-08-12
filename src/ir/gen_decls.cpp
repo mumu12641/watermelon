@@ -10,6 +10,10 @@ void IRGen::generateDeclaration(const Declaration& decl)
         generateEnumDeclaration(*enumDecl);
     }
     else if (const auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(&decl)) {
+        if (std::count(
+                BUILTIN::BUILTIN_FUNC.begin(), BUILTIN::BUILTIN_FUNC.end(), funcDecl->name)) {
+            return;
+        }
         generateFunctionDeclaration(*funcDecl);
     }
 }

@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-
-
 int main(int argc, char* argv[])
 {
     cout_pink("🎉Welcome to watermelon compiler!!\n");
@@ -20,11 +18,13 @@ int main(int argc, char* argv[])
         printUsage(argv[0]);
         return 1;
     }
-
     std::string              firstArg  = argv[1];
     std::string              extension = ".wm";
-    std::vector<std::string> filepaths = {"/home/pbb/code/watermelon/std/print.wm"};
-
+    std::vector<std::string> stdLibFiles;
+    std::vector<std::string> userFiles;
+    std::string              stdLibPath = getStdLibPath();
+    collectStdLibFiles(stdLibPath, extension, stdLibFiles);
+    
     if (firstArg == "--dir") {
         if (argc < 3) {
             std::cerr << "Error: No directory specified after --dir\n";
@@ -32,7 +32,8 @@ int main(int argc, char* argv[])
             return 1;
         }
         std::string dirPath = argv[2];
-        processDirectory(dirPath, extension);
+        collectDirectoryFiles(dirPath, extension, userFiles);
+        processFiles(stdLibFiles, userFiles);
     }
     else if (firstArg == "--files") {
         if (argc < 3) {
@@ -40,23 +41,14 @@ int main(int argc, char* argv[])
             printUsage(argv[0]);
             return 1;
         }
-
         for (int i = 2; i < argc; i++) {
-            std::string arg = argv[i];
-            if (arg == "--ext") {
-                i++;
-                continue;
-            }
-            if (arg.substr(0, 2) == "--") {
-                continue;
-            }
-            processFile(arg);
+            userFiles.push_back(argv[i]);
         }
+        processFiles(stdLibFiles, userFiles);
     }
     else {
-        filepaths.push_back(firstArg);
-        processFiles(filepaths);
+        userFiles.push_back(firstArg);
+        processFiles(stdLibFiles, userFiles);
     }
-
     return 0;
 }

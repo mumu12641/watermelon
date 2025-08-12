@@ -25,8 +25,8 @@
 - [x] 究竟什么时候要load？？？？？？？？？？？？？？？回答：只有赋值的时候的左边需要ptr，且只会是memberexpr 或者idexpr
 - [x] 在 generateCallExpression 要处理默认参数
 - [x] 在各个 identifierexpr 的时候要处理好 self 
-- [ ] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态
-- [ ] print函数, 感觉还是得用std，然后内联llvm ir比较好
+- [x] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态
+- [x] print函数, 感觉还是得用std，然后内联llvm ir比较好
 
 
 

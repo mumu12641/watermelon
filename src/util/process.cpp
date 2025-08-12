@@ -6,6 +6,7 @@
 #include "../../include/parser/parser.hpp"
 #include "../../include/semantic/semantic.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -13,84 +14,49 @@
 #include <string>
 #include <vector>
 
-
-void processSourceFile(const std::string& source, const std::string& filename)
+std::string getStdLibPath()
 {
-    std::string s =
-        "Processing " + (filename.empty() ? "source code" : "'" + filename + "'") + ":\n";
-    cout_yellow(s);
-
-    cout_pink("  [1/4] Lexical analysis... ");
-    Lexer lexer(source, filename);
-    auto [tokens, lexerError] = lexer.tokenize();
-
-    if (lexerError) {
-        cout_red("Failed");
-        std::cout << std::endl;
-        lexerError->print();
-        return;
+    const char* homeDir = getenv("HOME");
+    if (homeDir != nullptr) {
+        std::string homePath = std::string(homeDir) + "/.watermelon/std";
+        if (std::filesystem::exists(homePath)) {
+            return homePath;
+        }
     }
-    cout_green("Passed");
-    std::cout << std::endl;
-
-    cout_pink("  [2/4] Syntax analysis...  ");
-    Parser parser(tokens);
-    auto [program, parserError] = parser.parse();
-
-    if (parserError) {
-        cout_red("Failed");
-        std::cout << std::endl;
-        parserError->print();
-        return;
-    }
-    cout_green("Passed");
-    // std::cout << program->dump() << std::endl;
-    std::cout << std::endl;
-
-    cout_pink("  [3/4] Semantic analysis... ");
-    SemanticAnalyzer semanticAnalyzer(std::move(program));
-    auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
-
-    if (semanticError) {
-        cout_red("Failed");
-        std::cout << std::endl;
-        semanticError->print();
-        return;
-    }
-    cout_green("Passed");
-    // std::cout << resolveProgram->dump() << std::endl;
-    std::cout << std::endl;
-
-    cout_pink("  [4/4] LLVM IR generating... ");
-    IRGen irGen(std::move(resolveProgram),
-                std::move(semanticAnalyzer.getClassTable()),
-                std::move(semanticAnalyzer.getFunctionTable()));
-    auto  llvmIR = irGen.generateIR();
-    cout_green("Passed");
-    std::cout << std::endl;
-    cout_blue("✓ Compilation successful");
-    std::cout << std::endl;
-    // llvmIR->print(llvm::outs(), nullptr);
-    std::cout << std::endl;
-
-    std::filesystem::path inputPath(filename);
-    std::string           outputFilename =
-        "/home/pbb/code/watermelon/examples/" + inputPath.stem().string() + ".ll";
-    std::error_code      EC;
-    llvm::raw_fd_ostream outFile(outputFilename, EC);
-
-    if (EC) {
-        cout_red("Error opening output file: " + EC.message());
-        std::cout << std::endl;
-    }
-    else {
-        llvmIR->print(outFile, nullptr);
-        outFile.close();
-        cout_green("LLVM IR has been written to: " + outputFilename);
-        std::cout << std::endl;
-    }
+    return "";
 }
 
+void collectStdLibFiles(const std::string& stdLibPath, const std::string& extension,
+                        std::vector<std::string>& stdLibFiles)
+{
+    if (!std::filesystem::exists(stdLibPath)) {
+        cout_yellow("Warning: Standard library path does not exist: " + stdLibPath + "\n");
+        return;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(stdLibPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == extension) {
+            stdLibFiles.push_back(entry.path().string());
+        }
+    }
+
+    std::sort(stdLibFiles.begin(), stdLibFiles.end());
+}
+
+void collectDirectoryFiles(const std::string& dirPath, const std::string& extension,
+                           std::vector<std::string>& files)
+{
+    if (!std::filesystem::exists(dirPath)) {
+        cout_red("Error: Directory does not exist: " + dirPath + "\n");
+        return;
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == extension) {
+            files.push_back(entry.path().string());
+        }
+    }
+    std::sort(files.begin(), files.end());
+}
 
 std::string readFile(const std::string& filepath)
 {
@@ -105,31 +71,20 @@ std::string readFile(const std::string& filepath)
     return buffer.str();
 }
 
-void processFile(const std::string& filepath)
+void processFiles(const std::vector<std::string>& stdLibFiles,
+                  const std::vector<std::string>& userFiles)
 {
-    std::string source = readFile(filepath);
-    if (source.empty()) {
-        return;
-    }
+    std::vector<std::string> filepaths;
+    filepaths.reserve(stdLibFiles.size() + userFiles.size());
+    filepaths.insert(filepaths.end(), stdLibFiles.begin(), stdLibFiles.end());
+    filepaths.insert(filepaths.end(), userFiles.begin(), userFiles.end());
 
-    processSourceFile(source, filepath);
-}
-
-void processFiles(std::vector<std::string>& filepaths)
-{
     std::vector<Token> tokens;
-    cout_pink("  [1/4] Lexical analysis... ");
-
+    cout_pink("  [1/5] Lexical analysis... ");
     for (int i = 0; i < filepaths.size(); i++) {
-        auto filename = filepaths[i];
-
-
-        std::string source = readFile(filename);
-        // std::string s =
-        //     "Processing " + (filename.empty() ? "source code" : "'" + filename + "'") + ":\n";
-        // cout_yellow(s);
-
-        Lexer lexer(source, filename);
+        auto        filename = filepaths[i];
+        std::string source   = readFile(filename);
+        Lexer       lexer(source, filename);
         auto [currTokens, lexerError] = lexer.tokenize();
         if (i != filepaths.size() - 1) {
             currTokens.pop_back();
@@ -144,10 +99,10 @@ void processFiles(std::vector<std::string>& filepaths)
     }
     cout_green("Passed");
     std::cout << std::endl;
-    cout_pink("  [2/4] Syntax analysis...  ");
+
+    cout_pink("  [2/5] Syntax analysis...  ");
     Parser parser(tokens);
     auto [program, parserError] = parser.parse();
-
     if (parserError) {
         cout_red("Failed");
         std::cout << std::endl;
@@ -157,10 +112,9 @@ void processFiles(std::vector<std::string>& filepaths)
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [3/4] Semantic analysis... ");
+    cout_pink("  [3/5] Semantic analysis... ");
     SemanticAnalyzer semanticAnalyzer(std::move(program));
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
-
     if (semanticError) {
         cout_red("Failed");
         std::cout << std::endl;
@@ -170,45 +124,40 @@ void processFiles(std::vector<std::string>& filepaths)
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [4/4] LLVM IR generating... ");
+    cout_pink("  [4/5] LLVM IR generating... ");
     IRGen irGen(std::move(resolveProgram),
                 std::move(semanticAnalyzer.getClassTable()),
                 std::move(semanticAnalyzer.getFunctionTable()));
     auto  llvmIR = irGen.generateIR();
     cout_green("Passed");
     std::cout << std::endl;
-    cout_blue("✓ Compilation successful");
-    std::cout << std::endl;
-    // llvmIR->print(llvm::outs(), nullptr);
-    std::cout << std::endl;
-    std::string          outputFilename = "/home/pbb/code/watermelon/examples/output.ll";
-    std::error_code      EC;
+    std::string outputFilename = "./output.ll";
+    std::error_code EC;
     llvm::raw_fd_ostream outFile(outputFilename, EC);
-
-    if (EC) {
-        cout_red("Error opening output file: " + EC.message());
+    llvmIR->print(outFile, nullptr);
+    outFile.close();
+    
+    cout_pink("  [5/5] Compiling LLVM IR to executable... ");
+    std::string              stdLibPath = getStdLibPath();
+    std::vector<std::string> stdLibLLFiles;
+    collectStdLibFiles(stdLibPath, ".ll", stdLibLLFiles);
+    std::string clangCmd = "clang -w -o ./output";
+    for (const auto& llFile : stdLibLLFiles) {
+        clangCmd += " " + llFile;
+    }
+    clangCmd += " " + outputFilename;
+    int compileResult = system(clangCmd.c_str());
+    if (compileResult != 0) {
+        cout_red("Failed");
         std::cout << std::endl;
-    }
-    else {
-        llvmIR->print(outFile, nullptr);
-        outFile.close();
-        cout_green("LLVM IR has been written to: " + outputFilename);
+        cout_red("Error executing clang command: " + clangCmd);
         std::cout << std::endl;
+        return;
     }
-}
-
-void processDirectory(const std::string& dirPath, const std::string& extension)
-{
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
-            if (entry.is_regular_file() && entry.path().extension() == extension) {
-                processFile(entry.path().string());
-            }
-        }
-    }
-    catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << "Filesystem error: " << e.what() << std::endl;
-    }
+    cout_green("Passed");
+    std::cout << std::endl;
+    cout_blue("✓ Executable has been created: ./output");
+    std::cout << std::endl;
 }
 
 void printUsage(const char* programName)
@@ -280,5 +229,5 @@ void printLogo()
     cout_green("S B A Y U ");
     cout_cyan("I           B");
     cout_green(" E J T\n");
-    cout_green("O K Z P W B F D P I X Z R M M\n\n");
+    cout_green("O K Z P W B F D P I X Z R M M\n");
 }

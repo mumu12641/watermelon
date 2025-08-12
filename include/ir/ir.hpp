@@ -5,6 +5,7 @@
 #include "../lexer/token.hpp"
 #include "../semantic/semantic.hpp"
 #include "../utils/error.hpp"
+#include "../utils/builtin.hpp"
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DataLayout.h>
