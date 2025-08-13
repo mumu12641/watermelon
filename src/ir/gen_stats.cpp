@@ -45,8 +45,10 @@ void IRGen::generateForStatement(const ForStatement& stmt)
 {
     auto iterable = generateExpression(*stmt.iterable);
     auto iterType = stmt.iterable->getType();
+
+    auto iterableI8Ptr = this->builder->CreateBitCast(iterable, this->int8PtrTy, "iterableI8Ptr");
     this->builder->CreateCall(this->module->getFunction(Format("{0}__first", iterType.getName())),
-                              {iterable});
+                              {iterableI8Ptr});
 
     auto iterablePair = this->classTable.isClassIterable(iterType.getName());
     auto variable     = this->allocateStackVariable(
@@ -60,19 +62,19 @@ void IRGen::generateForStatement(const ForStatement& stmt)
     this->builder->CreateBr(condBB);
     this->builder->SetInsertPoint(condBB);
     auto cond = this->builder->CreateCall(
-        this->module->getFunction(Format("{0}__end", iterType.getName())), {iterable});
+        this->module->getFunction(Format("{0}__end", iterType.getName())), {iterableI8Ptr});
     this->builder->CreateCondBr(cond, endBB, bodyBB);
 
     this->builder->SetInsertPoint(bodyBB);
     auto current = this->builder->CreateCall(
-        this->module->getFunction(Format("{0}__current", iterType.getName())), {iterable});
+        this->module->getFunction(Format("{0}__current", iterType.getName())), {iterableI8Ptr});
     this->builder->CreateStore(current, variable);
     this->valueTable.add(stmt.variable, IRValue(variable));
 
     generateStatement(*stmt.body);
 
     this->builder->CreateCall(this->module->getFunction(Format("{0}__next", iterType.getName())),
-                              {iterable});
+                              {iterableI8Ptr});
     this->builder->CreateBr(condBB);
 
     this->builder->SetInsertPoint(endBB);
@@ -115,12 +117,13 @@ void IRGen::generateVariableStatement(const VariableStatement& stmt)
 {
     auto         declType = this->generateType(*stmt.declType, true);
     llvm::Value* value    = this->allocateStackVariable(stmt.name, declType);
-    llvm::Value* init     = generateExpression(*stmt.initializer);
+    this->valueTable.add(stmt.name, IRValue(value));
+    if (stmt.initializer == nullptr) return;
+    llvm::Value* init = generateExpression(*stmt.initializer);
     if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
         init = this->builder->CreateBitCast(init, declType);
     }
     this->builder->CreateStore(init, value);
-    this->valueTable.add(stmt.name, IRValue(value));
 }
 
 void IRGen::generateWhenStatement(const WhenStatement& stmt) {}

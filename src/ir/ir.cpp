@@ -42,16 +42,21 @@ void IRValueTable::debug() const
 {
     std::cout << "IRValueTable Debug Information:\n";
     for (size_t i = 0; i < scopes.size(); ++i) {
-        std::cout << "Scope " << i << " " << scopes[i].getName() << ":\n";
-        for (const auto& pair : scopes[i].getMap()) {
-            std::string kind =
-                pair.second.getKind() == IRValueKind::PROPERTY ? "property" : "function param";
-            std::cout << "  Key: " << pair.first << ", Symbol kind: " << kind
-                      << ", Symbol offset: " << pair.second.getOffset() << "\n";
+        const auto& scope = scopes[i];
+        std::cout << "Scope " << i << " " << scope.getName() << ":\n";
+        for (const auto& [key, value] : scope.getMap()) {
+            const bool             isProperty = (value.getKind() == IRValueKind::PROPERTY);
+            const std::string_view kind       = isProperty ? "property" : "function param";
+            std::cout << "  Key: " << key << ", Symbol kind: " << kind;
+            if (isProperty) {
+                std::cout << ", Symbol offset: " << value.getOffset();
+            }
+            std::cout << '\n';
         }
     }
-    std::cout << "\n";
+    std::cout << '\n';
 }
+
 
 std::unique_ptr<llvm::Module> IRGen::generateIR()
 {

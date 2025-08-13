@@ -32,7 +32,7 @@ fn method() -> C{
     return C();
 }
 
-fn testDefult(a :int,b:int ="asd")->int{
+fn testDefult(a :int,b:int =1)->int{
     return a+ b;
 }
 
@@ -40,6 +40,9 @@ fn main()->int{
     var c1 = C();
     for(c in C()){
         if(c == 4){
+            print_int(testDefult(123,2));
+            println();
+            print_int(c1.test());
             return c1.test();
         }
     }

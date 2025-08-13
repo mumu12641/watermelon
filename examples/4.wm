@@ -21,7 +21,9 @@ fn callMethod(a:A)->int{
 }
 
 fn main() -> int{
-   var c:C = C();
-   print_int(23);
+   //var c:C = C();
+    var c:A;
+    c = C();
+   print_int(callMethod(c));
    return callMethod(c);
 }

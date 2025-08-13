@@ -28,6 +28,9 @@
 - [x] 在 generateMemberExpression 的时候不能直接用 class_method 要考虑多态
 - [x] print函数, 感觉还是得用std，然后内联llvm ir比较好
 
+- [ ] std string class，一些oprator
+- [ ] 运行时候的空指针 null
+
 
 
 ## TODO

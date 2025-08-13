@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
+
 set(PROJECT_VERSION "1.0.0")
-project(watermelon)
+project(watermelon VERSION ${PROJECT_VERSION})
+
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
@@ -32,12 +34,11 @@ install(CODE "
 
 file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/std/*")
 install(FILES ${STD_LIB_FILES} DESTINATION "${STDLIB_INSTALL_DIR}/std")
-configure_file(
-    "${PROJECT_SOURCE_DIR}/config/watermelon.conf.in"
-    "${PROJECT_BINARY_DIR}/config/watermelon.conf"
-    @ONLY
-)
-install(FILES "${PROJECT_BINARY_DIR}/config/watermelon.conf" DESTINATION "${STDLIB_INSTALL_DIR}")
+
+install(CODE "
+    file(WRITE \"${STDLIB_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${STDLIB_INSTALL_DIR}/std\\nversion=${PROJECT_VERSION}\\n\")
+    message(STATUS \"Created configuration file with version ${PROJECT_VERSION}\")
+")
 
 install(CODE "message(STATUS \"Watermelon compiler installed successfully!\")")
 install(CODE "message(STATUS \"Standard library installed to: ${STDLIB_INSTALL_DIR}/std\")")

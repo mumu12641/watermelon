@@ -174,8 +174,12 @@ llvm::Value* IRGen::generateIdentifierExpressionPtr(const IdentifierExpression& 
     switch (value->getKind()) {
         case IRValueKind::PROPERTY:
         {
+            auto self =
+                this->builder->CreateBitCast(this->getCurrFunc()->getArg(0),
+                                             this->generateType(this->currClass->name, true),
+                                             "self");
             return this->builder->CreateStructGEP(this->generateType(this->currClass->name, false),
-                                                  this->getCurrFunc()->getArg(0),
+                                                  self,
                                                   value->getOffset(),
                                                   Format("{0}_ptr", expr.name));
         }

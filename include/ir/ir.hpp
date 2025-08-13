@@ -4,8 +4,8 @@
 #include "../ast/ast.hpp"
 #include "../lexer/token.hpp"
 #include "../semantic/semantic.hpp"
-#include "../utils/error.hpp"
 #include "../utils/builtin.hpp"
+#include "../utils/error.hpp"
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DataLayout.h>

@@ -135,7 +135,19 @@ std::optional<Error> SemanticAnalyzer::analyzeFunctionDeclaration(FunctionDeclar
                          decl.getLocation());
         }
         if (param.defaultValue != nullptr) {
-            hasDefaultParam = true;
+            hasDefaultParam                    = true;
+            auto [defaultType, defaultTypeErr] = analyzeExpression(*param.defaultValue);
+            if (defaultTypeErr) return defaultTypeErr;
+            if (!this->classTable.checkInherit(defaultType->getName(), param.type->getName())) {
+                return Error(
+                    Format("Cannot convert default value from '{0}' to '{1}' for parameter "
+                           "'{2}' in function '{3}'",
+                           defaultType->getName(),
+                           param.type->getName(),
+                           param.name,
+                           decl.name),
+                    param.defaultValue->getLocation());
+            }
         }
         this->symbolTable.add(param.name, *param.type);
     }

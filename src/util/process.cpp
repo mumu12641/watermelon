@@ -124,6 +124,8 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     cout_green("Passed");
     std::cout << std::endl;
 
+    // std::cout << resolveProgram->dump() << std::endl;
+
     cout_pink("  [4/5] LLVM IR generating... ");
     IRGen irGen(std::move(resolveProgram),
                 std::move(semanticAnalyzer.getClassTable()),
@@ -131,12 +133,12 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     auto  llvmIR = irGen.generateIR();
     cout_green("Passed");
     std::cout << std::endl;
-    std::string outputFilename = "./output.ll";
-    std::error_code EC;
+    std::string          outputFilename = "./output.ll";
+    std::error_code      EC;
     llvm::raw_fd_ostream outFile(outputFilename, EC);
     llvmIR->print(outFile, nullptr);
     outFile.close();
-    
+
     cout_pink("  [5/5] Compiling LLVM IR to executable... ");
     std::string              stdLibPath = getStdLibPath();
     std::vector<std::string> stdLibLLFiles;
