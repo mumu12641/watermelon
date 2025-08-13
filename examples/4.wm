@@ -24,6 +24,8 @@ fn main() -> int{
    //var c:C = C();
     var c:A;
     c = C();
+    var s= 1;
+    var constant = 1 + s ;
    print_int(callMethod(c));
-   return callMethod(c);
+   return constant;
 }

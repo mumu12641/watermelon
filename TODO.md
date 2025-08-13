@@ -31,7 +31,23 @@
 - [ ] std string class，一些oprator
 - [ ] 运行时候的空指针 null
 
+- [ ] 死代码消除：删除未使用的变量和不可达代码
+- [ ] 常量折叠：编译时计算常量表达式
+- [ ] 公共子表达式消除：避免重复计算
+- [ ] 循环优化：循环不变量外提、循环展开
+clang -emit-llvm -S -O0 test.c -o test.ll 
 
+clang++ -std=c++17 -fPIC -shared -fno-rtti \
+  $(llvm-config --cxxflags) \
+  $(llvm-config --ldflags) \
+  $(llvm-config --libs core support) \
+  $(llvm-config --system-libs) \
+  -o SimpleConstantPropagation.so \
+  test.cpp   
+
+opt -load-pass-plugin=./SimpleConstantPropagation.so \
+  -passes="simple-const-prop" \
+  -S test.ll -o output_optimized.ll
 
 ## TODO
 - [x] 子类和父类的初始化函数(done)，init 块(done)
