@@ -42,11 +42,11 @@ clang++ -std=c++17 -fPIC -shared -fno-rtti \
   $(llvm-config --ldflags) \
   $(llvm-config --libs core support) \
   $(llvm-config --system-libs) \
-  -o SimpleConstantPropagation.so \
-  test.cpp   
+  -o pass.so \
+  pass.cpp   
 
-opt -load-pass-plugin=./SimpleConstantPropagation.so \
-  -passes="simple-const-prop" \
+opt -load-pass-plugin=./pass.so \
+  -passes="simple-counter" \
   -S test.ll -o output_optimized.ll
 
 ## TODO
