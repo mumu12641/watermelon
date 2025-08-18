@@ -12,7 +12,6 @@ find_package(LLVM 14 REQUIRED CONFIG)
 
 include_directories(include "${LLVM_INCLUDE_DIR}")
 
-# 使用基本的 LLVM 组件
 llvm_map_components_to_libnames(llvm_libs 
   core 
   support 
@@ -35,6 +34,13 @@ install(TARGETS watermelon
   RUNTIME DESTINATION "/usr/local/bin"
 )
 
+add_custom_target(opt_libs
+    COMMAND ${CMAKE_MAKE_PROGRAM}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/opt
+    COMMENT "Building opt_libs"
+    VERBATIM
+)
+add_dependencies(watermelon opt_libs)
 
 install(CODE "
   file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}\")
@@ -45,6 +51,9 @@ install(CODE "
 
 file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/std/*")
 install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/std")
+
+file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/opt/lib/*")
+install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/lib")
 
 install(CODE "
   file(WRITE \"${LOCAL_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${LOCAL_INSTALL_DIR}/std\\nlib_path=${LOCAL_INSTALL_DIR}/lib\\nversion=${PROJECT_VERSION}\\n\")
@@ -63,7 +72,5 @@ install(CODE "
 
 add_custom_target(info ALL
   COMMAND ${CMAKE_COMMAND} -E echo "Build completed!"
-  COMMAND ${CMAKE_COMMAND} -E echo "Shared library: ${LIBRARY_OUTPUT_PATH}/libwatermelon_opt.so"
-  COMMAND ${CMAKE_COMMAND} -E echo "Main executable: ${EXECUTABLE_OUTPUT_PATH}/watermelon"
   COMMAND ${CMAKE_COMMAND} -E echo "Run 'sudo make install' to install"
 )
