@@ -1,10 +1,12 @@
-# opt -S -load-pass-plugin=lib/libConstantFoldingPass.so -passes="constant-folding" tests/test.ll -o tests/test_pass.ll
+# opt -S -load-pass-plugin=lib/libconstant_prop_pass.so -passes="constant-prop-pass" tests/test.ll -o tests/test_pass_1.ll
+# opt -S -load-pass-plugin=lib/libdce_pass.so -passes="dce-pass" tests/test_pass_1.ll -o tests/test_pass_2.ll
+
 CXX = clang++
 CXXFLAGS = -O3 -fPIC -fno-rtti $(shell llvm-config --cxxflags)
 LDFLAGS = -shared $(shell llvm-config --ldflags)
 
 SOURCES = $(wildcard src/*.cpp)
-TARGETS = $(patsubst src/%.cpp,lib/lib%.so,$(SOURCES))
+TARGETS = $(patsubst src/%.cpp,lib/lib_%.so,$(SOURCES))
 OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 
 all: $(TARGETS)

@@ -35,6 +35,7 @@
 - [ ] 常量折叠：编译时计算常量表达式
 - [ ] 公共子表达式消除：避免重复计算
 - [ ] 循环优化：循环不变量外提、循环展开
+
 clang -emit-llvm -S -O0 test.c -o test.ll 
 
 clang++ -std=c++17 -fPIC -shared -fno-rtti \

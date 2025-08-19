@@ -52,8 +52,8 @@ install(CODE "
 file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/std/*")
 install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/std")
 
-file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/opt/lib/*")
-install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/lib")
+file(GLOB OPT_LIB_FILES "${PROJECT_SOURCE_DIR}/opt/lib/*")
+install(FILES ${OPT_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/lib")
 
 install(CODE "
   file(WRITE \"${LOCAL_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${LOCAL_INSTALL_DIR}/std\\nlib_path=${LOCAL_INSTALL_DIR}/lib\\nversion=${PROJECT_VERSION}\\n\")
