@@ -1,16 +1,16 @@
-#include "../include/constant_prop_pass.h"
+#include "../include/local_constant_prop_pass.h"
 
 #include <map>
 
 namespace llvm {
-PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM)
+PreservedAnalyses LocalConstantPropPass::run(Function& F, FunctionAnalysisManager& AM)
 {
 
     bool                        changed = false;
     std::map<Value*, Constant*> constantMap;
     std::vector<Instruction*>   removeInsts;
 
-    errs() << "ConstantPropPass: " << F.getName() << "\n";
+    errs() << "LocalConstantPropPass: " << F.getName() << "\n";
 
     for (auto& block : F) {
         for (auto& inst : block) {
@@ -21,7 +21,8 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
                     constantMap[pointer] = constant;
                 }
             }
-        }for (auto& inst : block) {
+        }
+        for (auto& inst : block) {
             if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
                 auto pointer = loadInst->getPointerOperand();
                 if (constantMap.count(pointer)) {
@@ -83,7 +84,6 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
     for (Instruction* I : removeInsts) {
         if (I->use_empty() && !I->mayHaveSideEffects() && !I->isTerminator()) {
             errs() << "     remove " << *I << "\n";
-
             I->eraseFromParent();
         }
     }

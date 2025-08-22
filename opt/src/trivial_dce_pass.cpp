@@ -1,4 +1,4 @@
-#include "../include/dce_pass.h"
+#include "../include/trivial_dce_pass.h"
 
 #include <set>
 #include <vector>
@@ -7,16 +7,16 @@
 namespace llvm {
 
 
-PreservedAnalyses DeadCodeEliminationPass::run(Function& F, FunctionAnalysisManager& AM)
+PreservedAnalyses TrivialDeadCodeEliminationPass::run(Function& F, FunctionAnalysisManager& AM)
 {
     return removeDeadInstructions(F) ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
-bool DeadCodeEliminationPass::removeDeadInstructions(Function& F)
+bool TrivialDeadCodeEliminationPass::removeDeadInstructions(Function& F)
 {
     SmallPtrSet<Instruction*, 32>  Alive;
     SmallVector<Instruction*, 128> Worklist;
-    errs() << "removeDeadInstructions : " << F.getName() << "\n";
+    errs() << "TrivialDeadCodeEliminationPass : " << F.getName() << "\n";
 
     for (Instruction& I : instructions(F)) {
         if (I.isDebugOrPseudoInst() || !I.isSafeToRemove()) {
@@ -59,7 +59,7 @@ bool DeadCodeEliminationPass::removeDeadInstructions(Function& F)
     return !Worklist.empty();
 }
 
-bool DeadCodeEliminationPass::isDeadAlloca(AllocaInst* AI)
+bool TrivialDeadCodeEliminationPass::isDeadAlloca(AllocaInst* AI)
 {
     if (AI->use_empty()) {
         return true;
@@ -89,7 +89,7 @@ bool DeadCodeEliminationPass::isDeadAlloca(AllocaInst* AI)
     return true;
 }
 
-bool DeadCodeEliminationPass::isDeadStore(StoreInst* SI)
+bool TrivialDeadCodeEliminationPass::isDeadStore(StoreInst* SI)
 {
     Value* Ptr = SI->getPointerOperand();
     if (AllocaInst* AI = dyn_cast<AllocaInst>(Ptr)) {
@@ -98,7 +98,7 @@ bool DeadCodeEliminationPass::isDeadStore(StoreInst* SI)
     return false;
 }
 
-bool DeadCodeEliminationPass::hasLiveLoad(AllocaInst* AI, StoreInst* SI)
+bool TrivialDeadCodeEliminationPass::hasLiveLoad(AllocaInst* AI, StoreInst* SI)
 {
     BasicBlock* StoreBB = SI->getParent();
 

@@ -14,11 +14,11 @@ all: $(TARGETS)
 build_dir:
 	@mkdir -p build lib
 
-lib/lib%.so: build/%.o | build_dir
+lib/lib_%.so: build/%.o | build_dir
 	$(CXX) $< $(LDFLAGS) -o $@
 
 build/%.o: src/%.cpp | build_dir
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS)  -std=c++17 -c $< -o $@
 
 clean:
 	rm -f $(TARGETS) $(OBJECTS)
