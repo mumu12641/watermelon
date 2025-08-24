@@ -27,5 +27,5 @@ fn main() -> int{
     var s= 1;
     var constant = 1 + s ;
    print_int(callMethod(c));
-   return s;
+   return constant;
 }

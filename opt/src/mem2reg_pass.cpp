@@ -72,13 +72,16 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
             }
         }
     }
+    
     for (auto& [pair, defBlockSet] : phiNumMap) {
         auto [allocaInst, frontier] = pair;
-        PHINode* phi                = PHINode::Create(
-            allocaInst->getAllocatedType(), defBlockSet.size(), "", &frontier->front());
-        phiMap[phi] = allocaInst;
-        for (auto& [block, val] : defBlockSet) {
-            phi->addIncoming(val, block);
+        if (defBlockSet.size() > 1) {
+            PHINode* phi = PHINode::Create(
+                allocaInst->getAllocatedType(), defBlockSet.size(), "", &frontier->front());
+            phiMap[phi] = allocaInst;
+            for (auto& [block, val] : defBlockSet) {
+                phi->addIncoming(val, block);
+            }
         }
     }
 
@@ -100,6 +103,7 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
                 if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
                     if (valueStackMap.count(allocaInst)) {
                         popMap[allocaInst] += 1;
+                        errs() << "     now push  " << *(storeInst->getValueOperand()) << "\n";
                         valueStackMap[allocaInst].push(storeInst->getValueOperand());
                     }
                 }
@@ -118,6 +122,8 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
                 auto allocaInst = phiMap[phiInst];
                 if (valueStackMap.count(allocaInst)) {
                     popMap[allocaInst] += 1;
+                    errs() << "     now push  " << *(phiInst) << "\n";
+
                     valueStackMap[allocaInst].push(phiInst);
                 }
             }
