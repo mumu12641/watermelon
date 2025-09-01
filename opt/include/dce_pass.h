@@ -18,10 +18,13 @@ struct DeadCodeEliminationPass : PassInfoMixin<DeadCodeEliminationPass>
     PreservedAnalyses run(Function& F, FunctionAnalysisManager& AM);
 
 private:
-    bool isDeadAlloca(AllocaInst* allocaInst);
-    bool isDeadStore(StoreInst* storeInst);
-    bool hasLiveLoad(AllocaInst* allocaInst, StoreInst* storeInst);
-    bool removeDeadInstructions(Function& F);
+    bool isDCEInstruction(Instruction* inst, SmallSetVector<Instruction*, 16>& workList);
+    bool eliminateDeadCode(Function& F);
+    bool isInstructionTriviallyDead(Instruction* inst);
+    // bool isDeadAlloca(AllocaInst* allocaInst);
+    // bool isDeadStore(StoreInst* storeInst);
+    // bool hasLiveLoad(AllocaInst* allocaInst, StoreInst* storeInst);
+    // bool removeDeadInstructions(Function& F);
 };
 
 }   // namespace llvm

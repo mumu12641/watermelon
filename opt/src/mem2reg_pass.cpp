@@ -120,9 +120,7 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
         auto                       node  = *iter;
         BasicBlock*                block = iter->getBlock();
         std::map<AllocaInst*, int> popMap;
-        errs() << " now block is  " << block->getName() << "\n";
         for (auto& inst : *block) {
-            errs() << "     now inst is  " << inst << "\n";
 
             if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
                 valueStackMap[allocaInst] = std::stack<Value*>();
@@ -133,7 +131,6 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                 if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
                     if (valueStackMap.count(allocaInst)) {
                         popMap[allocaInst] += 1;
-                        errs() << "     now push  " << *(storeInst->getValueOperand()) << "\n";
                         valueStackMap[allocaInst].push(storeInst->getValueOperand());
                         removeInsts.push_back(storeInst);
                     }
@@ -142,7 +139,6 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
             else if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
                 auto pointer = loadInst->getPointerOperand();
                 if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
-                    errs() << "     now top is  " << *(valueStackMap[allocaInst].top()) << "\n";
                     if (valueStackMap.count(allocaInst)) {
                         loadInst->replaceAllUsesWith(valueStackMap[allocaInst].top());
                         removeInsts.push_back(loadInst);
@@ -153,7 +149,6 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                 auto allocaInst = phiMap[phiInst];
                 if (valueStackMap.count(allocaInst)) {
                     popMap[allocaInst] += 1;
-                    errs() << "     now push  " << *(phiInst) << "\n";
                     valueStackMap[allocaInst].push(phiInst);
                 }
             }
@@ -165,7 +160,6 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                 }
             }
         }
-        errs() << " " << block->getName() << "  end" << "\n";
     }
     return removeInsts;
 }

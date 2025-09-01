@@ -9,131 +9,57 @@ namespace llvm {
 
 PreservedAnalyses DeadCodeEliminationPass::run(Function& F, FunctionAnalysisManager& AM)
 {
-    return removeDeadInstructions(F) ? PreservedAnalyses::none() : PreservedAnalyses::all();
+    return eliminateDeadCode(F) ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
-bool DeadCodeEliminationPass::removeDeadInstructions(Function& F)
+bool DeadCodeEliminationPass::eliminateDeadCode(Function& F)
 {
-    SmallPtrSet<Instruction*, 32>  alive;
-    SmallVector<Instruction*, 128> worklist;
     errs() << "DeadCodeEliminationPass : " << F.getName() << "\n";
+    bool                             changed = false;
+    SmallSetVector<Instruction*, 16> workList;
+    for (Instruction& inst : llvm::make_early_inc_range(instructions(F))) {
 
-    for (Instruction& inst : instructions(F)) {
-        if (inst.isDebugOrPseudoInst() || !inst.isSafeToRemove()) {
-            alive.insert(&inst);
-            worklist.push_back(&inst);
-        }
-        if (isa<AllocaInst>(inst) && !isDeadAlloca(dyn_cast<AllocaInst>(&inst))) {
-            alive.insert(&inst);
-            worklist.push_back(&inst);
-        }
-        if (isa<StoreInst>(inst) && !isDeadStore(dyn_cast<StoreInst>(&inst))) {
-            alive.insert(&inst);
-            worklist.push_back(&inst);
+        if (!workList.count(&inst)) {
+            changed |= isDCEInstruction(&inst, workList);
         }
     }
 
-    while (!worklist.empty()) {
-        Instruction* liveInst = worklist.pop_back_val();
-        for (Use& op : liveInst->operands()) {
-            if (Instruction* Inst = dyn_cast<Instruction>(op)) {
-                if (alive.insert(Inst).second) {
-                    worklist.push_back(Inst);
+    while (!workList.empty()) {
+        auto inst = workList.pop_back_val();
+        changed |= isDCEInstruction(inst, workList);
+    }
+    return changed;
+}
+
+bool DeadCodeEliminationPass::isDCEInstruction(Instruction*                      inst,
+                                               SmallSetVector<Instruction*, 16>& workList)
+{
+    if (isInstructionTriviallyDead(inst)) {
+        auto opsNum = inst->getNumOperands();
+        for (auto i = 0; i < opsNum; i++) {
+            auto op = inst->getOperand(i);
+            inst->setOperand(i, nullptr);
+
+            if (!op->use_empty()) continue;
+
+            if (auto opInst = dyn_cast<Instruction>(op)) {
+                if (isInstructionTriviallyDead(opInst)) {
+                    workList.insert(opInst);
                 }
             }
         }
-    }
-
-    for (Instruction& inst : instructions(F)) {
-        if (!alive.count(&inst)) {
-            errs() << "             remove : " << inst << "\n";
-            worklist.push_back(&inst);
-            inst.dropAllReferences();
-        }
-    }
-
-    for (Instruction*& inst : worklist) {
+        errs() << "     remove : " << *inst << "\n";
         inst->eraseFromParent();
-    }
-
-    return !worklist.empty();
-}
-
-bool DeadCodeEliminationPass::isDeadAlloca(AllocaInst* allocaInst)
-{
-    if (allocaInst->use_empty()) return true;
-
-    for (auto use : allocaInst->users()) {
-        if (auto useInst = dyn_cast<Instruction>(use)) {
-            if (auto storeInst = dyn_cast<StoreInst>(useInst)) {
-                if (isDeadStore(storeInst)) return true;
-            }
-            else if (auto loadInst = dyn_cast<LoadInst>(useInst)) {
-                if (loadInst->use_empty()) return true;
-            }
-            else {
-                return false;
-            }
-        }
+        return true;
     }
     return false;
 }
-
-bool DeadCodeEliminationPass::isDeadStore(StoreInst* storeInst)
+bool DeadCodeEliminationPass::isInstructionTriviallyDead(Instruction* inst)
 {
-    auto ptr = storeInst->getPointerOperand();
-    if (auto allocaInst = dyn_cast<AllocaInst>(ptr)) {
-        return !hasLiveLoad(allocaInst, storeInst);
-    }
-    return false;
-}
-
-bool DeadCodeEliminationPass::hasLiveLoad(AllocaInst* allocaInst, StoreInst* storeInst)
-{
-    auto parentBlock = storeInst->getParent();
-    bool find        = false;
-    for (auto& inst : *parentBlock) {
-        if (&inst == storeInst) {
-            find = true;
-            continue;
-        }
-        if (find) {
-            if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
-                if (loadInst->getPointerOperand() == allocaInst && !loadInst->use_empty()) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    std::set<BasicBlock*>   visited;
-    std::queue<BasicBlock*> worklist;
-    for (auto succ : successors(parentBlock)) {
-        worklist.push(succ);
-    }
-
-    while (!worklist.empty()) {
-        auto currBlock = worklist.front();
-        worklist.pop();
-
-        if (visited.count(currBlock)) continue;
-        visited.insert(currBlock);
-
-        for (auto& inst : *currBlock) {
-            if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
-                if (loadInst->getPointerOperand() == allocaInst && !loadInst->use_empty()) {
-                    return true;
-                }
-            }
-            // if (StoreInst* otherStoreInst = dyn_cast<StoreInst>(&inst)) {
-            //     if (otherStoreInst->getPointerOperand() == allocaInst) {}
-            // }
-        }
-        for (auto succ : successors(currBlock)) {
-            worklist.push(succ);
-        }
-    }
-
+    if (!inst->use_empty()) return false;
+    if (inst->isTerminator()) return false;
+    if (inst->isEHPad()) return false;
+    if (!inst->mayHaveSideEffects()) return true;
     return false;
 }
 
