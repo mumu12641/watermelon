@@ -6,7 +6,7 @@
 #include "llvm/Passes/PassPlugin.h"
 
 namespace llvm {
-class LocalConstantPropPass : public llvm::PassInfoMixin<LocalConstantPropPass>
+class ConstantPropPass : public llvm::PassInfoMixin<ConstantPropPass>
 {
 public:
     llvm::PreservedAnalyses run(llvm::Function& F, llvm::FunctionAnalysisManager& AM);
@@ -20,8 +20,8 @@ extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginIn
                     [](llvm::StringRef            Name,
                        llvm::FunctionPassManager& FPM,
                        llvm::ArrayRef<llvm::PassBuilder::PipelineElement>) {
-                        if (Name == "local-constant-prop-pass") {
-                            FPM.addPass(llvm::LocalConstantPropPass());
+                        if (Name == "constant-prop-pass") {
+                            FPM.addPass(llvm::ConstantPropPass());
                             return true;
                         }
                         return false;

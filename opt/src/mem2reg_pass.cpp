@@ -19,12 +19,33 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
 {
     errs() << "Mem2RegPass: " << F.getName() << "\n";
 
-    bool              changed = false;
-    DominatorTree&    DT      = AM.getResult<DominatorTreeAnalysis>(F);
+    DominatorTree&    DT = AM.getResult<DominatorTreeAnalysis>(F);
     DominanceFrontier DF;
     DF.analyze(DT);
-    // DT.
 
+    std::vector<AllocaInst*> allocas;
+    for (auto& block : F) {
+        for (auto& inst : block) {
+            if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
+                allocas.push_back(allocaInst);
+            }
+        }
+    }
+
+    std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(F, DF);
+
+    std::vector<Instruction*> removeInsts = removeMemInst(phiMap, DT);
+
+    for (Instruction* I : removeInsts) {
+        errs() << "     remove " << *I << "\n";
+        changed = true;
+        I->eraseFromParent();
+    }
+    return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(llvm::Function& F, DominanceFrontier& DF)
+{
     std::vector<AllocaInst*> allocas;
     for (auto& block : F) {
         for (auto& inst : block) {
@@ -39,6 +60,7 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
                                     phiNumMap;
     std::map<PHINode*, AllocaInst*> phiMap;
 
+    // collect def&use message
     for (auto& block : F) {
         for (auto& inst : block) {
             if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
@@ -56,6 +78,7 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
         }
     }
 
+    // if defBlock's frontier in useBlockSet, then the frontier need phi for defVal
     for (auto allocaInst : allocas) {
         auto& defBlockSet = varDefMap[allocaInst];
         auto& useBlockSet = varUseMap[allocaInst];
@@ -72,7 +95,7 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
             }
         }
     }
-    
+
     for (auto& [pair, defBlockSet] : phiNumMap) {
         auto [allocaInst, frontier] = pair;
         if (defBlockSet.size() > 1) {
@@ -84,19 +107,26 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
             }
         }
     }
+    return phiMap;
+}
 
+std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
+                                                     DominatorTree&                  DT)
+{
     std::map<AllocaInst*, std::stack<Value*>> valueStackMap;
+    std::vector<Instruction*>                 removeInsts;
     DomTreeNode*                              root = DT.getRootNode();
     for (auto iter = df_begin(root), end = df_end(root); iter != end; ++iter) {
-        auto        node  = *iter;
-        BasicBlock* block = iter->getBlock();
-        errs() << " now block is  " << block->getName() << "\n";
+        auto                       node  = *iter;
+        BasicBlock*                block = iter->getBlock();
         std::map<AllocaInst*, int> popMap;
+        errs() << " now block is  " << block->getName() << "\n";
         for (auto& inst : *block) {
             errs() << "     now inst is  " << inst << "\n";
 
             if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
                 valueStackMap[allocaInst] = std::stack<Value*>();
+                removeInsts.push_back(allocaInst);
             }
             else if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
                 auto pointer = storeInst->getPointerOperand();
@@ -105,16 +135,17 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
                         popMap[allocaInst] += 1;
                         errs() << "     now push  " << *(storeInst->getValueOperand()) << "\n";
                         valueStackMap[allocaInst].push(storeInst->getValueOperand());
+                        removeInsts.push_back(storeInst);
                     }
                 }
             }
             else if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
                 auto pointer = loadInst->getPointerOperand();
                 if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
-                    errs() << "     now allocaInst is  " << *allocaInst << "\n";
                     errs() << "     now top is  " << *(valueStackMap[allocaInst].top()) << "\n";
                     if (valueStackMap.count(allocaInst)) {
                         loadInst->replaceAllUsesWith(valueStackMap[allocaInst].top());
+                        removeInsts.push_back(loadInst);
                     }
                 }
             }
@@ -123,7 +154,6 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
                 if (valueStackMap.count(allocaInst)) {
                     popMap[allocaInst] += 1;
                     errs() << "     now push  " << *(phiInst) << "\n";
-
                     valueStackMap[allocaInst].push(phiInst);
                 }
             }
@@ -137,9 +167,8 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
         }
         errs() << " " << block->getName() << "  end" << "\n";
     }
-
-
-    return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+    return removeInsts;
 }
+
 
 }   // namespace llvm

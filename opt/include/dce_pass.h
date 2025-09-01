@@ -13,16 +13,15 @@
 
 namespace llvm {
 
-struct TrivialDeadCodeEliminationPass : PassInfoMixin<TrivialDeadCodeEliminationPass>
+struct DeadCodeEliminationPass : PassInfoMixin<DeadCodeEliminationPass>
 {
     PreservedAnalyses run(Function& F, FunctionAnalysisManager& AM);
 
 private:
-    bool        isDeadAlloca(AllocaInst* AI);
-    bool        isDeadStore(StoreInst* SI);
-    bool        hasLiveLoad(AllocaInst* AI, StoreInst* SI);
-    bool        removeDeadInstructions(Function& F);
-    static bool isRequired() { return true; }
+    bool isDeadAlloca(AllocaInst* allocaInst);
+    bool isDeadStore(StoreInst* storeInst);
+    bool hasLiveLoad(AllocaInst* allocaInst, StoreInst* storeInst);
+    bool removeDeadInstructions(Function& F);
 };
 
 }   // namespace llvm
@@ -35,8 +34,8 @@ extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginIn
                     [](llvm::StringRef            Name,
                        llvm::FunctionPassManager& FPM,
                        llvm::ArrayRef<llvm::PassBuilder::PipelineElement>) {
-                        if (Name == "trivial-dce-pass") {
-                            FPM.addPass(llvm::TrivialDeadCodeEliminationPass());
+                        if (Name == "dce-pass") {
+                            FPM.addPass(llvm::DeadCodeEliminationPass());
                             return true;
                         }
                         return false;

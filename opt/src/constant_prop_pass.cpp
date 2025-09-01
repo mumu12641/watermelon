@@ -1,9 +1,9 @@
-#include "../include/local_constant_prop_pass.h"
+#include "../include/constant_prop_pass.h"
 
 #include <map>
 
 namespace llvm {
-PreservedAnalyses LocalConstantPropPass::run(Function& F, FunctionAnalysisManager& AM)
+PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM)
 {
 
     bool                        changed = false;
@@ -105,11 +105,19 @@ PreservedAnalyses LocalConstantPropPass::run(Function& F, FunctionAnalysisManage
             }
         }
     }
+
     for (BasicBlock& block : F) {
         if (pred_empty(&block) && &block != &F.getEntryBlock()) {
             unreachableBlocks.insert(&block);
+            for (auto succIt = succ_begin(&block); succIt != succ_end(&block); ++succIt) {
+                BasicBlock* successor = *succIt;
+                if (std::distance(pred_begin(successor), pred_end(successor)) == 1) {
+                    unreachableBlocks.insert(successor);
+                }
+            }
         }
     }
+
     for (auto& block : F) {
         for (auto& inst : block) {
             if (auto* phi = dyn_cast<PHINode>(&inst)) {
@@ -134,7 +142,6 @@ PreservedAnalyses LocalConstantPropPass::run(Function& F, FunctionAnalysisManage
                     for (auto& Val : reachableValues) {
                         newPhi->addIncoming(Val.first, Val.second);
                     }
-
                     phi->replaceAllUsesWith(newPhi);
                     phi->setOperand(0, UndefValue::get(phi->getType()));
                     removeInsts.push_back(phi);
@@ -150,6 +157,7 @@ PreservedAnalyses LocalConstantPropPass::run(Function& F, FunctionAnalysisManage
             I->eraseFromParent();
         }
     }
+    
     if (!unreachableBlocks.empty()) {
         for (BasicBlock* BB : unreachableBlocks) {
             while (BB->size() > 1) {

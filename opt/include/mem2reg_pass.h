@@ -22,6 +22,12 @@ public:
         AU.addRequired<DominatorTreeWrapperPass>();
         AU.addRequired<DominanceFrontierWrapperPass>();
     }
+
+private:
+    std::map<PHINode*, AllocaInst*> insertPhiNode(llvm::Function& F, DominanceFrontier& DF);
+    std::vector<Instruction*>       removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
+                                                  DominatorTree&                  DT);
+    bool                            changed = false;
 };
 }   // namespace llvm
 
