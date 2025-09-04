@@ -31,79 +31,66 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
             }
         }
     }
+    if (allocas.empty()) return PreservedAnalyses::all();
 
-    std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(F, DF);
 
-    std::vector<Instruction*> removeInsts = removeMemInst(phiMap, DT);
+    std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(allocas, F, DF);
+
+    std::vector<Instruction*> removeInsts = removeMemInst(phiMap, allocas, F, DT);
 
     for (Instruction* I : removeInsts) {
         errs() << "     remove " << *I << "\n";
         changed = true;
         I->eraseFromParent();
     }
-    return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+    return PreservedAnalyses::none();
 }
 
-std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(llvm::Function& F, DominanceFrontier& DF)
+std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaInst*>& allocas,
+
+                                                           llvm::Function& F, DominanceFrontier& DF)
 {
-    std::vector<AllocaInst*> allocas;
-    for (auto& block : F) {
-        for (auto& inst : block) {
-            if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
-                allocas.push_back(allocaInst);
-            }
-        }
-    }
-    std::map<AllocaInst*, std::set<std::pair<BasicBlock*, Value*>>> varDefMap;
-    std::map<AllocaInst*, std::set<BasicBlock*>>                    varUseMap;
-    std::map<std::pair<AllocaInst*, BasicBlock*>, std::set<std::pair<BasicBlock*, Value*>>>
-                                    phiNumMap;
-    std::map<PHINode*, AllocaInst*> phiMap;
+    std::map<AllocaInst*, std::set<BasicBlock*>> allocaDefs;
+    std::map<PHINode*, AllocaInst*>              phiMap;
 
-    // collect def&use message
-    for (auto& block : F) {
-        for (auto& inst : block) {
-            if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
-                if (auto allocaInst = dyn_cast<AllocaInst>(storeInst->getPointerOperand())) {
-                    varDefMap[allocaInst].insert(
-                        {storeInst->getParent(), storeInst->getValueOperand()});
-                    varUseMap[allocaInst].insert(storeInst->getParent());
-                }
-            }
-            else if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
-                if (auto allocaInst = dyn_cast<AllocaInst>(loadInst->getPointerOperand())) {
-                    varUseMap[allocaInst].insert(loadInst->getParent());
+    for (AllocaInst* allocaInst : allocas) {
+        for (User* use : allocaInst->users()) {
+            if (auto* storeInst = dyn_cast<StoreInst>(use)) {
+                if (storeInst->getPointerOperand() == allocaInst) {
+                    allocaDefs[allocaInst].insert(storeInst->getParent());
                 }
             }
         }
     }
 
-    // if defBlock's frontier in useBlockSet, then the frontier need phi for defVal
-    for (auto allocaInst : allocas) {
-        auto& defBlockSet = varDefMap[allocaInst];
-        auto& useBlockSet = varUseMap[allocaInst];
-        if (useBlockSet.size() <= 1) continue;
-        for (auto& [defBlock, defVal] : defBlockSet) {
-            auto dfIter = DF.find(defBlock);
-            if (dfIter != DF.end()) {
-                for (auto frontier : dfIter->second) {
-                    if (useBlockSet.count(frontier)) {
-                        phiNumMap[{allocaInst, frontier}].insert({defBlock, defVal});
-                        changed = true;
+    for (AllocaInst* alloca : allocas) {
+        std::set<BasicBlock*>   visited;
+        std::queue<BasicBlock*> worklist;
+
+        for (BasicBlock* bb : allocaDefs[alloca]) {
+            worklist.push(bb);
+        }
+
+        while (!worklist.empty()) {
+            BasicBlock* bb = worklist.front();
+            worklist.pop();
+
+            auto dfIt = DF.find(bb);
+            if (dfIt != DF.end()) {
+                for (BasicBlock* df : dfIt->second) {
+                    if (visited.find(df) != visited.end()) {
+                        continue;
                     }
-                }
-            }
-        }
-    }
 
-    for (auto& [pair, defBlockSet] : phiNumMap) {
-        auto [allocaInst, frontier] = pair;
-        if (defBlockSet.size() > 1) {
-            PHINode* phi = PHINode::Create(
-                allocaInst->getAllocatedType(), defBlockSet.size(), "", &frontier->front());
-            phiMap[phi] = allocaInst;
-            for (auto& [block, val] : defBlockSet) {
-                phi->addIncoming(val, block);
+                    PHINode* phi = PHINode::Create(alloca->getAllocatedType(),
+                                                   pred_size(df),
+                                                   alloca->getName() + ".phi",
+                                                   &df->front());
+
+                    phiMap[phi] = alloca;
+                    visited.insert(df);
+                    worklist.push(df);
+                }
             }
         }
     }
@@ -111,54 +98,75 @@ std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(llvm::Function& F, Do
 }
 
 std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
-                                                     DominatorTree&                  DT)
+                                                     std::vector<AllocaInst*>&       allocas,
+                                                     llvm::Function& F, DominatorTree& DT)
 {
-    std::map<AllocaInst*, std::stack<Value*>> valueStackMap;
-    std::vector<Instruction*>                 removeInsts;
-    DomTreeNode*                              root = DT.getRootNode();
-    for (auto iter = df_begin(root), end = df_end(root); iter != end; ++iter) {
-        auto                       node  = *iter;
-        BasicBlock*                block = iter->getBlock();
-        std::map<AllocaInst*, int> popMap;
-        for (auto& inst : *block) {
+    std::vector<Instruction*>                                         removeInsts;
+    std::set<BasicBlock*>                                             visited;
+    std::queue<std::pair<BasicBlock*, std::map<AllocaInst*, Value*>>> worklist;
 
-            if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
-                valueStackMap[allocaInst] = std::stack<Value*>();
-                removeInsts.push_back(allocaInst);
+    std::map<AllocaInst*, Value*> incomingVals;
+    for (AllocaInst* alloca : allocas) {
+        incomingVals[alloca] = UndefValue::get(alloca->getAllocatedType());
+    }
+
+    worklist.push({&F.getEntryBlock(), incomingVals});
+
+    while (!worklist.empty()) {
+        auto [block, currentVals] = worklist.front();
+        worklist.pop();
+
+        if (visited.find(block) != visited.end()) {
+            continue;
+        }
+        visited.insert(block);
+
+        for (Instruction& inst : *block) {
+            if (auto* allocaInst = dyn_cast<AllocaInst>(&inst)) {
+                if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
+                    removeInsts.push_back(&inst);
+                }
             }
-            else if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
-                auto pointer = storeInst->getPointerOperand();
-                if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
-                    if (valueStackMap.count(allocaInst)) {
-                        popMap[allocaInst] += 1;
-                        valueStackMap[allocaInst].push(storeInst->getValueOperand());
-                        removeInsts.push_back(storeInst);
+            else if (auto* loadInst = dyn_cast<LoadInst>(&inst)) {
+                if (auto* allocaInst = dyn_cast<AllocaInst>(loadInst->getPointerOperand())) {
+                    if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
+                        loadInst->replaceAllUsesWith(currentVals[allocaInst]);
+                        removeInsts.push_back(&inst);
                     }
                 }
             }
-            else if (auto loadInst = dyn_cast<LoadInst>(&inst)) {
-                auto pointer = loadInst->getPointerOperand();
-                if (auto allocaInst = dyn_cast<AllocaInst>(pointer)) {
-                    if (valueStackMap.count(allocaInst)) {
-                        loadInst->replaceAllUsesWith(valueStackMap[allocaInst].top());
-                        removeInsts.push_back(loadInst);
+            else if (auto* storeInst = dyn_cast<StoreInst>(&inst)) {
+                if (auto* allocaInst = dyn_cast<AllocaInst>(storeInst->getPointerOperand())) {
+                    if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
+                        currentVals[allocaInst] = storeInst->getValueOperand();
+                        removeInsts.push_back(&inst);
                     }
                 }
             }
-            else if (auto phiInst = dyn_cast<PHINode>(&inst)) {
-                auto allocaInst = phiMap[phiInst];
-                if (valueStackMap.count(allocaInst)) {
-                    popMap[allocaInst] += 1;
-                    valueStackMap[allocaInst].push(phiInst);
+            else if (auto* phi = dyn_cast<PHINode>(&inst)) {
+                auto phiIt = phiMap.find(phi);
+                if (phiIt != phiMap.end()) {
+                    AllocaInst* alloca  = phiIt->second;
+                    currentVals[alloca] = phi;
                 }
             }
         }
-        if (node->isLeaf()) {
-            for (auto& [allocaInst, num] : popMap) {
-                for (int i = 0; i < num; i++) {
-                    valueStackMap[allocaInst].pop();
+
+        for (BasicBlock* succ : successors(block)) {
+            for (Instruction& inst : *succ) {
+                if (auto* phi = dyn_cast<PHINode>(&inst)) {
+                    auto phiIt = phiMap.find(phi);
+                    if (phiIt != phiMap.end()) {
+                        AllocaInst* alloca = phiIt->second;
+                        phi->addIncoming(currentVals[alloca], block);
+                    }
+                }
+                else {
+                    break;
                 }
             }
+
+            worklist.push({succ, currentVals});
         }
     }
     return removeInsts;

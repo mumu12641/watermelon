@@ -24,9 +24,14 @@ public:
     }
 
 private:
-    std::map<PHINode*, AllocaInst*> insertPhiNode(llvm::Function& F, DominanceFrontier& DF);
+    std::map<PHINode*, AllocaInst*> insertPhiNode(std::vector<AllocaInst*>& allocas,
+
+                                                  llvm::Function& F, DominanceFrontier& DF);
     std::vector<Instruction*>       removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
-                                                  DominatorTree&                  DT);
+
+                                                  std::vector<AllocaInst*>& allocas,
+
+                                                  llvm::Function& F, DominatorTree& DT);
     bool                            changed = false;
 };
 }   // namespace llvm
