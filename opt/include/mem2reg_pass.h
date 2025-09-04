@@ -32,6 +32,8 @@ private:
                                                   std::vector<AllocaInst*>& allocas,
 
                                                   llvm::Function& F, DominatorTree& DT);
+bool isPromotable(AllocaInst* AI);
+
     bool                            changed = false;
 };
 }   // namespace llvm

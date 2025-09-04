@@ -24,9 +24,10 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
     DF.analyze(DT);
 
     std::vector<AllocaInst*> allocas;
-    for (auto& block : F) {
-        for (auto& inst : block) {
-            if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
+    for (auto& inst : F.getEntryBlock()) {
+        if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
+            if (isPromotable(allocaInst)) {
+
                 allocas.push_back(allocaInst);
             }
         }
@@ -40,10 +41,35 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
 
     for (Instruction* I : removeInsts) {
         errs() << "     remove " << *I << "\n";
-        changed = true;
         I->eraseFromParent();
     }
     return PreservedAnalyses::none();
+}
+
+bool Mem2RegPass::isPromotable(AllocaInst* allocaInst)
+{
+    if (allocaInst->getParent() != &allocaInst->getFunction()->getEntryBlock()) {
+        return false;
+    }
+    for (User* use : allocaInst->users()) {
+        if (auto* storeInst = dyn_cast<StoreInst>(use)) {
+            if (storeInst->getValueOperand() == allocaInst) {
+                return false;
+            }
+            if (storeInst->getPointerOperand() != allocaInst) {
+                return false;
+            }
+        }
+        else if (auto* loadInst = dyn_cast<LoadInst>(use)) {
+            if (loadInst->getPointerOperand() != allocaInst) {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
+    return true;
 }
 
 std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaInst*>& allocas,
@@ -67,8 +93,11 @@ std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaIns
         std::set<BasicBlock*>   visited;
         std::queue<BasicBlock*> worklist;
 
-        for (BasicBlock* bb : allocaDefs[alloca]) {
-            worklist.push(bb);
+        auto it = allocaDefs.find(alloca);
+        if (it != allocaDefs.end()) {
+            for (BasicBlock* bb : allocaDefs[alloca]) {
+                worklist.push(bb);
+            }
         }
 
         while (!worklist.empty()) {
@@ -120,18 +149,19 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
             continue;
         }
         visited.insert(block);
+        std::vector<Instruction*> toRemoveFromBB;
 
         for (Instruction& inst : *block) {
             if (auto* allocaInst = dyn_cast<AllocaInst>(&inst)) {
                 if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
-                    removeInsts.push_back(&inst);
+                    toRemoveFromBB.push_back(&inst);
                 }
             }
             else if (auto* loadInst = dyn_cast<LoadInst>(&inst)) {
                 if (auto* allocaInst = dyn_cast<AllocaInst>(loadInst->getPointerOperand())) {
                     if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
                         loadInst->replaceAllUsesWith(currentVals[allocaInst]);
-                        removeInsts.push_back(&inst);
+                        toRemoveFromBB.push_back(&inst);
                     }
                 }
             }
@@ -139,7 +169,7 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                 if (auto* allocaInst = dyn_cast<AllocaInst>(storeInst->getPointerOperand())) {
                     if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
                         currentVals[allocaInst] = storeInst->getValueOperand();
-                        removeInsts.push_back(&inst);
+                        toRemoveFromBB.push_back(&inst);
                     }
                 }
             }
@@ -150,6 +180,9 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                     currentVals[alloca] = phi;
                 }
             }
+        }
+        for (Instruction* inst : toRemoveFromBB) {
+            removeInsts.push_back(inst);
         }
 
         for (BasicBlock* succ : successors(block)) {
