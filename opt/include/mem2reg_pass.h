@@ -25,16 +25,10 @@ public:
 
 private:
     std::map<PHINode*, AllocaInst*> insertPhiNode(std::vector<AllocaInst*>& allocas,
-
                                                   llvm::Function& F, DominanceFrontier& DF);
     std::vector<Instruction*>       removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
-
-                                                  std::vector<AllocaInst*>& allocas,
-
-                                                  llvm::Function& F, DominatorTree& DT);
-bool isPromotable(AllocaInst* AI);
-
-    bool                            changed = false;
+                                                  std::vector<AllocaInst*>& allocas, llvm::Function& F);
+    bool                            isPromotable(AllocaInst* AI);
 };
 }   // namespace llvm
 

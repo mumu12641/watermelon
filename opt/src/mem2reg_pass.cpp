@@ -27,17 +27,15 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
     for (auto& inst : F.getEntryBlock()) {
         if (auto allocaInst = dyn_cast<AllocaInst>(&inst)) {
             if (isPromotable(allocaInst)) {
-
                 allocas.push_back(allocaInst);
             }
         }
     }
     if (allocas.empty()) return PreservedAnalyses::all();
 
-
     std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(allocas, F, DF);
 
-    std::vector<Instruction*> removeInsts = removeMemInst(phiMap, allocas, F, DT);
+    std::vector<Instruction*> removeInsts = removeMemInst(phiMap, allocas, F);
 
     for (Instruction* I : removeInsts) {
         errs() << "     remove " << *I << "\n";
@@ -79,6 +77,7 @@ std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaIns
     std::map<AllocaInst*, std::set<BasicBlock*>> allocaDefs;
     std::map<PHINode*, AllocaInst*>              phiMap;
 
+    // get alloca defs (store sth to alloca)
     for (AllocaInst* allocaInst : allocas) {
         for (User* use : allocaInst->users()) {
             if (auto* storeInst = dyn_cast<StoreInst>(use)) {
@@ -128,10 +127,12 @@ std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaIns
 
 std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
                                                      std::vector<AllocaInst*>&       allocas,
-                                                     llvm::Function& F, DominatorTree& DT)
+                                                     llvm::Function&                 F)
 {
-    std::vector<Instruction*>                                         removeInsts;
-    std::set<BasicBlock*>                                             visited;
+    std::vector<Instruction*> removeInsts;
+    std::set<BasicBlock*>     visited;
+
+    // {block, map(alloca, val)}
     std::queue<std::pair<BasicBlock*, std::map<AllocaInst*, Value*>>> worklist;
 
     std::map<AllocaInst*, Value*> incomingVals;
@@ -149,19 +150,18 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
             continue;
         }
         visited.insert(block);
-        std::vector<Instruction*> toRemoveFromBB;
 
         for (Instruction& inst : *block) {
             if (auto* allocaInst = dyn_cast<AllocaInst>(&inst)) {
                 if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
-                    toRemoveFromBB.push_back(&inst);
+                    removeInsts.push_back(&inst);
                 }
             }
             else if (auto* loadInst = dyn_cast<LoadInst>(&inst)) {
                 if (auto* allocaInst = dyn_cast<AllocaInst>(loadInst->getPointerOperand())) {
                     if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
                         loadInst->replaceAllUsesWith(currentVals[allocaInst]);
-                        toRemoveFromBB.push_back(&inst);
+                        removeInsts.push_back(&inst);
                     }
                 }
             }
@@ -169,7 +169,7 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                 if (auto* allocaInst = dyn_cast<AllocaInst>(storeInst->getPointerOperand())) {
                     if (std::find(allocas.begin(), allocas.end(), allocaInst) != allocas.end()) {
                         currentVals[allocaInst] = storeInst->getValueOperand();
-                        toRemoveFromBB.push_back(&inst);
+                        removeInsts.push_back(&inst);
                     }
                 }
             }
@@ -180,9 +180,6 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
                     currentVals[alloca] = phi;
                 }
             }
-        }
-        for (Instruction* inst : toRemoveFromBB) {
-            removeInsts.push_back(inst);
         }
 
         for (BasicBlock* succ : successors(block)) {
