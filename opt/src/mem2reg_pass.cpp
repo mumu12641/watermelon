@@ -1,6 +1,7 @@
 #include "../include/mem2reg_pass.h"
 
 #include <map>
+#include <queue>
 #include <set>
 #include <stack>
 #include <unordered_map>

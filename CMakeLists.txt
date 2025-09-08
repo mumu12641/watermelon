@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.16)
 
 set(PROJECT_VERSION "1.0.0")
 project(watermelon VERSION ${PROJECT_VERSION})
@@ -34,17 +34,18 @@ install(TARGETS watermelon
   RUNTIME DESTINATION "/usr/local/bin"
 )
 
-add_custom_target(opt_libs
-    COMMAND ${CMAKE_MAKE_PROGRAM}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/opt
-    COMMENT "Building opt_libs"
-    VERBATIM
-)
-add_dependencies(watermelon opt_libs)
+# add_subdirectory(opt)
+# add_subdirectory(gc)
+# add_custom_target(opt_libs
+#     COMMAND ${CMAKE_MAKE_PROGRAM}
+#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/opt
+#     COMMENT "Building opt_libs"
+#     VERBATIM
+# )
+# add_dependencies(watermelon opt_libs)
 
 install(CODE "
   file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}\")
-  file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/lib\")
   file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/std\")
   message(STATUS \"Created directories in: ${LOCAL_INSTALL_DIR}\")
 ")
@@ -52,8 +53,6 @@ install(CODE "
 file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/std/*")
 install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/std")
 
-file(GLOB OPT_LIB_FILES "${PROJECT_SOURCE_DIR}/opt/lib/*")
-install(FILES ${OPT_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/lib")
 
 install(CODE "
   file(WRITE \"${LOCAL_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${LOCAL_INSTALL_DIR}/std\\nlib_path=${LOCAL_INSTALL_DIR}/lib\\nversion=${PROJECT_VERSION}\\n\")
@@ -63,7 +62,6 @@ install(CODE "
 install(CODE "
   message(STATUS \"=== Installation Complete ===\")
   message(STATUS \"Executable installed to: /usr/local/bin/watermelon\")
-  message(STATUS \"Libraries installed to: ${LOCAL_INSTALL_DIR}/lib/\")
   message(STATUS \"Standard library: ${LOCAL_INSTALL_DIR}/std/\")
   message(STATUS \"Configuration: ${LOCAL_INSTALL_DIR}/watermelon.conf\")
   message(STATUS \"\")

@@ -197,7 +197,7 @@ void IRGen::generateEnumDeclaration(const EnumDeclaration& decl)
 
 void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
 {
-    this->currFuncName = decl.name;
+    this->currFuncName = decl.name == "main" ? "builtin_main" : decl.name;
     this->valueTable.enterScope(decl.name);
 
     llvm::Function* function = this->getCurrFunc();

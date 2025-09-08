@@ -263,7 +263,7 @@ void IRGen::setupFunctions()
 {
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
-            auto                     funcName   = funcDecl->name;
+            auto funcName = funcDecl->name == "main" ? "builtin_main" : funcDecl->name;
             std::vector<llvm::Type*> paramTypes = {};
             for (const auto& param : funcDecl->parameters) {
                 paramTypes.emplace_back(this->generateType(*param.type, true));
@@ -276,7 +276,7 @@ void IRGen::setupFunctions()
     }
     auto m = llvm::FunctionType::get(int8PtrTy, {int64Ty}, false);
     this->methodMap["malloc"] =
-        llvm::Function::Create(m, llvm::Function::ExternalLinkage, "malloc", *this->module);
+        llvm::Function::Create(m, llvm::Function::ExternalLinkage, "gc_alloc", *this->module);
 }
 
 llvm::Type* IRGen::generateType(const Type& type, bool ptr)

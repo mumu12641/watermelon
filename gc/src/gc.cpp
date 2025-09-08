@@ -50,7 +50,7 @@ void GC::addPtrImpl(void* ptr, size_t size)
     while (1) {
         auto curr = this->_items[currPos];
         if (curr.isEmpty()) {
-            printf("add ptr %p\n", ptr);
+            // printf("add ptr %p\n", ptr);
             this->_items[currPos] = insertEntry;
             ++this->_nitems;
             return;
@@ -165,7 +165,7 @@ void GC::markPtr(void* ptr)
 
             if (this->_items[currPos].flags & MARK) return;
             this->_items[currPos].flags |= MARK;
-            printf("mark ptr %p\n", ptr);
+            // printf("mark ptr %p\n", ptr);
             if (this->_items[currPos].flags & LEAF) return;
 
             for (size_t k = 0; k < this->_items[currPos].size / sizeof(void*); k++) {
@@ -276,7 +276,7 @@ void GC::sweep()
 
     for (size_t i = 0; i < this->_nfrees; i++) {
         if (this->_frees[i].ptr) {
-            printf("sweep ptr %p\n", this->_frees[i].ptr);
+            // printf("sweep ptr %p\n", this->_frees[i].ptr);
             free(this->_frees[i].ptr);
         }
     }
@@ -336,7 +336,9 @@ void* GC::alloc(size_t size)
     if (ptr != nullptr) addPtr(ptr, size);
     return ptr;
 }
+
 static GC gc;
+
 extern "C" {
 void gc_start(void* stk)
 {
@@ -352,35 +354,12 @@ void* gc_alloc(size_t size)
 {
     return gc.alloc(size);
 }
+extern int builtin_main();
 }
-struct A
-{
-    struct B* b;
-};
-
-struct B
-{
-    struct A* a;
-};
-
-void example_function()
-{
-    struct A* a = (struct A*)gc_alloc(sizeof(struct A));
-    struct B* b = (struct B*)gc_alloc(sizeof(struct B));
-
-    // struct A* a = (struct A*)malloc(sizeof(struct A));
-    // struct B* b = (struct B*)malloc(sizeof(struct B));
-    a->b        = b;
-    b->a        = a;
-    // free(a);
-    // free(b);
-    return;
-}
-
 int main(int argc, char** argv)
 {
     gc_start(&argc);
-    example_function();
+    int res = builtin_main();
     gc_stop();
-    return 0;
+    return res;
 }
