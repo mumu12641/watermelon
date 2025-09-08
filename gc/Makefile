@@ -1,8 +1,8 @@
 
-CXX = g++
+CXX = clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O2 -g
 INCLUDES = -Iinclude
-LLVMIRFLAGS = -S -emit-llvm -O0 -std=c++17
+LLVMIRFLAGS = -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone
 CHECKER = valgrind --undef-value-errors=no  --leak-check=full 
 
 SRC_DIR = src
@@ -41,3 +41,8 @@ check:
 	$(CHECKER) ./build/output
 
 .PHONY: all compile llvm-ir clean 
+
+# 一行命令清理
+# clang++ -S -emit-llvm -O0 -fno-rtti -fno-exceptions gc_wrapper.cpp -o temp.ll && \
+# sed -E 's/dso_local //g; s/noundef //g; s/ #[0-9]+//g; s/nonnull //g; s/align [0-9]+ //g; s/dereferenceable\([0-9]+\) //g; /^attributes #/d; /^!/d; /^source_filename/d; /^target/d; /^$/d' temp.ll > gc_clean.ll && \
+# rm temp.ll
