@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
     std::string              extension = ".wm";
     std::vector<std::string> stdLibFiles;
     std::vector<std::string> userFiles;
-    std::string              stdLibPath = getStdLibPath();
-    collectStdLibFiles(stdLibPath, extension, stdLibFiles);
+    std::string              stdLibPath = getLibPath("std");
+    collectLibFiles(stdLibPath, extension, stdLibFiles);
     
     if (firstArg == "--dir") {
         if (argc < 3) {

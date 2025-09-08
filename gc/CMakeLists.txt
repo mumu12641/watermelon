@@ -25,39 +25,25 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${LIB_DIR})
 foreach(SOURCE_FILE ${SOURCES})
 get_filename_component(SOURCE_NAME ${SOURCE_FILE} NAME_WE)
 
-# 原始IR文件
-set(RAW_LLVM_IR_FILE ${CMAKE_BINARY_DIR}/${LIB_DIR}/${SOURCE_NAME}_raw.ll)
 # 优化后的IR文件
 set(LLVM_IR_FILE ${CMAKE_BINARY_DIR}/${LIB_DIR}/${SOURCE_NAME}.ll)
 
 # 生成原始LLVM IR
 add_custom_command(
-    OUTPUT ${RAW_LLVM_IR_FILE}
-    COMMAND ${CMAKE_CXX_COMPILER} ${LLVMIRFLAGS} ${SOURCE_FILE} -o ${RAW_LLVM_IR_FILE}
+    OUTPUT ${LLVM_IR_FILE}
+    COMMAND ${CMAKE_CXX_COMPILER} ${LLVMIRFLAGS} ${SOURCE_FILE} -o ${LLVM_IR_FILE}
     DEPENDS ${SOURCE_FILE} ${HEADERS}
-    COMMENT "Generating raw LLVM IR for ${SOURCE_NAME}"
+    COMMENT "Generating LLVM IR for ${SOURCE_NAME}"
     VERBATIM
 )
 
-set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
 
-# 使用opt优化IR
-add_custom_command(
-    OUTPUT ${LLVM_IR_FILE}
-    COMMAND opt -S 
-            -load-pass-plugin="${LOCAL_INSTALL_DIR}/opt/lib_mem2reg_pass.so"
-            -load-pass-plugin="${LOCAL_INSTALL_DIR}/opt/lib_constant_prop_pass.so"
-            -load-pass-plugin="${LOCAL_INSTALL_DIR}/opt/lib_dce_pass.so"
-            -passes="mem2reg-pass,constant-prop-pass,dce-pass"
-            ${RAW_LLVM_IR_FILE} -o ${LLVM_IR_FILE}
-)
 
 list(APPEND LLVM_IR_FILES ${LLVM_IR_FILE})
 endforeach()
 
 add_custom_target(llvm-ir ALL
 DEPENDS ${LLVM_IR_FILES}
-COMMENT "Building all optimized LLVM IR files"
 )
 
 add_custom_target(clean-all
@@ -67,9 +53,10 @@ COMMENT "Cleaning build and lib directories"
 )
 
 set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 install(CODE "
-file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/gc\")
+  file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/gc\")
 ")
-
-# 安装优化后的IR文件
-install(FILES ${LLVM_IR_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/gc")
+install(DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/
+        DESTINATION "${LOCAL_INSTALL_DIR}/gc"
+)

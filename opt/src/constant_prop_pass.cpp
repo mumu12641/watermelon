@@ -10,7 +10,7 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
     std::map<Value*, Constant*> constantMap;
     std::vector<Instruction*>   removeInsts;
     std::set<BasicBlock*>       unreachableBlocks;
-    errs() << "LocalConstantPropPass: " << F.getName() << "\n";
+    // errs() << "LocalConstantPropPass: " << F.getName() << "\n";
     for (auto& block : F) {
         for (auto& inst : block) {
             if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
@@ -153,7 +153,7 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
 
     for (Instruction* I : removeInsts) {
         if (I->use_empty() && !I->mayHaveSideEffects() && !I->isTerminator()) {
-            errs() << "     remove " << *I << "\n";
+            // errs() << "     remove " << *I << "\n";
             I->eraseFromParent();
         }
     }
@@ -172,7 +172,7 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
         }
 
         for (BasicBlock* BB : unreachableBlocks) {
-            errs() << "Removing unreachable block: " << BB->getName() << "\n";
+            // errs() << "Removing unreachable block: " << BB->getName() << "\n";
             BB->eraseFromParent();
             changed = true;
         }

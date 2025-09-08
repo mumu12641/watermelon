@@ -18,7 +18,7 @@ namespace llvm {
  */
 PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
 {
-    errs() << "Mem2RegPass: " << F.getName() << "\n";
+    // errs() << "Mem2RegPass: " << F.getName() << "\n";
 
     DominatorTree&    DT = AM.getResult<DominatorTreeAnalysis>(F);
     DominanceFrontier DF;
@@ -39,7 +39,7 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
     std::vector<Instruction*> removeInsts = removeMemInst(phiMap, allocas, F);
 
     for (Instruction* I : removeInsts) {
-        errs() << "     remove " << *I << "\n";
+        // errs() << "     remove " << *I << "\n";
         I->eraseFromParent();
     }
     return PreservedAnalyses::none();

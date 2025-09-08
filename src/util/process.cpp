@@ -14,11 +14,11 @@
 #include <string>
 #include <vector>
 
-std::string getStdLibPath()
+std::string getLibPath(std::string name)
 {
     const char* homeDir = getenv("HOME");
     if (homeDir != nullptr) {
-        std::string homePath = std::string(homeDir) + "/.watermelon/std";
+        std::string homePath = std::string(homeDir) + "/.watermelon/" + name;
         if (std::filesystem::exists(homePath)) {
             return homePath;
         }
@@ -26,8 +26,9 @@ std::string getStdLibPath()
     return "";
 }
 
-void collectStdLibFiles(const std::string& stdLibPath, const std::string& extension,
-                        std::vector<std::string>& stdLibFiles)
+
+void collectLibFiles(const std::string& stdLibPath, const std::string& extension,
+                     std::vector<std::string>& stdLibFiles)
 {
     if (!std::filesystem::exists(stdLibPath)) {
         cout_yellow("Warning: Standard library path does not exist: " + stdLibPath + "\n");
@@ -80,7 +81,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     filepaths.insert(filepaths.end(), userFiles.begin(), userFiles.end());
 
     std::vector<Token> tokens;
-    cout_pink("  [1/5] Lexical analysis... ");
+    cout_pink("  [1/6] Lexical analysis... ");
     for (int i = 0; i < filepaths.size(); i++) {
         auto        filename = filepaths[i];
         std::string source   = readFile(filename);
@@ -100,7 +101,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [2/5] Syntax analysis...  ");
+    cout_pink("  [2/6] Syntax analysis...  ");
     Parser parser(tokens);
     auto [program, parserError] = parser.parse();
     if (parserError) {
@@ -112,7 +113,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     cout_green("Passed");
     std::cout << std::endl;
 
-    cout_pink("  [3/5] Semantic analysis... ");
+    cout_pink("  [3/6] Semantic analysis... ");
     SemanticAnalyzer semanticAnalyzer(std::move(program));
     auto [resolveProgram, semanticError] = semanticAnalyzer.analyze();
     if (semanticError) {
@@ -126,7 +127,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
 
     // std::cout << resolveProgram->dump() << std::endl;
 
-    cout_pink("  [4/5] LLVM IR generating... ");
+    cout_pink("  [4/6] LLVM IR generating... ");
     IRGen irGen(std::move(resolveProgram),
                 std::move(semanticAnalyzer.getClassTable()),
                 std::move(semanticAnalyzer.getFunctionTable()));
@@ -139,15 +140,37 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     llvmIR->print(outFile, nullptr);
     outFile.close();
 
-    cout_pink("  [5/5] Compiling LLVM IR to executable... ");
-    std::string              stdLibPath = getStdLibPath();
+    cout_pink("  [5/6] Optimizing LLVM IR... ");
+    std::string              optLibPath = getLibPath("opt");
+    std::vector<std::string> optSoFiles;
+    collectLibFiles(optLibPath, ".so", optSoFiles);
+    std::string outputOptFilename = "./output_opt.ll";
+
+    std::string optCmd = "opt -S ./output.ll -o " + outputOptFilename;
+    for (const auto& soFile : optSoFiles) {
+        optCmd += " -load-pass-plugin=" + soFile;
+    }
+    optCmd += " -passes=mem2reg-pass,constant-prop-pass,dce-pass";
+    int optResult = system(optCmd.c_str());
+    if (optResult != 0) {
+        cout_red("Failed");
+        std::cout << std::endl;
+        cout_red("Error executing opt command: " + optCmd);
+        std::cout << std::endl;
+        return;
+    }
+    cout_green("Passed");
+    std::cout << std::endl;
+
+    cout_pink("  [6/6] Compiling LLVM IR to executable... ");
     std::vector<std::string> stdLibLLFiles;
-    collectStdLibFiles(stdLibPath, ".ll", stdLibLLFiles);
+    collectLibFiles(getLibPath("std"), ".ll", stdLibLLFiles);
+    collectLibFiles(getLibPath("gc"), ".ll", stdLibLLFiles);
     std::string clangCmd = "clang -w -o ./output";
     for (const auto& llFile : stdLibLLFiles) {
         clangCmd += " " + llFile;
     }
-    clangCmd += " " + outputFilename;
+    clangCmd += " " + outputOptFilename;
     int compileResult = system(clangCmd.c_str());
     if (compileResult != 0) {
         cout_red("Failed");

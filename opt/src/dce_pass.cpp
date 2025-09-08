@@ -14,7 +14,7 @@ PreservedAnalyses DeadCodeEliminationPass::run(Function& F, FunctionAnalysisMana
 
 bool DeadCodeEliminationPass::eliminateDeadCode(Function& F)
 {
-    errs() << "DeadCodeEliminationPass : " << F.getName() << "\n";
+    // errs() << "DeadCodeEliminationPass : " << F.getName() << "\n";
     bool                             changed = false;
     SmallSetVector<Instruction*, 16> workList;
     for (Instruction& inst : llvm::make_early_inc_range(instructions(F))) {
@@ -48,7 +48,7 @@ bool DeadCodeEliminationPass::isDCEInstruction(Instruction*                     
                 }
             }
         }
-        errs() << "     remove : " << *inst << "\n";
+        // errs() << "     remove : " << *inst << "\n";
         inst->eraseFromParent();
         return true;
     }

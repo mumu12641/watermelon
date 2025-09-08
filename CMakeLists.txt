@@ -30,19 +30,6 @@ target_link_libraries(watermelon ${llvm_libs})
 
 set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
 
-install(TARGETS watermelon 
-  RUNTIME DESTINATION "/usr/local/bin"
-)
-
-# add_subdirectory(opt)
-# add_subdirectory(gc)
-# add_custom_target(opt_libs
-#     COMMAND ${CMAKE_MAKE_PROGRAM}
-#     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/opt
-#     COMMENT "Building opt_libs"
-#     VERBATIM
-# )
-# add_dependencies(watermelon opt_libs)
 
 install(CODE "
   file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}\")
