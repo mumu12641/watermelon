@@ -1,3 +1,5 @@
+
+
 fn println() -> void{
     return;
 }
@@ -6,7 +8,7 @@ fn print_int(a:int) -> void{
     return;
 }
 
-fn print_string(s:String) -> void{
+fn print_str(s:str) -> void{
     return;
 }
 
@@ -16,4 +18,8 @@ fn print_float(f:float) -> void{
 
 fn print_bool(b:bool) -> void{
     return;
+}
+
+fn input() -> str{
+    return "";
 }

@@ -35,7 +35,7 @@ enum class TokenType
     INT_TYPE,
     FLOAT_TYPE,
     BOOL_TYPE,
-    STRING_TYPE,
+    STR_TYPE,
     ARRAY_TYPE,
 
     // 标识符和字面量

@@ -270,7 +270,7 @@ std::pair<std::unique_ptr<Expression>, std::optional<Error>> Parser::primary()
     }
     if (match(TokenType::STRING_LITERAL)) {
         return {std::make_unique<LiteralExpression>(
-                    l, Type::builtinString(), std::get<std::string>(previous().value)),
+                    l, Type::builtinStr(), std::get<std::string>(previous().value)),
                 std::nullopt};
     }
 

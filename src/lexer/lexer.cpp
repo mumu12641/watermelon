@@ -30,8 +30,7 @@ const std::map<std::string, TokenType> Lexer::keywords = {{"enum", TokenType::EN
                                                           {"int", TokenType::INT_TYPE},
                                                           {"float", TokenType::FLOAT_TYPE},
                                                           {"bool", TokenType::BOOL_TYPE},
-                                                          {"string", TokenType::STRING_TYPE},
-                                                          {"String", TokenType::STRING_TYPE},
+                                                          {"str", TokenType::STR_TYPE},
                                                           {"Array", TokenType::ARRAY_TYPE},
                                                           {"true", TokenType::BOOL_LITERAL},
                                                           {"false", TokenType::BOOL_LITERAL}};

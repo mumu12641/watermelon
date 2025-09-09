@@ -34,7 +34,7 @@ public:
         INT,
         FLOAT,
         BOOL,
-        STRING,
+        STR,
         CLASS,
         FUNCTION
     };
@@ -44,12 +44,13 @@ public:
     static Type builtinInt() { return Type(Kind::INT, "int"); }
     static Type builtinFloat() { return Type(Kind::FLOAT, "float"); }
     static Type builtinBool() { return Type(Kind::BOOL, "bool"); }
-    static Type builtinString() { return Type(Kind::STRING, "String"); }
+    static Type builtinStr() { return Type(Kind::STR, "str"); }
     static Type classType(const std::string& name) { return Type(Kind::CLASS, name); }
     static Type functionType(const std::string& name) { return Type(Kind::FUNCTION, name); }
 
     bool isBool() const { return kind == Kind::BOOL; }
     bool isVoid() const { return kind == Kind::VOID; }
+    bool isStr() const { return kind == Kind::STR; }
     bool canMathOp() const { return kind == Kind::INT || kind == Kind::FLOAT; }
     bool canCompare() const { return kind == Kind::INT || kind == Kind::FLOAT; }
 
@@ -77,8 +78,8 @@ public:
             kind = Kind::FLOAT;
         else if (name == "bool")
             kind = Kind::BOOL;
-        else if (name == "String")
-            kind = Kind::STRING;
+        else if (name == "str")
+            kind = Kind::STR;
         else
             kind = Kind::CLASS;
     }
@@ -150,7 +151,7 @@ public:
                 kindStr = "BOOL";
                 s       = std::get<bool>(value) ? "true" : "false";
                 break;
-            case Type::Kind::STRING:
+            case Type::Kind::STR:
                 kindStr = "STRING";
                 s       = "\"" + std::get<std::string>(value) + "\"";
                 break;

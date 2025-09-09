@@ -76,6 +76,10 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case BinaryExpression::Operator::DIV:
         case BinaryExpression::Operator::MOD:
             // TODO: 检查操作数类型是否兼容
+            if (leftType->isStr() && rightType->isStr() &&
+                expr.op == BinaryExpression::Operator::ADD) {
+                return {std::make_unique<Type>(Type::builtinStr()), std::nullopt};
+            }
             if (leftType->canMathOp() && rightType->canMathOp() && *leftType == *rightType) {
                 return {std::make_unique<Type>(std::move(*leftType)), std::nullopt};
             }
@@ -273,8 +277,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case Type::Kind::INT: return {std::make_unique<Type>(Type::builtinInt()), std::nullopt};
         case Type::Kind::FLOAT: return {std::make_unique<Type>(Type::builtinFloat()), std::nullopt};
         case Type::Kind::BOOL: return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
-        case Type::Kind::STRING:
-            return {std::make_unique<Type>(Type::builtinString()), std::nullopt};
+        case Type::Kind::STR: return {std::make_unique<Type>(Type::builtinStr()), std::nullopt};
     }
     return {nullptr, std::nullopt};
 }

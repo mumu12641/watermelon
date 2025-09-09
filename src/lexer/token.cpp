@@ -32,7 +32,7 @@ std::string Token::toString() const
         {TokenType::INT_TYPE, "INT_TYPE"},
         {TokenType::FLOAT_TYPE, "FLOAT_TYPE"},
         {TokenType::BOOL_TYPE, "BOOL_TYPE"},
-        {TokenType::STRING_TYPE, "STRING_TYPE"},
+        {TokenType::STR_TYPE, "STRING_TYPE"},
         {TokenType::ARRAY_TYPE, "ARRAY_TYPE"},
         {TokenType::IDENTIFIER, "IDENTIFIER"},
         {TokenType::INT_LITERAL, "INT_LITERAL"},

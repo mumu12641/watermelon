@@ -1,0 +1,27 @@
+fn _concat_strs(s1:str, s2:str) -> str{
+    return "";
+}
+
+fn int_to_str(i:int) -> str{
+    return "";
+}
+
+fn float_to_str(f:float) -> str{
+    return "";
+}
+
+fn bool_to_str(b:bool) -> str{
+    return "";
+}
+
+fn str_to_int(s:str) -> int{
+    return 0;
+}
+
+fn str_to_float(s:str) -> float{
+    return 0.0;
+}
+
+fn str_to_bool(s:str) -> bool{
+    return false;
+}

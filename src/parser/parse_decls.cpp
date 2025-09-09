@@ -322,8 +322,8 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> Parser::type()
     else if (match(TokenType::BOOL_TYPE)) {
         return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
     }
-    else if (match(TokenType::STRING_TYPE)) {
-        return {std::make_unique<Type>(Type::builtinString()), std::nullopt};
+    else if (match(TokenType::STR_TYPE)) {
+        return {std::make_unique<Type>(Type::builtinStr()), std::nullopt};
     }
     else if (match(TokenType::IDENTIFIER)) {
         std::string typeName = std::get<std::string>(previous().value);

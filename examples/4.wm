@@ -21,11 +21,13 @@ fn callMethod(a:A)->int{
 }
 
 fn main() -> int{
-   //var c:C = C();
-    var c:A;
-    c = C();
-    var s= 1;
-    var constant = 1 + s ;
-   print_int(callMethod(c));
-   return constant;
+   // var s1 = "a"+"b" +"\n";
+    var s2 = 123;
+    var s3 = 0.1;
+  //  var s4 = true;
+  // print_str(s1 );
+   print_str(int_to_str(s2) + "\n");
+   print_str(float_to_str(s3) + "\n");
+ //  print_str(bool_to_str(s4) + "\n");
+   return 0;
 }

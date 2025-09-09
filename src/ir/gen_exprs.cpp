@@ -66,10 +66,20 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
 
     bool isFloatOperation = expr.left->getType() == Type::builtinFloat() ||
                             expr.right->getType() == Type::builtinFloat();
+    bool isStrOperation =
+        expr.left->getType() == Type::builtinStr() || expr.right->getType() == Type::builtinStr();
+
     switch (expr.op) {
         case BinaryExpression::Operator::ADD:
-            return isFloatOperation ? this->builder->CreateFAdd(leftValue, rightValue, "fadd")
-                                    : this->builder->CreateAdd(leftValue, rightValue, "add");
+            if (isFloatOperation) {
+                return this->builder->CreateFAdd(leftValue, rightValue, "fadd");
+            }
+            if (isStrOperation) {
+                return this->builder->CreateCall(this->methodMap["_concat_strs"],
+                                                 {leftValue, rightValue});
+            }
+            return this->builder->CreateAdd(leftValue, rightValue, "add");
+
         case BinaryExpression::Operator::SUB:
             return isFloatOperation ? this->builder->CreateFSub(leftValue, rightValue, "fsub")
                                     : this->builder->CreateSub(leftValue, rightValue, "sub");
@@ -204,7 +214,7 @@ llvm::Value* IRGen::generateLiteralExpression(const LiteralExpression& expr)
             return llvm::ConstantFP::get(llvm::Type::getFloatTy(*this->context),
                                          std::get<float>(expr.value));
         case Type::Kind::BOOL: return this->builder->getInt1(std::get<bool>(expr.value) ? 1 : 0);
-        case Type::Kind::STRING:
+        case Type::Kind::STR:
             return builder->CreateGlobalStringPtr(std::get<std::string>(expr.value));
     }
     return nullptr;
