@@ -10,7 +10,7 @@ size_t GC::hash(void* ptr)
 size_t GC::getPrimeSize(size_t size)
 {
     for (size_t i = 0; i < PRIMES_COUNT; ++i) {
-        if (PRIMES[i] > size) {
+        if (PRIMES[i] >= size) {
             return PRIMES[i];
         }
     }
@@ -48,21 +48,18 @@ void GC::addPtrImpl(void* ptr, size_t size)
 
     GCPtr insertEntry(ptr, size, currPos + 1), tmp;
     while (1) {
-        auto curr = this->_items[currPos];
-        if (curr.isEmpty()) {
-            // printf("add ptr %p\n", ptr);
+        if (this->_items[currPos].isEmpty()) {
             this->_items[currPos] = insertEntry;
-            ++this->_nitems;
             return;
         }
-        if (curr.ptr == ptr) return;
+        if (this->_items[currPos].ptr == ptr) return;
 
-        const size_t currDistance = probeDistance(currPos, curr.hash);
+        const size_t currDistance = probeDistance(currPos, this->_items[currPos].hash);
         if (distance > currDistance) {
-            tmp         = insertEntry;
-            insertEntry = curr;
-            curr        = tmp;
-            distance    = currDistance;
+            tmp                   = insertEntry;
+            insertEntry           = this->_items[currPos];
+            this->_items[currPos] = tmp;
+            distance              = currDistance;
         }
 
         currPos = (currPos + 1) % _nslots;
@@ -73,6 +70,7 @@ void GC::addPtrImpl(void* ptr, size_t size)
 void GC::removePtrImpl(void* ptr)
 {
     if (this->_nitems == 0) return;
+
     for (size_t i = 0; i < this->_nfrees; i++) {
         if (this->_frees[i].ptr == ptr) {
             this->_frees[i].ptr = nullptr;
@@ -82,28 +80,31 @@ void GC::removePtrImpl(void* ptr)
     size_t currPos  = hash(ptr) % _nslots;
     size_t distance = 0;
 
-    while (_items[currPos].isOccupied()) {
-        auto& current = this->_items[currPos];
-        if (current.ptr == ptr) break;
-        if (distance > probeDistance(currPos, current.hash)) {
+    while (1) {
+        if (this->_items[currPos].isEmpty() ||
+            distance > probeDistance(currPos, this->_items[currPos].hash)) {
+            return;
+        }
+        if (this->_items[currPos].ptr == ptr) {
+            memset(&this->_items[currPos], 0, sizeof(GCPtr));
+            distance = currPos;
+            while (1) {
+                size_t next_pos = (distance + 1) % _nslots;
+                if (this->_items[next_pos].isOccupied() &&
+                    probeDistance(next_pos, this->_items[next_pos].hash) > 0) {
+                    memcpy(&this->_items[distance], &this->_items[next_pos], sizeof(GCPtr));
+                    memset(&this->_items[next_pos], 0, sizeof(GCPtr));
+                    distance = next_pos;
+                }
+                else {
+                    break;
+                }
+            }
+            this->_nitems--;
             return;
         }
         currPos = (currPos + 1) % this->_nslots;
         ++distance;
-    }
-
-    if (this->_items[currPos].isEmpty() || this->_items[currPos].ptr != ptr) return;
-
-    this->_items[currPos].clear();
-    --this->_nitems;
-
-    size_t next_pos = (currPos + 1) % this->_nslots;
-    while (this->_items[next_pos].isOccupied() &&
-           probeDistance(next_pos, this->_items[next_pos].hash) > 0) {
-        this->_items[currPos] = this->_items[next_pos];
-        this->_items[next_pos].clear();
-        currPos  = next_pos;
-        next_pos = (next_pos + 1) % this->_nslots;
     }
 }
 
@@ -156,16 +157,13 @@ void GC::markPtr(void* ptr)
     distance = 0;
 
     while (1) {
-        ;
         if (this->_items[currPos].isEmpty() ||
             distance > probeDistance(currPos, this->_items[currPos].hash)) {
             return;
         }
         if (ptr == this->_items[currPos].ptr) {
-
             if (this->_items[currPos].flags & MARK) return;
             this->_items[currPos].flags |= MARK;
-            // printf("mark ptr %p\n", ptr);
             if (this->_items[currPos].flags & LEAF) return;
 
             for (size_t k = 0; k < this->_items[currPos].size / sizeof(void*); k++) {
@@ -243,20 +241,31 @@ void GC::sweep()
 
     this->_frees = (GCPtr*)realloc(this->_frees, sizeof(GCPtr) * this->_nfrees);
 
-    for (size_t k = 0, i = 0; i < this->_nslots; i++) {
-        if (this->_items[i].hash == 0) continue;
-        if (this->_items[i].flags & MARK) continue;
-        if (this->_items[i].flags & ROOT) continue;
+    for (size_t k = 0, i = 0; i < this->_nslots;) {
+        if (this->_items[i].hash == 0) {
+            i++;
+            continue;
+        }
+        if (this->_items[i].flags & MARK) {
+            i++;
+            continue;
+        }
+        if (this->_items[i].flags & ROOT) {
+            i++;
+            continue;
+        }
 
         this->_frees[k] = this->_items[i];
         k++;
+        memset(&this->_items[i], 0, sizeof(GCPtr));
 
         size_t currPos = i;
         while (true) {
             size_t nextPos = (currPos + 1) % this->_nslots;
-            auto   curr    = this->_items[nextPos];
-            if (curr.isOccupied() && probeDistance(nextPos, curr.hash) > 0) {
-                this->_items[currPos] = this->_items[nextPos];
+            if (this->_items[nextPos].isOccupied() &&
+                probeDistance(nextPos, this->_items[nextPos].hash) > 0) {
+                memcpy(&this->_items[currPos], &this->_items[nextPos], sizeof(GCPtr));
+                memset(&this->_items[nextPos], 0, sizeof(GCPtr));
                 currPos               = nextPos;
             }
             else {
@@ -276,13 +285,12 @@ void GC::sweep()
 
     for (size_t i = 0; i < this->_nfrees; i++) {
         if (this->_frees[i].ptr) {
-            // printf("sweep ptr %p\n", this->_frees[i].ptr);
             free(this->_frees[i].ptr);
         }
     }
 
     free(this->_frees);
-    this->_frees  = NULL;
+    this->_frees  = nullptr;
     this->_nfrees = 0;
 }
 
@@ -294,6 +302,7 @@ void GC::run()
 
 void GC::addPtr(void* ptr, size_t size)
 {
+    this->_nitems++;
     this->_maxptr =
         ((uintptr_t)ptr) + size > this->_maxptr ? ((uintptr_t)ptr) + size : this->_maxptr;
     this->_minptr = ((uintptr_t)ptr) < this->_minptr ? ((uintptr_t)ptr) : this->_minptr;
