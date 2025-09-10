@@ -1,5 +1,6 @@
 #include "../include/ir/ir.hpp"
 
+#include "../include/utils/builtin.hpp"
 #include "../include/utils/format.hpp"
 
 void IRValueScope::add(const std::string& key, IRValue value)
@@ -85,7 +86,6 @@ void IRGen::buildVTables()
     for (const auto& decl : program->declarations) {
         const ClassDeclaration* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get());
         if (!classDecl) continue;
-
         std::string                  className  = classDecl->name;
         std::string                  vTableName = Format("vTable_{0}", className);
         std::vector<llvm::Type*>     vTableMethods;
@@ -241,6 +241,26 @@ void IRGen::defineClasses()
     }
 }
 
+// void IRGen::declareBuiltInClasses()
+// {
+//     auto size = BUILTIN::BUILTIN_CLASS.size();
+//     for (auto i = 0; i < size; i++) {
+//         auto methodName = BUILTIN::BUILTIN_CLASS_METHOD[i];
+//         auto builtinRet                 = BUILTIN::BUILTIN_CLASS_METHOD_RETURN_TYPE[i];
+//         auto returnType                 = this->generateType(builtinRet.first, builtinRet.second);
+//         auto builtinParams              = BUILTIN::BUILTIN_CLASS_METHOD_PARAMS[i];
+//         std::vector<llvm::Type*> params = {};
+//         for (const auto param : builtinParams) {
+//             params.push_back(this->generateType(param.first, param.second));
+//         }
+//         auto funcType = llvm::FunctionType::get(returnType, params, false);
+//         auto function = llvm::Function::Create(
+//             funcType, llvm::Function::ExternalLinkage, methodName, this->module.get());
+//         this->methodMap[methodName]     = function;
+//         this->methodTypeMap[methodName] = funcType;
+//     }
+// }
+
 void IRGen::setupClasses()
 {
     this->declareClasses();
@@ -305,7 +325,7 @@ llvm::Type* IRGen::generateType(const std::string& type, bool ptr)
 {
     if (type == "int")
         return builder->getInt32Ty();
-    else if (type == "String")
+    else if (type == "str")
         return builder->getInt8PtrTy();
     else if (type == "bool")
         return builder->getInt1Ty();

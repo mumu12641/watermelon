@@ -291,6 +291,7 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
     if (const auto* objectClass = this->classTable.find(objectType->getName())) {
         const Type*        paramTypePtr = nullptr;
         const ClassMember* classMember  = nullptr;
+        const ClassMember* currMember   = nullptr;
         for (const auto& param : objectClass->constructorParameters) {
             if (expr.kind == MemberExpression::Kind::PROPERTY && param.name == expr.property) {
                 paramTypePtr = param.type.get();
@@ -303,12 +304,13 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
                     paramTypePtr = param.type.get();
                 }
             }
-            classMember = (*cls)->containMember(
+            currMember = (*cls)->containMember(
                 expr.kind == MemberExpression::Kind::PROPERTY ? expr.property : expr.methodName);
+            if (currMember != nullptr) classMember = currMember;
         }
-
-        classMember = objectClass->containMember(
+        currMember = objectClass->containMember(
             expr.kind == MemberExpression::Kind::PROPERTY ? expr.property : expr.methodName);
+        if (currMember != nullptr) classMember = currMember;
         if (classMember == nullptr && paramTypePtr == nullptr) {
             return {nullptr,
                     Error(Format("This class {0} does not have a member named {1}",

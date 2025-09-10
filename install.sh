@@ -141,31 +141,9 @@ main() {
 
 }
 
-show_help() {
-  echo "Usage: $0 [OPTIONS]"
-  echo
-  echo "This script will build projects in the following order:"
-  echo "  1. Root project (current directory)"
-  echo "  2. Opt project (./opt subdirectory)"
-  echo "  3. GC project (./gc subdirectory)"
-  echo
-  echo "Environment Variables:"
-  echo "  JOBS        Number of parallel jobs (default: 16)"
-  echo "  BUILD_TYPE  CMake build type (default: Release)"
-  echo
-  echo "Options:"
-  echo "  -h, --help  Show this help message"
-  echo
-  echo "Examples:"
-  echo "  $0                    # Build with default settings"
-  echo "  JOBS=8 $0            # Build with 8 parallel jobs"
-  echo "  BUILD_TYPE=Debug $0   # Debug build"
-}
-
 # 参数解析
 case "${1:-}" in
   -h|--help)
-      show_help
       exit 0
       ;;
   "")

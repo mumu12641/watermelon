@@ -25,3 +25,4 @@ fn str_to_float(s:str) -> float{
 fn str_to_bool(s:str) -> bool{
     return false;
 }
+

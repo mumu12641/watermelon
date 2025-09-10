@@ -69,7 +69,7 @@ void GC::addPtrImpl(void* ptr, size_t size)
 
 void GC::removePtrImpl(void* ptr)
 {
-    if (this->_nitems == 0) return;
+    if (this->_size == 0) return;
 
     for (size_t i = 0; i < this->_nfrees; i++) {
         if (this->_frees[i].ptr == ptr) {
@@ -86,21 +86,22 @@ void GC::removePtrImpl(void* ptr)
             return;
         }
         if (this->_items[currPos].ptr == ptr) {
-            memset(&this->_items[currPos], 0, sizeof(GCPtr));
-            distance = currPos;
+            size_t j = currPos;
+            this->_items[currPos].clear();
+
             while (1) {
-                size_t next_pos = (distance + 1) % _nslots;
-                if (this->_items[next_pos].isOccupied() &&
-                    probeDistance(next_pos, this->_items[next_pos].hash) > 0) {
-                    memcpy(&this->_items[distance], &this->_items[next_pos], sizeof(GCPtr));
-                    memset(&this->_items[next_pos], 0, sizeof(GCPtr));
-                    distance = next_pos;
+                size_t nextPos = (j + 1) % _nslots;
+                if (this->_items[nextPos].isOccupied() &&
+                    probeDistance(nextPos, this->_items[nextPos].hash) > 0) {
+                    this->_items[j] = this->_items[nextPos];
+                    this->_items[nextPos].clear();
+                    j = nextPos;
                 }
                 else {
                     break;
                 }
             }
-            this->_nitems--;
+            this->_size--;
             return;
         }
         currPos = (currPos + 1) % this->_nslots;
@@ -135,14 +136,14 @@ int GC::rehash(size_t size)
 
 bool GC::resizeMore()
 {
-    size_t new_size = getPrimeSize(this->_nitems);
+    size_t new_size = getPrimeSize(this->_size);
     size_t old_size = this->_nslots;
     return (new_size > old_size) ? rehash(new_size) : 1;
 }
 
 bool GC::resizeLess()
 {
-    size_t new_size = getPrimeSize(this->_nitems);
+    size_t new_size = getPrimeSize(this->_size);
     size_t old_size = this->_nslots;
     return (new_size < old_size) ? rehash(new_size) : 1;
 }
@@ -204,7 +205,7 @@ void GC::mark()
     jmp_buf env;
     void (GC::* volatile markStackFunc)() = &GC::markStack;
 
-    if (this->_nitems == 0) return;
+    if (this->_size == 0) return;
 
     for (size_t i = 0; i < this->_nslots; i++) {
         if (this->_items[i].hash == 0) continue;
@@ -229,7 +230,7 @@ void GC::mark()
 
 void GC::sweep()
 {
-    if (this->_nitems == 0) return;
+    if (this->_size == 0) return;
 
     this->_nfrees = 0;
     for (size_t i = 0; i < this->_nslots; i++) {
@@ -257,22 +258,22 @@ void GC::sweep()
 
         this->_frees[k] = this->_items[i];
         k++;
-        memset(&this->_items[i], 0, sizeof(GCPtr));
+        this->_items[i].clear();
 
         size_t currPos = i;
         while (true) {
             size_t nextPos = (currPos + 1) % this->_nslots;
             if (this->_items[nextPos].isOccupied() &&
                 probeDistance(nextPos, this->_items[nextPos].hash) > 0) {
-                memcpy(&this->_items[currPos], &this->_items[nextPos], sizeof(GCPtr));
-                memset(&this->_items[nextPos], 0, sizeof(GCPtr));
-                currPos               = nextPos;
+                this->_items[currPos] = this->_items[nextPos];
+                this->_items[nextPos].clear();
+                currPos = nextPos;
             }
             else {
                 break;
             }
         }
-        this->_nitems--;
+        this->_size--;
     }
 
     for (size_t i = 0; i < this->_nslots; i++) {
@@ -281,7 +282,7 @@ void GC::sweep()
     }
 
     resizeLess();
-    this->_mitems = this->_nitems + (size_t)(this->_nitems * this->_sweepfactor) + 1;
+    this->_capacity = this->_size + (size_t)(this->_size * this->_sweepfactor) + 1;
 
     for (size_t i = 0; i < this->_nfrees; i++) {
         if (this->_frees[i].ptr) {
@@ -302,19 +303,19 @@ void GC::run()
 
 void GC::addPtr(void* ptr, size_t size)
 {
-    this->_nitems++;
+    this->_size++;
     this->_maxptr =
         ((uintptr_t)ptr) + size > this->_maxptr ? ((uintptr_t)ptr) + size : this->_maxptr;
     this->_minptr = ((uintptr_t)ptr) < this->_minptr ? ((uintptr_t)ptr) : this->_minptr;
 
     if (resizeMore()) {
         addPtrImpl(ptr, size);
-        if (!this->_paused && this->_nitems > this->_mitems) {
+        if (!this->_paused && this->_size > this->_capacity) {
             run();
         }
     }
     else {
-        this->_nitems--;
+        this->_size--;
         free(ptr);
     }
     return;
@@ -324,7 +325,7 @@ void GC::removePtr(void* ptr)
 {
     removePtrImpl(ptr);
     resizeLess();
-    this->_mitems = this->_nitems + this->_nitems / 2 + 1;
+    this->_capacity = this->_size + this->_size / 2 + 1;
 }
 
 void GC::start(void* stk)
@@ -342,7 +343,10 @@ void GC::stop()
 void* GC::alloc(size_t size)
 {
     void* ptr = malloc(size);
-    if (ptr != nullptr) addPtr(ptr, size);
+    if (ptr != nullptr) {
+        memset(ptr, 0, size);
+        addPtr(ptr, size);
+    }
     return ptr;
 }
 
@@ -363,8 +367,11 @@ void* gc_alloc(size_t size)
 {
     return gc.alloc(size);
 }
+
 extern int builtin_main();
+
 }
+
 int main(int argc, char** argv)
 {
     gc_start(&argc);

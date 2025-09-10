@@ -52,9 +52,9 @@ struct GC
 private:
     GCPtr *   _items, *_frees;
     size_t    _nslots      = 0;
-    size_t    _nitems      = 0;   // size
+    size_t    _size      = 0;   // size
     size_t    _nfrees      = 0;
-    size_t    _mitems      = 0;   // capacity
+    size_t    _capacity      = 0;   // capacity
     uintptr_t _minptr      = UINTPTR_MAX;
     uintptr_t _maxptr      = 0;
     bool      _paused      = false;

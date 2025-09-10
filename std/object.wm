@@ -1,0 +1,6 @@
+class Object() {
+    var _valid:int = 1;
+}
+fn is_null(o:Object) -> bool{
+    return o._valid == 1;
+}

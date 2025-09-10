@@ -226,9 +226,9 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
     const auto* objectClass = this->classTable.find(expr.object->getType().getName());
 
     if (expr.kind == MemberExpression::Kind::METHOD) {
-        auto className      = objectClass->name;
-        auto vTableName     = Format("vTable_{0}", className);
-        auto fullMethodName = Format("{0}_{1}", className, expr.methodName);
+        auto className  = objectClass->name;
+        auto vTableName = Format("vTable_{0}", className);
+
 
         auto vTablePtr = this->builder->CreateStructGEP(this->generateType(className, false),
                                                         objectVal,
@@ -247,9 +247,24 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
             this->vTableOffsetMap[className + expr.methodName],
             Format("{0}_{1}_method_ptr_ptr", className, expr.methodName));
 
-
-        llvm::FunctionType* methodFuncType = this->methodTypeMap[fullMethodName];
-        llvm::Type*         methodPtrType  = llvm::PointerType::get(methodFuncType, 0);
+        auto fullMethodName = Format("{0}_{1}", className, expr.methodName);
+        llvm::FunctionType* methodFuncType = nullptr;
+        auto it = this->methodTypeMap.find(fullMethodName);
+        if (it != this->methodTypeMap.end()) {
+            methodFuncType = it->second;
+        } else {
+            // 如果不是自己的 method，就要去 parents 找
+            const auto* inheritanceChain = this->classTable.getInheritMap(className);
+            for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend(); ++cls) {
+                auto baseMethodName = Format("{0}_{1}", (*cls)->name, expr.methodName);
+                auto baseIt = this->methodTypeMap.find(baseMethodName);
+                if (baseIt != this->methodTypeMap.end()) {
+                    methodFuncType = baseIt->second;
+                    break;
+                }
+            }
+        }
+        llvm::Type* methodPtrType = llvm::PointerType::get(methodFuncType, 0);
 
         auto method = this->builder->CreateLoad(
             methodPtrType, methodPtr, Format("{0}_{1}_method_ptr", className, expr.methodName));

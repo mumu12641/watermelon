@@ -159,6 +159,7 @@ public:
     }
 
     /* setup methods */
+   void declareBuiltInClasses();
     void declareClasses();
     void defineClasses();
     void buildVTables();

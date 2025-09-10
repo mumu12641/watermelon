@@ -1,5 +1,6 @@
 #include "../include/semantic/semantic.hpp"
 
+#include "../include/utils/builtin.hpp"
 #include "../include/utils/format.hpp"
 
 void Scope::add(const std::string& key, Type type, SymbolKind kind)
@@ -175,6 +176,15 @@ std::pair<std::unique_ptr<Program>, std::optional<Error>> SemanticAnalyzer::anal
         return {nullptr, Error("Program requires a 'main' function")};
     }
 
+    for (auto& decl : program->declarations) {
+        if (auto classDecl = dynamic_cast<ClassDeclaration*>(decl.get())) {
+            if (classDecl->baseClass.empty() && classDecl->name != BUILTIN::BUILTIN_CLASS[0]) {
+                classDecl->baseClass = BUILTIN::BUILTIN_CLASS[0];
+            }
+        }
+    }
+
+    // check inheritance
     for (const auto& decl : program->declarations) {
         if (const auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             this->functionTable.add(funcDecl->name, funcDecl);

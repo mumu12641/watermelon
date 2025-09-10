@@ -1,5 +1,4 @@
 ; ModuleID = 'tests/test_pass_cpp.ll'
-source_filename = "./tests/output.ll"
 
 @int_format = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @float_format = private unnamed_addr constant [3 x i8] c"%f\00", align 1

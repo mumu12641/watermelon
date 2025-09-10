@@ -16,9 +16,13 @@ class C(c:int = 2) inherits B(){
         return self.c;
     }
 }
+class D(){
+
+}
 fn callMethod(a:A)->int{
     return a.method();
 }
+
 
 fn main() -> int{
     var s1 = "a"+"b";
@@ -33,5 +37,18 @@ fn main() -> int{
     print_str(bool_to_str(s4) + "\n" );
     print_str(bool_to_str(s4) + "\n" );
     print_str(bool_to_str(s4) + "\n" );
+
+    var b = B();
+    b.a_method();
+    
+    var d:D;
+    println();
+    print_bool(is_null(d));
+    println();
+    d = D();
+    print_bool(is_null(d));
+    println();
+    
+    
     return 0;
 }
