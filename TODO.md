@@ -20,7 +20,7 @@
 - [x] 每个类应该有自己的function table
 
 - [x] 记得在处理 classdecl 的 init 的时候，要把 inherit 的部分全部弄好，包括父类的 init 和 property
-- [x] 初始化类的时候调用 C_malloc_init,然后调用 constructor， constructor 先constructor 再 builtin_init 最后 self_defined_init
+- [x] 初始化类的时候调用 C_malloc_init,然后调用 constructor， constructor 先 builtin_init 再 constructor 最后 self_defined_init
 - [x] 空指针异常
 - [x] 究竟什么时候要load？？？？？？？？？？？？？？？回答：只有赋值的时候的左边需要ptr，且只会是memberexpr 或者idexpr
 - [x] 在 generateCallExpression 要处理默认参数

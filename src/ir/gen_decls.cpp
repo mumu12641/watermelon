@@ -88,6 +88,11 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
     llvm::Value* self =
         this->builder->CreateBitCast(selfI8, this->generateType(decl.name, true), "self");
 
+    auto builtinInitName = Format("{0}_builtin_init", decl.name);
+    if (this->methodMap.count(builtinInitName)) {
+        this->builder->CreateCall(this->module->getFunction(builtinInitName), {selfI8});
+    }
+
     if (!decl.baseClass.empty()) {
         auto baseClass       = this->classTable.find(decl.baseClass);
         auto baseClassName   = baseClass->name;
@@ -125,10 +130,7 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         this->builder->CreateStore(argValue, ptr);
         paramOffset++;
     }
-    auto builtinInitName = Format("{0}_builtin_init", decl.name);
-    if (this->methodMap.count(builtinInitName)) {
-        this->builder->CreateCall(this->module->getFunction(builtinInitName), {selfI8});
-    }
+
     auto selfDefinedInitName = Format("{0}_self_defined_init", decl.name);
     if (this->methodMap.count(selfDefinedInitName)) {
         this->builder->CreateCall(this->module->getFunction(selfDefinedInitName), {selfI8});
@@ -234,6 +236,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
     }
 
     this->generateStatement(*decl.body);
+    this->builder->CreateBr(retBB);
 
     this->retBB->insertInto(function);
     this->builder->SetInsertPoint(this->retBB);

@@ -42,13 +42,16 @@ fn main() -> int{
     b.a_method();
     
     var d:D;
-    println();
-    print_bool(is_null(d));
-    println();
     d = D();
     print_bool(is_null(d));
     println();
+    println();
     
+    for(i in Range(5)){
+        print_int(i);
+    }
+    print_str("done" );
+
     
     return 0;
 }

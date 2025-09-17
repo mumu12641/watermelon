@@ -18,31 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE. 
 
-fn _concat_strs(s1:str, s2:str) -> str{
-    return "";
+class Range(_range:int = 0) {
+    var _index:int = 0;
+    operator fn _first() -> void {
+        _index = 0;
+        return;
+    }
+    operator fn _next() -> void {
+        _index = _index + 1;
+        return;
+    }
+    operator fn _current() -> int {
+        return _index;
+    }
+    operator fn _end() -> bool {
+        return _index == _range;  
+    }
 }
-
-fn int_to_str(i:int) -> str{
-    return "";
-}
-
-fn float_to_str(f:float) -> str{
-    return "";
-}
-
-fn bool_to_str(b:bool) -> str{
-    return "";
-}
-
-fn str_to_int(s:str) -> int{
-    return 0;
-}
-
-fn str_to_float(s:str) -> float{
-    return 0.0;
-}
-
-fn str_to_bool(s:str) -> bool{
-    return false;
-}
-

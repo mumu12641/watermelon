@@ -1,0 +1,68 @@
+class Person(age:int, name:str = "mike"){
+    var person:int = 1;
+    init{
+        age = 33;
+        person = 2;
+        // name = "jack";
+    }
+    fn print() -> void {
+        print_str("Person 信息:\n");
+        print_str("Age:");
+        print_int(age);
+        println();
+
+        print_str("Name:");
+        print_str(name);
+        println();
+
+        print_str("person:");
+        print_int(person);
+        println();
+        print_str("======");
+        return;
+    }
+}
+
+class Student(age:int, name:str = "mike", id:int = 123) inherits Person(age, name){
+    var student:int = 3;
+    init{
+        age = 19;
+        student = 4;
+        person = 4;
+       // name = "heihei";
+        id = 1234;
+    }
+    
+    fn print() -> void{
+        print_str("Student 信息:\n");
+        print_str("Age:");
+        print_int(age);
+        println();
+
+        print_str("Name:");
+        print_str(name);
+        println();
+
+        print_str("person:");
+        print_int(person);
+        println();
+
+        print_str("id:");
+        print_int(id);
+        println();
+
+        print_str("student:");
+        print_int(student);
+        println();
+
+        print_str("======");
+        return;
+    }
+}
+fn main() -> void {
+    var s = Student(18,"pengbin");
+    s.print();
+    var p = Person(35, "ss");
+    p.print();
+    return;
+}

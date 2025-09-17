@@ -90,6 +90,7 @@ void IRGen::buildVTables()
         std::string                  vTableName = Format("vTable_{0}", className);
         std::vector<llvm::Type*>     vTableMethods;
         std::vector<llvm::Constant*> vTableInitializers;
+        bool                         hasSelfDefinedInit = false;
 
         this->addVTableMethod(vTableMethods,
                               vTableInitializers,
@@ -152,12 +153,13 @@ void IRGen::buildVTables()
                 inheritMethodMap[methodKey] = {fullMethodName, funcType};
             }
             else if (const auto* init = dynamic_cast<const InitBlockMember*>(member.get())) {
+                hasSelfDefinedInit                 = true;
                 std::string         initMethodName = Format("{0}_self_defined_init", className);
                 llvm::FunctionType* funcType = llvm::FunctionType::get(voidTy, {int8PtrTy}, false);
                 this->addVTableMethod(vTableMethods, vTableInitializers, initMethodName, funcType);
             }
         }
-        size_t vTableOffset = 3;
+        size_t vTableOffset = hasSelfDefinedInit ? 4 : 3;
         for (const auto& [methodKey, methodInfo] : inheritMethodMap) {
             const auto& [fullMethodName, funcType]             = methodInfo;
             this->vTableOffsetMap[classDecl->name + methodKey] = vTableOffset;
@@ -247,10 +249,10 @@ void IRGen::defineClasses()
 //     for (auto i = 0; i < size; i++) {
 //         auto methodName = BUILTIN::BUILTIN_CLASS_METHOD[i];
 //         auto builtinRet                 = BUILTIN::BUILTIN_CLASS_METHOD_RETURN_TYPE[i];
-//         auto returnType                 = this->generateType(builtinRet.first, builtinRet.second);
-//         auto builtinParams              = BUILTIN::BUILTIN_CLASS_METHOD_PARAMS[i];
-//         std::vector<llvm::Type*> params = {};
-//         for (const auto param : builtinParams) {
+//         auto returnType                 = this->generateType(builtinRet.first,
+//         builtinRet.second); auto builtinParams              =
+//         BUILTIN::BUILTIN_CLASS_METHOD_PARAMS[i]; std::vector<llvm::Type*> params = {}; for (const
+//         auto param : builtinParams) {
 //             params.push_back(this->generateType(param.first, param.second));
 //         }
 //         auto funcType = llvm::FunctionType::get(returnType, params, false);
