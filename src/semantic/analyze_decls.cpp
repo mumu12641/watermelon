@@ -45,7 +45,7 @@ std::optional<Error> SemanticAnalyzer::analyzeClassDeclaration(ClassDeclaration&
             hasDefaultParam = true;
         }
         this->symbolTable.add(constructorParam.name, *constructorParam.type);
-        this->symbolTable.add(Format("self_{1}", constructorParam.name), *constructorParam.type);
+        this->symbolTable.add(Format("self_{0}", constructorParam.name), *constructorParam.type);
     }
     if (!classDecl.baseClass.empty()) {
         auto parent             = this->classTable.find(classDecl.baseClass);

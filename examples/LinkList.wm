@@ -1,0 +1,63 @@
+class Node(_data:int = 0){
+    var _next:Node;
+
+    fn set_data(__data:int)->void{
+        _data = __data;
+    }
+
+    fn get_data() -> int{
+        return _data;
+    }
+
+    fn set_next(next:Node) -> void{
+        _next = next;
+    }
+
+    fn get_next() -> Node{
+        return _next;
+    }
+}
+
+class LinkedList(_head:Node){
+    var tail:Node;
+    var size:int;
+
+    init{
+        tail = _head;
+        size = 1;
+    }
+
+    fn insert(node:Node) -> void{
+        tail.set_next(node);
+        tail = node;
+        size = size + 1;
+    }
+    
+    fn get_head() -> Node{
+        return _head;
+    }
+
+    fn get_size() -> int{
+        return size;
+    }
+}
+
+fn main() -> void{
+    var n1 = Node(1);
+    var n2 = Node(2);
+    var n3 = Node(3);
+    var n4 = Node(4);
+
+    var l = LinkedList(n1);
+    l.insert(n2);
+    l.insert(n3);
+    l.insert(n4);
+
+    var cur = l.get_head();
+    for(i in Range(l.get_size())){
+        print_int(cur.get_data());
+        println();
+        cur = cur.get_next();
+    }
+    return;
+}

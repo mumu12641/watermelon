@@ -188,7 +188,6 @@ Token Lexer::scanString()
             str += advance();
         }
     }
-
     if (peek() == '\0') {
         return Token(
             TokenType::ERROR, std::string("Unterminated string"), startLine, startColumn, filename);

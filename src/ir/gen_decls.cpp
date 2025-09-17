@@ -97,7 +97,7 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         auto baseClass       = this->classTable.find(decl.baseClass);
         auto baseClassName   = baseClass->name;
         auto castToBaseClass = this->builder->CreateBitCast(
-            self, llvm::PointerType::get(this->generateType(baseClassName, false), 0));
+            self, llvm::PointerType::get(this->generateType(baseClassName, false), 0), "bit_cast");
 
         std::vector<llvm::Value*> constructorArgs = {selfI8};
         for (const auto& param : decl.baseConstructorArgs) {
@@ -116,8 +116,8 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
         }
         auto callBaseConstructor = this->builder->CreateCall(
             this->module->getFunction(Format("{0}_constructor", baseClassName)), constructorArgs);
-        self =
-            this->builder->CreateBitCast(callBaseConstructor, llvm::PointerType::get(classType, 0));
+        self = this->builder->CreateBitCast(
+            callBaseConstructor, llvm::PointerType::get(classType, 0), "bit_cast");
     }
 
     int paramOffset = 1;

@@ -53,7 +53,8 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             leftPtr = generateMemberExpressionPtr(*memberExpr);
         }
         if (leftType != rightType) {
-            auto s = this->builder->CreateBitCast(rightValue, this->generateType(leftType, true));
+            auto s = this->builder->CreateBitCast(
+                rightValue, this->generateType(leftType, true), "bit_cast");
             this->builder->CreateStore(s, leftPtr);
             return s;
         }
@@ -75,8 +76,8 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
                 return this->builder->CreateFAdd(leftValue, rightValue, "fadd");
             }
             if (isStrOperation) {
-                return this->builder->CreateCall(this->methodMap["_concat_strs"],
-                                                 {leftValue, rightValue});
+                return this->builder->CreateCall(
+                    this->methodMap["_concat_strs"], {leftValue, rightValue});
             }
             return this->builder->CreateAdd(leftValue, rightValue, "add");
 
@@ -247,17 +248,18 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
             this->vTableOffsetMap[className + expr.methodName],
             Format("{0}_{1}_method_ptr_ptr", className, expr.methodName));
 
-        auto fullMethodName = Format("{0}_{1}", className, expr.methodName);
+        auto                fullMethodName = Format("{0}_{1}", className, expr.methodName);
         llvm::FunctionType* methodFuncType = nullptr;
-        auto it = this->methodTypeMap.find(fullMethodName);
+        auto                it             = this->methodTypeMap.find(fullMethodName);
         if (it != this->methodTypeMap.end()) {
             methodFuncType = it->second;
-        } else {
+        }
+        else {
             // 如果不是自己的 method，就要去 parents 找
             const auto* inheritanceChain = this->classTable.getInheritMap(className);
             for (auto cls = inheritanceChain->rbegin(); cls != inheritanceChain->rend(); ++cls) {
                 auto baseMethodName = Format("{0}_{1}", (*cls)->name, expr.methodName);
-                auto baseIt = this->methodTypeMap.find(baseMethodName);
+                auto baseIt         = this->methodTypeMap.find(baseMethodName);
                 if (baseIt != this->methodTypeMap.end()) {
                     methodFuncType = baseIt->second;
                     break;

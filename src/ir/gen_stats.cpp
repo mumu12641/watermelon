@@ -121,7 +121,7 @@ void IRGen::generateVariableStatement(const VariableStatement& stmt)
     if (stmt.initializer == nullptr) return;
     llvm::Value* init = generateExpression(*stmt.initializer);
     if (stmt.declType && stmt.initType && *stmt.declType != *stmt.initType) {
-        init = this->builder->CreateBitCast(init, declType);
+        init = this->builder->CreateBitCast(init, declType, "bit_cast");
     }
     this->builder->CreateStore(init, value);
 }

@@ -99,7 +99,7 @@ void IRGen::buildVTables()
 
         std::vector<llvm::Type*> constructParamTypes = {int8PtrTy};
         for (const auto& constructParam : classDecl->constructorParameters) {
-            constructParamTypes.emplace_back(this->generateType(*constructParam.type, false));
+            constructParamTypes.emplace_back(this->generateType(*constructParam.type, true));
         }
         this->addVTableMethod(vTableMethods,
                               vTableInitializers,
@@ -126,13 +126,11 @@ void IRGen::buildVTables()
                     std::vector<llvm::Type*> paramTypes = {int8PtrTy};
 
                     for (const auto& param : method->function->parameters) {
-                        paramTypes.push_back(this->generateType(*param.type, false));
+                        paramTypes.push_back(this->generateType(*param.type, true));
                     }
 
                     llvm::FunctionType* funcType = llvm::FunctionType::get(
-                        this->generateType(*method->function->returnType, false),
-                        paramTypes,
-                        false);
+                        this->generateType(*method->function->returnType, true), paramTypes, false);
                     inheritMethodMap[methodKey] = {fullMethodName, funcType};
                 }
             }
@@ -145,11 +143,11 @@ void IRGen::buildVTables()
                 std::vector<llvm::Type*> paramTypes = {int8PtrTy};
 
                 for (const auto& param : method->function->parameters) {
-                    paramTypes.push_back(this->generateType(*param.type, false));
+                    paramTypes.push_back(this->generateType(*param.type, true));
                 }
 
                 llvm::FunctionType* funcType = llvm::FunctionType::get(
-                    this->generateType(*method->function->returnType, false), paramTypes, false);
+                    this->generateType(*method->function->returnType, true), paramTypes, false);
                 inheritMethodMap[methodKey] = {fullMethodName, funcType};
             }
             else if (const auto* init = dynamic_cast<const InitBlockMember*>(member.get())) {
@@ -288,10 +286,10 @@ void IRGen::setupFunctions()
             auto funcName = funcDecl->name == "main" ? "builtin_main" : funcDecl->name;
             std::vector<llvm::Type*> paramTypes = {};
             for (const auto& param : funcDecl->parameters) {
-                paramTypes.emplace_back(this->generateType(*param.type, true));
+                paramTypes.emplace_back(this->generateType(param.type->getName(), true));
             }
             auto m = llvm::FunctionType::get(
-                this->generateType(*funcDecl->returnType, true), paramTypes, false);
+                this->generateType(funcDecl->returnType->getName(), true), paramTypes, false);
             this->methodMap[funcName] = llvm::Function::Create(
                 m, llvm::Function::ExternalLinkage, funcName, this->module.get());
         }

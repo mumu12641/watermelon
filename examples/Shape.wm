@@ -1,0 +1,37 @@
+class Shape(name:str){
+    fn get_area() -> int{
+        return 0;
+    }
+    fn print(){
+        print_str("Name: " + name + "\n");
+        print_str("area: ");
+        print_int(self.get_area());
+        println();
+    }
+}
+
+class Square(a:int = 0) inherits Shape("Square"){
+    fn set(_a:int){
+        a = _a;
+    }
+    fn get_area() -> int{
+        return a * a;
+    }
+}
+
+class Rectangle(a:int = 0, b:int = 0) inherits Shape("Rectangle"){
+    fn set(_a:int, _b:int){
+        a = _a;
+        b = _b;
+    }
+    fn get_area() -> int{
+        return a * b;
+    }
+}
+
+fn main(){
+    val a = Square(2);
+    val b = Rectangle(2, 3);
+    a.print();
+    b.print();
+}

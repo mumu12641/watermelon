@@ -11,7 +11,7 @@ set(INCLUDE_DIR include)
 set(BUILD_DIR build)
 set(LIB_DIR lib)
 
-set(LLVMIRFLAGS -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone)
+set(LLVMIRFLAGS -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone -fno-discard-value-names)
 
 # 查找opt工具
 find_program(OPT_EXECUTABLE opt REQUIRED)
