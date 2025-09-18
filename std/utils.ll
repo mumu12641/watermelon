@@ -42,6 +42,13 @@ declare double @atof(i8*)
 
 declare i32 @atoi(i8*)
 
+define i32 @len(i8* %str) {
+entry:
+  %len_i64 = call i64 @strlen(i8* %str)
+  %len_i32 = trunc i64 %len_i64 to i32
+  ret i32 %len_i32
+}
+
 define i8* @_concat_strs(i8* %str1, i8* %str2) {
 entry:
   %str1_null = icmp eq i8* %str1, null

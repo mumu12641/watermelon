@@ -18,35 +18,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE. 
 
-fn _concat_strs(s1:str, s2:str) -> str{
-    return "";
-}
+class String(_s:str){
+    var _size:int = 0;
 
-fn len(s:str) -> int{
-    return 0;
-}
+    init{
+        _size = len(_s);
+    }
 
-fn int_to_str(i:int) -> str{
-    return "";
+    fn len() -> int{
+        return _size;
+    }
 }
-
-fn float_to_str(f:float) -> str{
-    return "";
-}
-
-fn bool_to_str(b:bool) -> str{
-    return "";
-}
-
-fn str_to_int(s:str) -> int{
-    return 0;
-}
-
-fn str_to_float(s:str) -> float{
-    return 0.0;
-}
-
-fn str_to_bool(s:str) -> bool{
-    return false;
-}
-

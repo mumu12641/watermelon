@@ -29,9 +29,15 @@ class Rectangle(a:int = 0, b:int = 0) inherits Shape("Rectangle"){
     }
 }
 
-fn main(){
+fn print_shape(s:Shape){
+    s.print();
+}
+
+fn main() ->int {
     val a = Square(2);
     val b = Rectangle(2, 3);
-    a.print();
-    b.print();
+    print_shape(a);
+    print_shape(b);
+    print_int(len("sd"));
+    return 0;
 }
