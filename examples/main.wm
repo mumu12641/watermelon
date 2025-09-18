@@ -1,5 +1,4 @@
 fn test() -> IntArray{
-    var a:String = Object();
     return IntArray(3);
 }
 
