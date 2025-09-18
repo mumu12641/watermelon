@@ -37,8 +37,9 @@ install(CODE "
   message(STATUS \"Created directories in: ${LOCAL_INSTALL_DIR}\")
 ")
 
-file(GLOB STD_LIB_FILES "${PROJECT_SOURCE_DIR}/std/*")
-install(FILES ${STD_LIB_FILES} DESTINATION "${LOCAL_INSTALL_DIR}/std")
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/std/"
+        DESTINATION "${LOCAL_INSTALL_DIR}/std"
+        FILES_MATCHING PATTERN "*")
 
 
 install(CODE "

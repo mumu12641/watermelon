@@ -18,35 +18,54 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE. 
 
-fn _concat_strs(s1:str, s2:str) -> str{
-    return "";
+class IntArray(_cap:int){
+    var _data:str;
+    var _size:int;
+    init{
+        _data = _builtin_malloc(_cap * 4);
+        _size = 0;
+    }
+
+    fn insert(element:int){
+        if(_size == _cap){
+            print_str("\nError: call IntArray.insert(element), current array's size >= capacity.\n");
+            return;
+        }
+        _builtin_int_array_insert_impl(self, element);
+        _size = _size + 1;
+        return ;
+    }
+
+    fn at(index:int) -> int{
+        if(index >= _cap){
+            print_str("\nError: call IntArray.at(index), index >= capacity.\n");
+            return -1;
+        }
+        return _builtin_int_array_at_impl(self, index);
+    }
+
+    fn front() -> int{
+        return self.at(0);
+    }
+
+    fn back() -> int{
+        return self.at(_size - 1);
+    }
+
+    fn empty() -> bool{
+        return _size == 1;
+    }
+
+    fn size() -> int{
+        return _cap;
+    }
+
+    fn fill(element:int){
+        for(i in Range(_cap)){
+            self.insert(element);
+        }
+        return;
+    }
 }
 
-fn len(s:str) -> int{
-    return 0;
-}
-
-fn int_to_str(i:int) -> str{
-    return "";
-}
-
-fn float_to_str(f:float) -> str{
-    return "";
-}
-
-fn bool_to_str(b:bool) -> str{
-    return "";
-}
-
-fn str_to_int(s:str) -> int{
-    return 0;
-}
-
-fn str_to_float(s:str) -> float{
-    return 0.0;
-}
-
-fn str_to_bool(s:str) -> bool{
-    return false;
-}
-
+// class StringArray()

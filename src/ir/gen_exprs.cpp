@@ -77,7 +77,7 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             }
             if (isStrOperation) {
                 return this->builder->CreateCall(
-                    this->methodMap["_concat_strs"], {leftValue, rightValue});
+                    this->methodMap["_concat_strs"], {leftValue, rightValue}, "call_concat_strs");
             }
             return this->builder->CreateAdd(leftValue, rightValue, "add");
 
@@ -161,12 +161,17 @@ llvm::Value* IRGen::generateCallExpression(const CallExpression& expr)
     if (cls) {
         processArguments(cls->constructorParameters, expr.arguments);
         return this->builder->CreateCall(
-            this->module->getFunction(Format("{0}_malloc_init", cls->name)), callArgs);
+            this->module->getFunction(Format("{0}_malloc_init", cls->name)),
+            callArgs,
+            "call_malloc_init");
     }
 
     if (func) {
         processArguments(func->parameters, expr.arguments);
-        return this->builder->CreateCall(this->module->getFunction(func->name), callArgs);
+        return this->builder->CreateCall(
+            this->module->getFunction(func->name),
+            callArgs,
+            *func->returnType == Type::builtinVoid() ? "" : Format("call_{0}", func->name));
     }
 
     return nullptr;
@@ -233,7 +238,7 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
 
         auto vTablePtr = this->builder->CreateStructGEP(this->generateType(className, false),
                                                         objectVal,
-                                                        0,
+                                                        OBJECT_LAYOUT::VTABLE_OFFSET,
                                                         Format("{0}_vtable_ptr_ptr", className));
 
         auto vTable =
@@ -277,7 +282,13 @@ llvm::Value* IRGen::generateMemberExpression(const MemberExpression& expr)
         for (const auto& argExpr : expr.arguments) {
             callArgs.push_back(generateExpression(*argExpr));
         }
-        return this->builder->CreateCall(methodFuncType, method, callArgs);
+        return this->builder->CreateCall(
+            methodFuncType,
+            method,
+            callArgs,
+            methodFuncType->getReturnType() == this->voidTy ? ""
+                                                            : Format("call_{0}", expr.methodName)
+        );
     }
 
     if (expr.kind == MemberExpression::Kind::PROPERTY) {

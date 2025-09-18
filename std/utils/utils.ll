@@ -49,6 +49,7 @@ entry:
   ret i32 %len_i32
 }
 
+
 define i8* @_concat_strs(i8* %str1, i8* %str2) {
 entry:
   %str1_null = icmp eq i8* %str1, null

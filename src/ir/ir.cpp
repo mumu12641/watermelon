@@ -157,7 +157,8 @@ void IRGen::buildVTables()
                 this->addVTableMethod(vTableMethods, vTableInitializers, initMethodName, funcType);
             }
         }
-        size_t vTableOffset = hasSelfDefinedInit ? 4 : 3;
+        size_t vTableOffset = hasSelfDefinedInit ? OBJECT_LAYOUT::BUILTIN_METHOD_NUM + 1
+                                                 : OBJECT_LAYOUT::BUILTIN_METHOD_NUM;
         for (const auto& [methodKey, methodInfo] : inheritMethodMap) {
             const auto& [fullMethodName, funcType]             = methodInfo;
             this->vTableOffsetMap[classDecl->name + methodKey] = vTableOffset;
@@ -205,7 +206,9 @@ void IRGen::defineClasses()
                 std::string vTableName       = Format("vTable_{0}", classDecl->name);
                 llvm::StructType*        structType = static_cast<llvm::StructType*>(it->second);
                 std::vector<llvm::Type*> fieldTypes = {
-                    llvm::PointerType::getUnqual(this->vTableTypes[vTableName])};
+                    llvm::PointerType::getUnqual(this->vTableTypes[vTableName]),
+                    int32Ty,   // object size
+                };
                 std::vector<std::variant<const FunctionParameter*, const PropertyMember*>>
                     allParams;
 
@@ -268,7 +271,7 @@ void IRGen::setupClasses()
     this->defineClasses();
     for (const auto& decl : program->declarations) {
         if (const auto* classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
-            int offset = 1;
+            int offset = OBJECT_LAYOUT::BUILTIN_FIELD_NUM;
             for (const auto& param : this->classAllParams[classDecl->name]) {
                 std::string paramName = this->getParamName(param);
                 this->valueTable.add(Format("{0}_{1}", classDecl->name, paramName),

@@ -35,7 +35,7 @@ void collectLibFiles(const std::string& stdLibPath, const std::string& extension
         return;
     }
 
-    for (const auto& entry : std::filesystem::directory_iterator(stdLibPath)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(stdLibPath)) {
         if (entry.is_regular_file() && entry.path().extension() == extension) {
             stdLibFiles.push_back(entry.path().string());
         }
@@ -51,7 +51,7 @@ void collectDirectoryFiles(const std::string& dirPath, const std::string& extens
         cout_red("Error: Directory does not exist: " + dirPath + "\n");
         return;
     }
-    for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(dirPath)) {
         if (entry.is_regular_file() && entry.path().extension() == extension) {
             files.push_back(entry.path().string());
         }
@@ -166,7 +166,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     std::vector<std::string> stdLibLLFiles;
     collectLibFiles(getLibPath("std"), ".ll", stdLibLLFiles);
     collectLibFiles(getLibPath("gc"), ".ll", stdLibLLFiles);
-    std::string clangCmd = "clang -w -o ./output";
+    std::string clangCmd = "clang++ -w -o ./output";
     for (const auto& llFile : stdLibLLFiles) {
         clangCmd += " " + llFile;
     }

@@ -6,13 +6,15 @@
 
 namespace BUILTIN {
 inline const std::vector<std::string> BUILTIN_FUNC = {
+    // io funcions
     "println",
     "print_int",
     "print_str",
     "print_float",
     "print_bool",
     "input",
-    "_concat_strs",
+
+    // public utils function
     "len",
     "int_to_str",
     "float_to_str",
@@ -21,15 +23,27 @@ inline const std::vector<std::string> BUILTIN_FUNC = {
     "str_to_float",
     "str_to_bool",
 
-};
+    // builtin utils function
+    "_concat_strs",
+    "clone",
+
+    // array mem function
+    "_builtin_malloc",
+    "_builtin_int_array_insert_impl",
+    "_builtin_int_array_at_impl"};
 
 inline const std::vector<std::string> BUILTIN_CLASS = {"Object", "String", "Range"};
-// inline const std::vector<std::string> BUILTIN_CLASS_METHOD = {"Object_constructor"};
-// inline const std::vector<std::vector<std::pair<std::string, bool>>> BUILTIN_CLASS_METHOD_PARAMS =
-// {
-//     {{"str", false}}};
-// inline const std::vector<std::pair<std::string, bool>> BUILTIN_CLASS_METHOD_RETURN_TYPE = {
-//     {"Object", true}};
+
 }   // namespace BUILTIN
+
+namespace OBJECT_LAYOUT {
+const int SIZE_OFFSET       = 1;
+const int VTABLE_OFFSET     = 0;
+const int BUILTIN_FIELD_NUM = 2;
+const int VALID_OFFSET      = 2;
+
+
+const int BUILTIN_METHOD_NUM = 3;
+}   // namespace OBJECT_LAYOUT
 
 #endif

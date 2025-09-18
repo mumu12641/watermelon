@@ -31,6 +31,9 @@
 - [x] std str type，一些oprator
 - [ ] 但是还是要一个标准的类，String
 - [x] 运行时候的空指针 null，检查是不是null，isnull
+- [ ] object.clone()，好像还是得有泛型
+- [ ] 还是得有泛型
+- [ ] 做一个可以自己扩充 cap 的 vector
 
 - [x] 死代码消除：删除未使用的变量和不可达代码
 - [x] 常量折叠：编译时计算常量表达式

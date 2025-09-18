@@ -22,7 +22,7 @@ void IRGen::generateClassDeclaration(const ClassDeclaration& decl)
 {
     this->valueTable.enterScope(decl.name);
     this->currClass = &decl;
-    int offset      = 1;
+    int offset      = OBJECT_LAYOUT::BUILTIN_FIELD_NUM;
     for (const auto& param : this->classAllParams[decl.name]) {
         std::string paramName = this->getParamName(param);
         this->valueTable.add(paramName, IRValue(offset));
@@ -56,7 +56,7 @@ void IRGen::generateClassBuiltinInit(const ClassDeclaration& decl)
     auto self = this->builder->CreateBitCast(
         this->getCurrFunc()->getArg(0), this->generateType(decl.name, true), "self");
 
-    int offset = 1;
+    int offset = OBJECT_LAYOUT::BUILTIN_FIELD_NUM;
     for (const auto& param : this->classAllParams[decl.name]) {
         const Expression* initExpr  = this->getParamInitExpr(param);
         std::string       paramName = this->getParamName(param);
@@ -115,7 +115,9 @@ void IRGen::generateClassConstructor(const ClassDeclaration& decl)
             }
         }
         auto callBaseConstructor = this->builder->CreateCall(
-            this->module->getFunction(Format("{0}_constructor", baseClassName)), constructorArgs);
+            this->module->getFunction(Format("{0}_constructor", baseClassName)),
+            constructorArgs,
+            "call_constructor");
         self = this->builder->CreateBitCast(
             callBaseConstructor, llvm::PointerType::get(classType, 0), "bit_cast");
     }
@@ -149,14 +151,21 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     auto            entryBB  = llvm::BasicBlock::Create(*this->context, "entry", function);
     this->builder->SetInsertPoint(entryBB);
 
-    llvm::Type* classType  = this->generateType(decl.name, false);
-    uint64_t    typeSize   = this->dataLayout->getTypeAllocSize(classType);
-    auto        sizeValue  = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
-    auto        mallocCall = this->builder->CreateCall(this->methodMap["malloc"], {sizeValue});
+    llvm::Type* classType    = this->generateType(decl.name, false);
+    uint64_t    typeSize     = this->dataLayout->getTypeAllocSize(classType);
+    auto        sizeValue    = llvm::ConstantInt::get(llvm::Type::getInt64Ty(*context), typeSize);
+    auto        sizeValuei32 = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*context), typeSize);
+    auto        mallocCall =
+        this->builder->CreateCall(this->methodMap["malloc"], {sizeValue}, "call_gc_alloc");
     auto mallocResult = builder->CreateBitCast(mallocCall, llvm::PointerType::get(classType, 0));
 
+    auto sizePtr = this->builder->CreateStructGEP(
+        classType, mallocResult, OBJECT_LAYOUT::SIZE_OFFSET, "size_ptr");
+    this->builder->CreateStore(sizeValuei32, sizePtr);
+
     std::string vTableName = Format("vTable_{0}", decl.name);
-    auto        ptr = this->builder->CreateStructGEP(classType, mallocResult, 0, "vtable_ptr");
+    auto        ptr        = this->builder->CreateStructGEP(
+        classType, mallocResult, OBJECT_LAYOUT::VTABLE_OFFSET, "vtable_ptr");
     this->builder->CreateStore(this->vTableVars[vTableName], ptr);
 
     std::vector<llvm::Value*> constructorArgs;
@@ -167,7 +176,7 @@ void IRGen::generateClassMallocInit(const ClassDeclaration& decl)
     }
 
     auto constructorFunc = this->module->getFunction(Format("{0}_constructor", decl.name));
-    auto self            = this->builder->CreateCall(constructorFunc, constructorArgs);
+    auto self = this->builder->CreateCall(constructorFunc, constructorArgs, "call_construtor");
 
     this->builder->CreateRet(self);
     this->valueTable.exitScope();
@@ -236,7 +245,6 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
     }
 
     this->generateStatement(*decl.body);
-    this->builder->CreateBr(retBB);
 
     this->retBB->insertInto(function);
     this->builder->SetInsertPoint(this->retBB);

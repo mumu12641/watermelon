@@ -61,13 +61,17 @@ void IRGen::generateForStatement(const ForStatement& stmt)
 
     this->builder->CreateBr(condBB);
     this->builder->SetInsertPoint(condBB);
-    auto cond = this->builder->CreateCall(
-        this->module->getFunction(Format("{0}__end", iterType.getName())), {iterableI8Ptr});
+    auto cond =
+        this->builder->CreateCall(this->module->getFunction(Format("{0}__end", iterType.getName())),
+                                  {iterableI8Ptr},
+                                  "call_end");
     this->builder->CreateCondBr(cond, endBB, bodyBB);
 
     this->builder->SetInsertPoint(bodyBB);
     auto current = this->builder->CreateCall(
-        this->module->getFunction(Format("{0}__current", iterType.getName())), {iterableI8Ptr});
+        this->module->getFunction(Format("{0}__current", iterType.getName())),
+        {iterableI8Ptr},
+        "call_current");
     this->builder->CreateStore(current, variable);
     this->valueTable.add(stmt.variable, IRValue(variable));
 
