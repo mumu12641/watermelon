@@ -150,7 +150,7 @@ void processFiles(const std::vector<std::string>& stdLibFiles,
     for (const auto& soFile : optSoFiles) {
         optCmd += " -load-pass-plugin=" + soFile;
     }
-    optCmd += " -passes=mem2reg-pass,constant-prop-pass,dce-pass,-cse-pass";
+    optCmd += " -passes=mem2reg-pass,constant-prop-pass,dce-pass,cse-pass";
     int optResult = system(optCmd.c_str());
     if (optResult != 0) {
         cout_red("Failed");

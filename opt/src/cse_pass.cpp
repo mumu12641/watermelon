@@ -21,6 +21,8 @@ CSEExpression::CSEExpression(Instruction& inst)
         this->exprType = CSEExpression::ExpressionType::CAST_OP;
     else if (isa<GetElementPtrInst>(&inst))
         this->exprType = CSEExpression::ExpressionType::GETELEMENTPTR_INST;
+    else if (isa<LoadInst>(&inst))
+        this->exprType = CSEExpression::ExpressionType::LOAD_INST;
 
     this->opcode        = inst.getOpcode();
     this->ty            = inst.getType();

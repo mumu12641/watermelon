@@ -24,7 +24,8 @@ struct CSEExpression
         BINARY_OP,
         CMP_INST,
         CAST_OP,
-        GETELEMENTPTR_INST
+        GETELEMENTPTR_INST,
+        LOAD_INST
     };
     ExpressionType            exprType;
     unsigned                  opcode;
@@ -51,12 +52,12 @@ struct CSEPass : PassInfoMixin<CSEPass>
 private:
     bool canCSE(Instruction* I)
     {
-        if (I->mayHaveSideEffects() || I->mayReadFromMemory() || I->isTerminator() ||
-            isa<PHINode>(I) || isa<CallInst>(I) || isa<InvokeInst>(I))
+        if (I->mayHaveSideEffects() || I->isTerminator() || isa<PHINode>(I) || isa<CallInst>(I) ||
+            isa<InvokeInst>(I))
             return false;
 
         return isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<CastInst>(I) ||
-               isa<GetElementPtrInst>(I);
+               isa<GetElementPtrInst>(I) || isa<LoadInst>(I);
     }
 };
 }   // namespace llvm

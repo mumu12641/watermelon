@@ -121,7 +121,8 @@ main() {
       opt -S -load-pass-plugin=$USER_HOME/.watermelon/opt/lib_mem2reg_pass.so \
             -load-pass-plugin=$USER_HOME/.watermelon/opt/lib_constant_prop_pass.so\
             -load-pass-plugin=$USER_HOME/.watermelon/opt/lib_dce_pass.so\
-            -passes="mem2reg-pass,constant-prop-pass,dce-pass"\
+            -load-pass-plugin=$USER_HOME/.watermelon/opt/lib_cse_pass.so\
+            -passes="mem2reg-pass,constant-prop-pass,dce-pass,cse-pass"\
             $USER_HOME/.watermelon/gc/gc.ll -o $USER_HOME/.watermelon/gc/gc.ll
   else
       log_warn "Skipping GC Project - directory not found: $gc_dir"
