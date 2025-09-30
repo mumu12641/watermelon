@@ -5,9 +5,13 @@ fn test() -> IntArray{
 fn main() -> int {
     var a = IntArray(3);
     a.insert(1);
-    print_int(a.at(0));
-    print_int(a.front());
-    print_int(a.back());
-    a.at(3);
+        print_int(a.front());
+    if(a.size() > 2){
+        print_int(a.front());
+        print_int(a.front());
+    }else{
+        print_int(a.front());
+    }
+   
     return 0;
 }

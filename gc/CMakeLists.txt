@@ -13,7 +13,6 @@ set(LIB_DIR lib)
 
 set(LLVMIRFLAGS -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone -fno-discard-value-names)
 
-# 查找opt工具
 find_program(OPT_EXECUTABLE opt REQUIRED)
 
 file(GLOB SOURCES "${SRC_DIR}/*.cpp")
@@ -25,10 +24,8 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${LIB_DIR})
 foreach(SOURCE_FILE ${SOURCES})
 get_filename_component(SOURCE_NAME ${SOURCE_FILE} NAME_WE)
 
-# 优化后的IR文件
 set(LLVM_IR_FILE ${CMAKE_BINARY_DIR}/${LIB_DIR}/${SOURCE_NAME}.ll)
 
-# 生成原始LLVM IR
 add_custom_command(
     OUTPUT ${LLVM_IR_FILE}
     COMMAND ${CMAKE_CXX_COMPILER} ${LLVMIRFLAGS} ${SOURCE_FILE} -o ${LLVM_IR_FILE}
@@ -36,8 +33,6 @@ add_custom_command(
     COMMENT "Generating LLVM IR for ${SOURCE_NAME}"
     VERBATIM
 )
-
-
 
 list(APPEND LLVM_IR_FILES ${LLVM_IR_FILE})
 endforeach()
