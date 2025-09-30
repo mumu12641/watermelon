@@ -11,12 +11,10 @@ struct Block
     {
         struct Info
         {
+            uint8_t*   cursor;
+            uint8_t*   limit;
             BlockFlags blockFlags;
-
-            uint8_t* cursor;
-            uint8_t* limit;
-
-            uint32_t holeCount;
+            uint32_t   holeCount;
         } info;
         uint8_t padding[Constant::LineCountInBlock - sizeof(Info)];
 
@@ -25,7 +23,9 @@ struct Block
     } header;
 
     Line lines[Constant::LineCountInBlock - Constant::BlockHeaderLineCount];
-    
+
+
+
     inline bool isRecyclable() { return header.info.blockFlags == BlockFlags::Recyclable; }
     inline bool isFree() { return header.info.blockFlags == BlockFlags::Free; }
     inline bool IsUnavailable() { return header.info.blockFlags == BlockFlags::Unavailable; }

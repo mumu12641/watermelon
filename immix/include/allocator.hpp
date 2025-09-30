@@ -14,7 +14,7 @@ struct Allocator
     Chunk* chunk;
     // Block* currBlock;
 
-    void  init();
+    void  initialize();
     void* malloc(uint32_t size);
     void  release();
 };
