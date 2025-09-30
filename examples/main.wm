@@ -1,17 +1,5 @@
-fn test() -> IntArray{
-    return IntArray(3);
-}
 
 fn main() -> int {
-    var a = IntArray(3);
-    a.insert(1);
-        print_int(a.front());
-    if(a.size() > 2){
-        print_int(a.front());
-        print_int(a.front());
-    }else{
-        print_int(a.front());
-    }
-   
+    print_str("a" + "b");
     return 0;
 }

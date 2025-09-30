@@ -5,7 +5,7 @@ namespace Constant {
 
 static const uint32_t BlockBits         = 16;
 static const uint32_t BlockSizeInBytes  = 1 << BlockBits;
-static const uint32_t BlockCountInChunk = 1;
+static const uint32_t BlockCountInChunk = 8;
 
 static const uint32_t LineBits         = 8;
 static const uint32_t LineSizeInBytes  = 1 << LineBits;

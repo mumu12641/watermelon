@@ -25,7 +25,7 @@ struct Block
     } header;
 
     Line lines[Constant::LineCountInBlock - Constant::BlockHeaderLineCount];
-
+    
     inline bool isRecyclable() { return header.info.blockFlags == BlockFlags::Recyclable; }
     inline bool isFree() { return header.info.blockFlags == BlockFlags::Free; }
     inline bool IsUnavailable() { return header.info.blockFlags == BlockFlags::Unavailable; }

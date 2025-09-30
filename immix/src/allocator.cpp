@@ -2,9 +2,9 @@
 
 void Allocator::init()
 {
-    mmapAddr = malloc(sizeof(Chunk));
-    // mmapAddr =
-    //     mmap(nullptr, sizeof(Chunk), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    // mmapAddr = malloc(sizeof(Chunk));
+    mmapAddr =
+        mmap(nullptr, sizeof(Chunk), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     this->chunk = new (mmapAddr) Chunk();
 
     for (int i = 0; i < Constant::BlockCountInChunk; i++) {
@@ -15,8 +15,7 @@ void Allocator::init()
 
 void Allocator::release()
 {
-    // munmap(mmapAddr, sizeof(Chunk));
-    free(mmapAddr);
+    munmap(mmapAddr, sizeof(Chunk));
 }
 
 void* Allocator::malloc(uint32_t size)
@@ -50,12 +49,10 @@ void* Allocator::malloc(uint32_t size)
 
         uint8_t* cursor = currFreeBlock->header.info.cursor;
         uint8_t* limit  = currFreeBlock->header.info.limit;
-
-        // ObjectHeader header(size, ObjectType::STANDARD, cursor +
-        // Constant::ObjectHeaderSizeInBytes);
-        // *(ObjectHeader*)cursor = header;
-        // currFreeBlock->header.info.cursor += totalSizeInBytes;
-        // return header.field;
+        
+        if (cursor + totalSizeInBytes > limit) {
+            return nullptr;
+        }
 
         ObjectHeader* objHeader = (ObjectHeader*)cursor;
         objHeader->size         = size;
@@ -72,9 +69,6 @@ void* Allocator::malloc(uint32_t size)
         memset(objData, 0, size);
 
         return objData;
-        // if(totalSizeInBytes + cursor > limit){
-
-        // }
     }
 
     return nullptr;

@@ -9,9 +9,7 @@ Allocator allocator;
 int main()
 {
     allocator.init();
-
     std::cout << allocator.chunk << "\n";
-
     static_assert(sizeof(Block) == Constant::BlockSizeInBytes,
                   "Size of Block doesn't match expected size");
     std::cout << sizeof(*allocator.chunk) << "\n";

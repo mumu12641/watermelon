@@ -245,6 +245,7 @@ void IRGen::generateFunctionDeclaration(const FunctionDeclaration& decl)
     }
 
     this->generateStatement(*decl.body);
+    // builder->CreateBr(retBB);
 
     this->retBB->insertInto(function);
     this->builder->SetInsertPoint(this->retBB);

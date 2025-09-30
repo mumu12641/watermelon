@@ -7,12 +7,14 @@ class Shape(name:str){
         print_str("area: ");
         print_int(self.get_area());
         println();
+        return;
     }
 }
 
 class Square(a:int = 0) inherits Shape("Square"){
     fn set(_a:int){
         a = _a;
+        return;
     }
     fn get_area() -> int{
         return a * a;
@@ -23,6 +25,7 @@ class Rectangle(a:int = 0, b:int = 0) inherits Shape("Rectangle"){
     fn set(_a:int, _b:int){
         a = _a;
         b = _b;
+        return;
     }
     fn get_area() -> int{
         return a * b;
@@ -31,6 +34,7 @@ class Rectangle(a:int = 0, b:int = 0) inherits Shape("Rectangle"){
 
 fn print_shape(s:Shape){
     s.print();
+    return;
 }
 
 fn main() ->int {
