@@ -10,7 +10,8 @@
 
 struct Allocator
 {
-    void*  mmapAddr;
+    void*  mmapPtr;
+    void*  alignedPtr;
     Chunk* chunk;
     // Block* currBlock;
 
