@@ -16,3 +16,8 @@ cmake-build-debug/
 *.s
 a
 .cache
+antlr/
+tests/
+useless/
+*.py
+immix-gc/

@@ -3,14 +3,16 @@ cmake_minimum_required(VERSION 3.16)
 set(PROJECT_VERSION "1.0.0")
 project(watermelon VERSION ${PROJECT_VERSION})
 
-set(CMAKE_C_COMPILER "/usr/bin/gcc")
-set(CMAKE_CXX_COMPILER "/usr/bin/g++")
+set(CMAKE_C_COMPILER /usr/bin/gcc)
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
-set(CMAKE_CXX_STANDARD 17)
-find_package(LLVM 14 REQUIRED CONFIG)
 
-include_directories(include "${LLVM_INCLUDE_DIR}")
+find_package(LLVM 14 REQUIRED CONFIG)
+include_directories(include ${LLVM_INCLUDE_DIR})
 
 llvm_map_components_to_libnames(llvm_libs 
   core 
@@ -21,15 +23,13 @@ llvm_map_components_to_libnames(llvm_libs
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 include_directories(${PROJECT_SOURCE_DIR}/include)
-file(GLOB_RECURSE MAIN_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
+file(GLOB_RECURSE MAIN_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_executable(watermelon ${MAIN_SOURCES})
 target_include_directories(watermelon PUBLIC ${PROJECT_SOURCE_DIR}/include)
-
 target_link_libraries(watermelon ${llvm_libs})
 
 set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
-
 
 install(CODE "
   file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}\")
@@ -40,7 +40,6 @@ install(CODE "
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/std/"
         DESTINATION "${LOCAL_INSTALL_DIR}/std"
         FILES_MATCHING PATTERN "*")
-
 
 install(CODE "
   file(WRITE \"${LOCAL_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${LOCAL_INSTALL_DIR}/std\\nlib_path=${LOCAL_INSTALL_DIR}/lib\\nversion=${PROJECT_VERSION}\\n\")

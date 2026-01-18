@@ -240,6 +240,7 @@ void GC::sweep()
         this->_nfrees++;
     }
 
+    // 需要 free 的
     this->_frees = (GCPtr*)realloc(this->_frees, sizeof(GCPtr) * this->_nfrees);
 
     for (size_t k = 0, i = 0; i < this->_nslots;) {
@@ -256,10 +257,13 @@ void GC::sweep()
             continue;
         }
 
+        // 找到了需要 free 的 item
         this->_frees[k] = this->_items[i];
         k++;
         this->_items[i].clear();
 
+        // 需要把 _items[i] 删掉，那么就要把 _items[i] 后面的往前提
+        // 除非 probeDistance == 0，那么就说明这个是最理想的位置
         size_t currPos = i;
         while (true) {
             size_t nextPos = (currPos + 1) % this->_nslots;
