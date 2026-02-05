@@ -3,6 +3,7 @@ class Node(_data:int = 0){
 
     fn set_data(__data:int)->void{
         _data = __data;
+        return;
     }
 
     fn get_data() -> int{
@@ -11,6 +12,7 @@ class Node(_data:int = 0){
 
     fn set_next(next:Node) -> void{
         _next = next;
+        return;
     }
 
     fn get_next() -> Node{
@@ -31,6 +33,8 @@ class LinkedList(_head:Node){
         tail.set_next(node);
         tail = node;
         size = size + 1;
+        return;
+        
     }
     
     fn get_head() -> Node{

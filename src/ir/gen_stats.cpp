@@ -112,7 +112,9 @@ void IRGen::generateIfStatement(const IfStatement& stmt)
 void IRGen::generateReturnStatement(const ReturnStatement& stmt)
 {
     if (stmt.value) {
-        builder->CreateStore(generateExpression(*stmt.value), retVal);
+        auto bitCast = builder->CreateBitCast(
+            generateExpression(*stmt.value), this->getCurrFunc()->getReturnType(), "bit_cast");
+        builder->CreateStore(bitCast, retVal);
     }
     builder->CreateBr(retBB);
 }

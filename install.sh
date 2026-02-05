@@ -8,7 +8,7 @@ fi
 
 rm -rf $USER_HOME/.watermelon
 
-JOBS=${JOBS:-16}
+JOBS=${JOBS:-32}
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
 RED='\033[0;31m'

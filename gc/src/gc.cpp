@@ -125,7 +125,7 @@ int GC::rehash(size_t size)
 
     for (size_t i = 0; i < old_size; i++) {
         if (old_items[i].hash != 0) {
-            addPtr(old_items[i].ptr, old_items[i].size);
+            addPtrImpl(old_items[i].ptr, old_items[i].size);
         }
     }
 

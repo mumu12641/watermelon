@@ -20,4 +20,4 @@ antlr/
 tests/
 useless/
 *.py
-immix-gc/
+immix-gc*/

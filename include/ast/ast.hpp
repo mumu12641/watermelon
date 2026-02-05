@@ -65,7 +65,7 @@ public:
 
     Type(Kind kind, std::string name)
         : kind(kind)
-        , name(std::move(name)) {};
+        , name(std::move(name)){};
 
     Type(std::string name)
         : name(std::move(name))
@@ -1094,7 +1094,7 @@ public:
     const Type* containParam(const std::string paramName) const
     {
         for (const auto& param : constructorParameters) {
-            if(param.name == paramName){
+            if (param.name == paramName) {
                 return param.type.get();
             }
         }
