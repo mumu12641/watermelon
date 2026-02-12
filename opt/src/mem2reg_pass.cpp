@@ -20,9 +20,10 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
 {
     // errs() << "Mem2RegPass: " << F.getName() << "\n";
 
-    DominatorTree&    DT = AM.getResult<DominatorTreeAnalysis>(F);
-    DominanceFrontier DF;
-    DF.analyze(DT);
+    // DominatorTree&    DT = AM.getResult<DominatorTreeAnalysis>(F);
+    // DominanceFrontier DF;
+    // DF.analyze(DT);
+    domFrontierPass(F);
 
     std::vector<AllocaInst*> allocas;
     for (auto& inst : F.getEntryBlock()) {
@@ -34,7 +35,8 @@ PreservedAnalyses Mem2RegPass::run(Function& F, FunctionAnalysisManager& AM)
     }
     if (allocas.empty()) return PreservedAnalyses::all();
 
-    std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(allocas, F, DF);
+    // std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(allocas, F, DF);
+    std::map<PHINode*, AllocaInst*> phiMap = insertPhiNode(allocas, F);
 
     std::vector<Instruction*> removeInsts = removeMemInst(phiMap, allocas, F);
 
@@ -71,9 +73,12 @@ bool Mem2RegPass::isPromotable(AllocaInst* allocaInst)
     return true;
 }
 
-std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaInst*>& allocas,
+// std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaInst*>& allocas,
 
-                                                           llvm::Function& F, DominanceFrontier& DF)
+//                                                            llvm::Function& F, DominanceFrontier&
+//                                                            DF)
+std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaInst*>& allocas,
+                                                           llvm::Function&           F)
 {
     std::map<AllocaInst*, std::set<BasicBlock*>> allocaDefs;
     std::map<PHINode*, AllocaInst*>              phiMap;
@@ -104,9 +109,26 @@ std::map<PHINode*, AllocaInst*> Mem2RegPass::insertPhiNode(std::vector<AllocaIns
             BasicBlock* bb = worklist.front();
             worklist.pop();
 
-            auto dfIt = DF.find(bb);
-            if (dfIt != DF.end()) {
-                for (BasicBlock* df : dfIt->second) {
+            // auto dfIt = DF.find(bb);
+            // if (dfIt != DF.end()) {
+            //     for (BasicBlock* df : dfIt->second) {
+            //         if (visited.find(df) != visited.end()) {
+            //             continue;
+            //         }
+
+            //         PHINode* phi = PHINode::Create(alloca->getAllocatedType(),
+            //                                        pred_size(df),
+            //                                        alloca->getName() + ".phi",
+            //                                        &df->front());
+
+            //         phiMap[phi] = alloca;
+            //         visited.insert(df);
+            //         worklist.push(df);
+            //     }
+            // }
+            if (domFrontier.count(bb)) {
+                auto dfSet = domFrontier[bb];
+                for (auto* df : dfSet) {
                     if (visited.find(df) != visited.end()) {
                         continue;
                     }
@@ -203,5 +225,94 @@ std::vector<Instruction*> Mem2RegPass::removeMemInst(std::map<PHINode*, AllocaIn
     return removeInsts;
 }
 
+void Mem2RegPass::domFrontierPass(Function& F)
+{
+    std::set<BasicBlock*> visited;
+    if (!F.empty()) {
+        computePostOrder(&F.getEntryBlock(), visited);
+    }
+    calculateIDom(F);
+    calculateDomFrontier();
+}
 
+void Mem2RegPass::computePostOrder(BasicBlock* bb, std::set<BasicBlock*>& visited)
+{
+
+    visited.insert(bb);
+    for (auto* succ : successors(bb)) {
+        if (!visited.count(succ)) {
+            computePostOrder(succ, visited);
+        }
+    }
+    postOrderNumber[bb] = postOrder.size();
+    postOrder.push_back(bb);
+}
+
+BasicBlock* Mem2RegPass::intersect(BasicBlock* b1, BasicBlock* b2)
+{
+    BasicBlock* finger1 = b1;
+    BasicBlock* finger2 = b2;
+
+    while (finger1 != finger2) {
+        while (postOrderNumber[finger1] < postOrderNumber[finger2]) {
+            finger1 = iDoms[finger1];
+        }
+        while (postOrderNumber[finger2] < postOrderNumber[finger1]) {
+            finger2 = iDoms[finger2];
+        }
+    }
+    return finger1;
+}
+
+void Mem2RegPass::calculateIDom(Function& F)
+{
+    auto* entry  = &F.getEntryBlock();
+    iDoms[entry] = entry;
+    bool changed = true;
+    while (changed) {
+        changed = false;
+
+        for (auto it = postOrder.rbegin(); it != postOrder.rend(); it++) {
+
+            auto* bb = *it;
+            if (bb == entry) continue;
+
+            BasicBlock* newIdom = nullptr;
+
+            for (auto* pred : predecessors(bb)) {
+                if (iDoms.count(pred)) {
+                    newIdom = pred;
+                    break;
+                }
+            }
+            if (!newIdom) continue;
+
+            for (auto* pred : predecessors(bb)) {
+                if (pred != newIdom && iDoms.count(pred)) {
+                    newIdom = intersect(newIdom, pred);
+                }
+            }
+            if (iDoms[bb] != newIdom) {
+                iDoms[bb] = newIdom;
+                changed   = true;
+            }
+        }
+    }
+    iDoms[entry] = nullptr;
+}
+
+void Mem2RegPass::calculateDomFrontier()
+{
+    for (BasicBlock* bb : postOrder) {
+        if (pred_size(bb) >= 2) {
+            for (BasicBlock* pred : predecessors(bb)) {
+                BasicBlock* runner = pred;
+                while (runner != iDoms[bb] && runner != nullptr) {
+                    domFrontier[runner].insert(bb);
+                    runner = iDoms[runner];
+                }
+            }
+        }
+    }
+}
 }   // namespace llvm

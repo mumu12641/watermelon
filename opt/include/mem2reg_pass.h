@@ -24,11 +24,25 @@ public:
     }
 
 private:
+    // std::map<PHINode*, AllocaInst*> insertPhiNode(std::vector<AllocaInst*>& allocas,
+    //                                               llvm::Function& F, DominanceFrontier& DF);
     std::map<PHINode*, AllocaInst*> insertPhiNode(std::vector<AllocaInst*>& allocas,
-                                                  llvm::Function& F, DominanceFrontier& DF);
+                                                  llvm::Function&           F);
     std::vector<Instruction*>       removeMemInst(std::map<PHINode*, AllocaInst*> phiMap,
                                                   std::vector<AllocaInst*>& allocas, llvm::Function& F);
-    bool                            isPromotable(AllocaInst* AI);
+
+    std::map<BasicBlock*, BasicBlock*>           iDoms;
+    std::map<BasicBlock*, std::set<BasicBlock*>> domFrontier;
+    std::vector<BasicBlock*>                     postOrder;
+    std::map<BasicBlock*, int>                   postOrderNumber;
+
+    bool isPromotable(AllocaInst* AI);
+
+    void        domFrontierPass(Function& F);
+    void        computePostOrder(BasicBlock* bb, std::set<BasicBlock*>& visited);
+    void        calculateIDom(Function& F);
+    void        calculateDomFrontier();
+    BasicBlock* intersect(BasicBlock* b1, BasicBlock* b2);
 };
 }   // namespace llvm
 
