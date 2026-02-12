@@ -1,7 +1,7 @@
-#include "../include/lexer/lexer.hpp"
-#include "../include/lexer/token.hpp"
-#include "../include/parser/parser.hpp"
-#include "../include/utils/process.hpp"
+#include "lexer/lexer.hpp"
+#include "lexer/token.hpp"
+#include "parser/parser.hpp"
+#include "utils/process.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     std::vector<std::string> userFiles;
     std::string              stdLibPath = getLibPath("std");
     collectLibFiles(stdLibPath, extension, stdLibFiles);
-    
+
     if (firstArg == "--dir") {
         if (argc < 3) {
             std::cerr << "Error: No directory specified after --dir\n";

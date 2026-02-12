@@ -1,7 +1,7 @@
-#include "../include/ir/ir.hpp"
+#include "ir/ir.hpp"
 
-#include "../include/utils/builtin.hpp"
-#include "../include/utils/format.hpp"
+#include "utils/builtin.hpp"
+#include "utils/format.hpp"
 
 void IRValueScope::add(const std::string& key, IRValue value)
 {

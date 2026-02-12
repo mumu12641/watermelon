@@ -1,10 +1,10 @@
-#include "../../include/utils/process.hpp"
+#include "utils/process.hpp"
 
-#include "../../include/ir/ir.hpp"
-#include "../../include/lexer/lexer.hpp"
-#include "../../include/lexer/token.hpp"
-#include "../../include/parser/parser.hpp"
-#include "../../include/semantic/semantic.hpp"
+#include "ir/ir.hpp"
+#include "lexer/lexer.hpp"
+#include "lexer/token.hpp"
+#include "parser/parser.hpp"
+#include "semantic/semantic.hpp"
 
 #include <cstdlib>
 #include <filesystem>

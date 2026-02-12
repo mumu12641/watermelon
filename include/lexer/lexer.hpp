@@ -2,7 +2,7 @@
 #define LEXER_HPP
 
 #include "token.hpp"
-#include "../utils/error.hpp"
+#include "utils/error.hpp"
 
 #include <fstream>
 #include <map>

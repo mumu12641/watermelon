@@ -1,7 +1,7 @@
-#include "../include/semantic/semantic.hpp"
+#include "semantic/semantic.hpp"
 
-#include "../include/utils/builtin.hpp"
-#include "../include/utils/format.hpp"
+#include "utils/builtin.hpp"
+#include "utils/format.hpp"
 
 void Scope::add(const std::string& key, Type type, SymbolKind kind)
 {

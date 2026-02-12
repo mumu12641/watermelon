@@ -1,9 +1,9 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include "../ast/ast.hpp"
-#include "../lexer/token.hpp"
-#include "../utils/error.hpp"
+#include "ast/ast.hpp"
+#include "lexer/token.hpp"
+#include "utils/error.hpp"
 
 #include <memory>
 #include <stdexcept>

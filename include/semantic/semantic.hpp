@@ -2,10 +2,11 @@
 #ifndef SEMANTIC_HPP
 #define SEMANTIC_HPP
 
-#include "../ast/ast.hpp"
-#include "../lexer/token.hpp"
-#include "../utils/error.hpp"
+#include "ast/ast.hpp"
+#include "lexer/token.hpp"
+#include "utils/error.hpp"
 
+#include <functional>
 #include <stack>
 #include <string>
 #include <unordered_map>

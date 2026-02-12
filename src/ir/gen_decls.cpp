@@ -1,5 +1,5 @@
-#include "../include/ir/ir.hpp"
-#include "../include/utils/format.hpp"
+#include "ir/ir.hpp"
+#include "utils/format.hpp"
 
 void IRGen::generateDeclaration(const Declaration& decl)
 {

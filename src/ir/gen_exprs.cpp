@@ -1,5 +1,5 @@
-#include "../include/ir/ir.hpp"
-#include "../include/utils/format.hpp"
+#include "ir/ir.hpp"
+#include "utils/format.hpp"
 
 llvm::Value* IRGen::generateExpression(const Expression& expr)
 {

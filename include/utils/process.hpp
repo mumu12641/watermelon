@@ -1,7 +1,7 @@
 #ifndef PROCESS_HPP
 #define PROCESS_HPP
 
-#include "../lexer/token.hpp"
+#include "lexer/token.hpp"
 
 #include <algorithm>
 #include <string>

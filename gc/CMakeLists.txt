@@ -1,52 +1,37 @@
-cmake_minimum_required(VERSION 3.16)
-project(gc)
+# 查找 clang++ 程序 (用于生成 IR)
+# 优先查找环境变量或路径中的 clang++
+find_program(CLANG_CXX_COMPILER NAMES clang++ llvm-g++ REQUIRED)
 
-set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(GC_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
-set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
-set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-set(BUILD_DIR ${CMAKE_BINARY_DIR}/build)
-set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
-
-set(LLVMIRFLAGS -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone -fno-discard-value-names)
-
-find_program(OPT_EXECUTABLE opt REQUIRED)
-
-file(MAKE_DIRECTORY ${BUILD_DIR})
-file(MAKE_DIRECTORY ${LIB_DIR})
+# 编译选项
+set(GC_FLAGS -S -emit-llvm -O0 -std=c++17 -Xclang -disable-O0-optnone -fno-discard-value-names)
 
 file(GLOB SOURCES "${SRC_DIR}/*.cpp")
 file(GLOB HEADERS "${INCLUDE_DIR}/*.hpp")
 
+set(GENERATED_IR_FILES "")
+
 foreach(SOURCE_FILE ${SOURCES})
-  get_filename_component(SOURCE_NAME ${SOURCE_FILE} NAME_WE)
-  set(LLVM_IR_FILE ${LIB_DIR}/${SOURCE_NAME}.ll)
+    get_filename_component(SOURCE_NAME ${SOURCE_FILE} NAME_WE)
+    set(OUTPUT_LL "${GC_BUILD_DIR}/${SOURCE_NAME}.ll")
 
-  add_custom_command(
-    OUTPUT ${LLVM_IR_FILE}
-    COMMAND ${CMAKE_CXX_COMPILER} ${LLVMIRFLAGS} ${SOURCE_FILE} -o ${LLVM_IR_FILE}
-    DEPENDS ${SOURCE_FILE} ${HEADERS}
-    COMMENT "Generating LLVM IR for ${SOURCE_NAME}"
-    VERBATIM
-  )
+    # 添加自定义命令：将 .cpp 编译为 .ll
+    add_custom_command(
+        OUTPUT ${OUTPUT_LL}
+        COMMAND ${CLANG_CXX_COMPILER} ${GC_FLAGS} -I${INCLUDE_DIR} ${SOURCE_FILE} -o ${OUTPUT_LL}
+        DEPENDS ${SOURCE_FILE} ${HEADERS}
+        COMMENT "Generating LLVM IR for GC: ${SOURCE_NAME}"
+        VERBATIM
+    )
 
-  list(APPEND LLVM_IR_FILES ${LLVM_IR_FILE})
+    list(APPEND GENERATED_IR_FILES ${OUTPUT_LL})
 endforeach()
 
-add_custom_target(llvm-ir ALL DEPENDS ${LLVM_IR_FILES})
+# 创建一个自定义目标来驱动上述命令执行
+add_custom_target(gc_ir_compilation ALL DEPENDS ${GENERATED_IR_FILES})
 
-add_custom_target(clean-all
-  COMMAND ${CMAKE_COMMAND} -E remove_directory ${BUILD_DIR}
-  COMMAND ${CMAKE_COMMAND} -E remove_directory ${LIB_DIR}
-  COMMENT "Cleaning build and lib directories"
-)
-
-set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
-
-install(CODE "file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/gc\")")
-
-install(DIRECTORY ${LIB_DIR}/
-        DESTINATION "${LOCAL_INSTALL_DIR}/gc"
-)
+# 安装规则：安装生成的 .ll 文件
+install(FILES ${GENERATED_IR_FILES} DESTINATION "${WATERMELON_HOME}/gc")

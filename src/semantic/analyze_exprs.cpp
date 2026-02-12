@@ -1,5 +1,5 @@
-#include "../include/semantic/semantic.hpp"
-#include "../include/utils/format.hpp"
+#include "semantic/semantic.hpp"
+#include "utils/format.hpp"
 
 #include <typeindex>
 

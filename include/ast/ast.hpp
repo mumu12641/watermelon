@@ -1,7 +1,7 @@
 #ifndef AST_HPP
 #define AST_HPP
 
-#include "../utils/error.hpp"
+#include "utils/error.hpp"
 
 #include <memory>
 #include <optional>

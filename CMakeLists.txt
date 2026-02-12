@@ -1,61 +1,68 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(PROJECT_VERSION "1.0.0")
-project(watermelon VERSION ${PROJECT_VERSION})
+# 定义项目名称和版本
+project(watermelon VERSION 1.0.0 LANGUAGES C CXX)
 
-set(CMAKE_C_COMPILER /usr/bin/gcc)
-set(CMAKE_CXX_COMPILER /usr/bin/g++)
-
+# ==========================================
+# 全局配置
+# ==========================================
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # 生成 compile_commands.json 供编辑器使用
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+# 定义安装路径变量，允许用户在命令行覆盖: cmake -DWATERMELON_HOME=~/.watermelon ..
+if(NOT DEFINED WATERMELON_HOME)
+    set(WATERMELON_HOME "$ENV{HOME}/.watermelon" CACHE PATH "Path to install watermelon libraries and config")
+endif()
 
+message(STATUS "Watermelon Home (Libs/Config): ${WATERMELON_HOME}")
+message(STATUS "Executable Install Path: ${CMAKE_INSTALL_PREFIX}/bin")
+
+# ==========================================
+# 查找依赖 (LLVM) - 全局查找一次即可
+# ==========================================
 find_package(LLVM 14 REQUIRED CONFIG)
-include_directories(include ${LLVM_INCLUDE_DIR})
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-llvm_map_components_to_libnames(llvm_libs 
-  core 
-  support 
-  analysis 
-  transformutils
+# 将 LLVM 的头文件路径添加到全局
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+# ==========================================
+# 添加子目录
+# ==========================================
+add_subdirectory(opt)
+add_subdirectory(gc)
+add_subdirectory(src)
+add_subdirectory(std)
+
+# ==========================================
+# 生成并安装配置文件
+# ==========================================
+# 定义配置文件中的变量
+set(CONF_STDLIB_PATH "${WATERMELON_HOME}/std")
+set(CONF_LIB_PATH "${WATERMELON_HOME}/opt")
+set(CONF_VERSION "${PROJECT_VERSION}")
+
+# 生成 watermelon.conf (需要在根目录创建一个 watermelon.conf.in 模板，见下文)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/config/watermelon.conf.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/watermelon.conf"
+    @ONLY
 )
 
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-include_directories(${PROJECT_SOURCE_DIR}/include)
+# 安装配置文件
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/watermelon.conf"
+        DESTINATION "${WATERMELON_HOME}")
 
-file(GLOB_RECURSE MAIN_SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
-add_executable(watermelon ${MAIN_SOURCES})
-target_include_directories(watermelon PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(watermelon ${llvm_libs})
-
-set(LOCAL_INSTALL_DIR "$ENV{HOME}/.watermelon")
-
+# ==========================================
+# 安装完成后的提示信息
+# ==========================================
 install(CODE "
-  file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}\")
-  file(MAKE_DIRECTORY \"${LOCAL_INSTALL_DIR}/std\")
-  message(STATUS \"Created directories in: ${LOCAL_INSTALL_DIR}\")
+    message(STATUS \"\")
+    message(STATUS \"=== Installation Complete ===\")
+    message(STATUS \"Executable: ${CMAKE_INSTALL_PREFIX}/bin/watermelon\")
+    message(STATUS \"Config & Libs: ${WATERMELON_HOME}\")
+    message(STATUS \"\")
 ")
-
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/std/"
-        DESTINATION "${LOCAL_INSTALL_DIR}/std"
-        FILES_MATCHING PATTERN "*")
-
-install(CODE "
-  file(WRITE \"${LOCAL_INSTALL_DIR}/watermelon.conf\" \"# Watermelon compiler configuration\\nstdlib_path=${LOCAL_INSTALL_DIR}/std\\nlib_path=${LOCAL_INSTALL_DIR}/lib\\nversion=${PROJECT_VERSION}\\n\")
-  message(STATUS \"Created configuration file with version ${PROJECT_VERSION}\")
-")
-
-install(CODE "
-  message(STATUS \"=== Installation Complete ===\")
-  message(STATUS \"Executable installed to: /usr/local/bin/watermelon\")
-  message(STATUS \"Standard library: ${LOCAL_INSTALL_DIR}/std/\")
-  message(STATUS \"Configuration: ${LOCAL_INSTALL_DIR}/watermelon.conf\")
-  message(STATUS \"\")
-  message(STATUS \"Then you can use: watermelon your_file.wm\")
-")
-
-add_custom_target(info ALL
-  COMMAND ${CMAKE_COMMAND} -E echo "Build completed!"
-  COMMAND ${CMAKE_COMMAND} -E echo "Run 'sudo make install' to install"
-)

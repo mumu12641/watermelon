@@ -1,7 +1,7 @@
 #ifndef ERROR_HPP
 #define ERROR_HPP
 
-#include "./format.hpp"
+#include "utils/format.hpp"
 
 #include <filesystem>
 #include <fstream>
