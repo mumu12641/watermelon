@@ -75,23 +75,37 @@ The compiler generates the following files in the current directory:
 
 ```typescript
 class Shape(name:str){
-    fn get_area() -> int{ return 0; }
+    fn get_area() -> int{
+        return 0;
+    }
     fn print(){
         print_str("Name: " + name + "\n");
         print_str("area: ");
         print_int(self.get_area());
         println();
+        return;
     }
 }
 
 class Square(a:int = 0) inherits Shape("Square"){
-    fn set(_a:int){ a = _a; }
-    fn get_area() -> int{ return a * a; }
+    fn set(_a:int){
+        a = _a;
+        return;
+    }
+    fn get_area() -> int{
+        return a * a;
+    }
 }
 
 class Rectangle(a:int = 0, b:int = 0) inherits Shape("Rectangle"){
-    fn set(_a:int, _b:int){ a = _a; b = _b; }
-    fn get_area() -> int{ return a * b; }
+    fn set(_a:int, _b:int){
+        a = _a;
+        b = _b;
+        return;
+    }
+    fn get_area() -> int{
+        return a * b;
+    }
 }
 
 fn print_shape(s:Shape) -> Shape{
@@ -99,12 +113,11 @@ fn print_shape(s:Shape) -> Shape{
     return s;
 }
 
-fn main() -> int {
+fn main() ->int {
     val a = Square(2);
     val b = Rectangle(2, 3);
-    
-    // Dynamic dispatch
-    val d = print_shape(a); 
+    val c = b;
+    val d = print_shape(a);
     d.print();
     return 0;
 }
@@ -115,9 +128,24 @@ fn main() -> int {
 ```typescript
 class Node(_data:int = 0){
     var _next:Node;
-    fn set_next(next:Node) -> void{ _next = next; }
-    fn get_next() -> Node{ return _next; }
-    fn get_data() -> int{ return _data; }
+
+    fn set_data(__data:int)->void{
+        _data = __data;
+        return;
+    }
+
+    fn get_data() -> int{
+        return _data;
+    }
+
+    fn set_next(next:Node) -> void{
+        _next = next;
+        return;
+    }
+
+    fn get_next() -> Node{
+        return _next;
+    }
 }
 
 class LinkedList(_head:Node){
@@ -133,17 +161,29 @@ class LinkedList(_head:Node){
         tail.set_next(node);
         tail = node;
         size = size + 1;
+        return;
+        
     }
     
-    fn get_head() -> Node{ return _head; }
-    fn get_size() -> int{ return size; }
+    fn get_head() -> Node{
+        return _head;
+    }
+
+    fn get_size() -> int{
+        return size;
+    }
 }
 
 fn main() -> void{
-    var l = LinkedList(Node(1));
-    l.insert(Node(2));
-    l.insert(Node(3));
-    l.insert(Node(4));
+    var n1 = Node(1);
+    var n2 = Node(2);
+    var n3 = Node(3);
+    var n4 = Node(4);
+
+    var l = LinkedList(n1);
+    l.insert(n2);
+    l.insert(n3);
+    l.insert(n4);
 
     var cur = l.get_head();
     for(i in Range(l.get_size())){
@@ -151,5 +191,6 @@ fn main() -> void{
         println();
         cur = cur.get_next();
     }
+    return;
 }
 ```
