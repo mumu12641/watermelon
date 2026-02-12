@@ -68,7 +68,6 @@ The compiler generates the following files in the current directory:
 *   `output.ll`: Raw LLVM IR.
 *   `output_opt.ll`: Optimized LLVM IR (after applying custom passes).
 
----
 
 ## 📝 Examples
 
