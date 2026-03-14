@@ -122,6 +122,7 @@ llvm::Value* IRGen::generateBinaryExpression(const BinaryExpression& expr)
             return this->builder->CreateAnd(leftValue, rightValue, "and");
         case BinaryExpression::Operator::OR:
             return this->builder->CreateOr(leftValue, rightValue, "or");
+        case BinaryExpression::Operator::ASSIGN: break;
     }
     return nullptr;
 }
@@ -222,6 +223,10 @@ llvm::Value* IRGen::generateLiteralExpression(const LiteralExpression& expr)
         case Type::Kind::BOOL: return this->builder->getInt1(std::get<bool>(expr.value) ? 1 : 0);
         case Type::Kind::STR:
             return builder->CreateGlobalStringPtr(std::get<std::string>(expr.value));
+        case Type::Kind::EMPTY:
+        case Type::Kind::VOID:
+        case Type::Kind::CLASS:
+        case Type::Kind::FUNCTION: break;
     }
     return nullptr;
 }

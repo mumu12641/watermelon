@@ -12,8 +12,16 @@ class Shape(name:str){
 }
 
 class Square(a:int = 0) inherits Shape("Square"){
+    val s:String;
     fn set(_a:int){
         a = _a;
+        return;
+    }
+    fn test(){
+        a=1;
+        print_int(a);
+        a=2;
+        print_int(a);
         return;
     }
     fn get_area() -> int{
@@ -37,11 +45,23 @@ fn print_shape(s:Shape) -> Shape{
     return s;
 }
 
+fn test(a:int)->void{
+    val b = a+1;
+    val c =  a+1;
+    print_int(b);
+    print_int(c);
+    return;
+}
+
 fn main() ->int {
-    val a = Square(2);
-    val b = Rectangle(2, 3);
-    val c = b;
-    val d = print_shape(a);
-    d.print();
+    // val a = Square(2);
+    // val b = Rectangle(2, 3);
+    // val c = b;
+    // val d = print_shape(a);
+    // d.print();
+
+    val a=1;
+    test(a);
+    
     return 0;
 }

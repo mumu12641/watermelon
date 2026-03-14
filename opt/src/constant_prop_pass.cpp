@@ -12,6 +12,15 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
     std::set<BasicBlock*>       unreachableBlocks;
     // errs() << "LocalConstantPropPass: " << F.getName() << "\n";
     for (auto& block : F) {
+        // for (auto& inst : block) {
+        //     // if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
+        //     //     Value* value   = storeInst->getValueOperand();
+        //     //     Value* pointer = storeInst->getPointerOperand();
+        //     //     if (Constant* constant = dyn_cast<Constant>(value)) {
+        //     //         constantMap[pointer] = constant;
+        //     //     }
+        //     // }
+        // }
         for (auto& inst : block) {
             if (auto storeInst = dyn_cast<StoreInst>(&inst)) {
                 Value* value   = storeInst->getValueOperand();
@@ -19,10 +28,11 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
                 if (Constant* constant = dyn_cast<Constant>(value)) {
                     constantMap[pointer] = constant;
                 }
+                else {
+                    constantMap.erase(pointer);
+                }
             }
-        }
-        for (auto& inst : block) {
-            if (auto* loadInst = dyn_cast<LoadInst>(&inst)) {
+            else if (auto* loadInst = dyn_cast<LoadInst>(&inst)) {
                 auto pointer = loadInst->getPointerOperand();
                 if (constantMap.count(pointer)) {
                     Constant* constant = constantMap[pointer];
@@ -157,7 +167,7 @@ PreservedAnalyses ConstantPropPass::run(Function& F, FunctionAnalysisManager& AM
             I->eraseFromParent();
         }
     }
-    
+
     if (!unreachableBlocks.empty()) {
         for (BasicBlock* BB : unreachableBlocks) {
             while (BB->size() > 1) {

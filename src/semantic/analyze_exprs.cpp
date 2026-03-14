@@ -278,6 +278,10 @@ std::pair<std::unique_ptr<Type>, std::optional<Error>> SemanticAnalyzer::analyze
         case Type::Kind::FLOAT: return {std::make_unique<Type>(Type::builtinFloat()), std::nullopt};
         case Type::Kind::BOOL: return {std::make_unique<Type>(Type::builtinBool()), std::nullopt};
         case Type::Kind::STR: return {std::make_unique<Type>(Type::builtinStr()), std::nullopt};
+        case Type::Kind::EMPTY:
+        case Type::Kind::VOID:
+        case Type::Kind::CLASS:
+        case Type::Kind::FUNCTION: break;
     }
     return {nullptr, std::nullopt};
 }
